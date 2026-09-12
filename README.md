@@ -29,29 +29,28 @@ Linux environment; compatibility with older distributions is not guaranteed.
 The workflow in `.github/workflows/ci.yml` runs on branch pushes, pull requests,
 and manual dispatch. It builds and tests Debug and Release on Windows 2022
 (Visual Studio 2022, x64) and Ubuntu 24.04 (GCC, x64), installs each build, and
-runs the installed executable. Release builds additionally create and extract a
-ZIP and run the packaged executable before uploading it as a workflow artifact.
+runs the installed executable. Only pushes to `main` additionally create and
+extract Release ZIPs and run the packaged executables before uploading artifacts.
+Pushes to `dev` or other branches, pull requests, and manual runs build, test,
+and install without producing ZIPs or publishing releases. Tag pushes do not
+trigger this workflow.
 The current test checks the program's greeting; add further CTest tests as the
 assembler grows.
 
 Download the `kasm-Windows-x64` and `kasm-Linux-x64` artifacts from a successful
-Actions run. Each artifact contains its platform's CPack ZIP; artifacts are kept
+`main` push run. Each artifact contains its platform's CPack ZIP; artifacts are kept
 for 14 days.
 
-To publish a release:
+To publish, merge your changes from `dev` into `main`. After all four builds
+pass, the workflow publishes both ZIPs to a new GitHub Release with generated
+release notes. The release tag is automatically named `main-<run number>` and
+points to the exact commit built. Previous releases remain available; rerunning
+the same workflow run replaces that release's matching assets. ZIP filenames
+use the version in `project(kasm VERSION ...)` in `CMakeLists.txt`, which you can
+bump when appropriate without needing to change it for every merge.
 
-1. Set the version in `project(kasm VERSION ...)` in `CMakeLists.txt`.
-2. Commit and push the changes, including the workflow.
-3. Push a matching version tag, for example:
-
-   ```sh
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-
-After all four builds pass, the tag workflow publishes both ZIPs to a GitHub
-Release with generated release notes. Tags must exactly match the CMake version
-prefixed with `v`; a mismatch fails configuration. Re-running a tag workflow
-replaces assets on an existing release. Publishing uses the built-in
+Direct pushes to `main` also publish. To enforce merges only, protect `main`
+with a repository rule requiring a pull request before merging.
+Publishing uses the built-in
 `GITHUB_TOKEN` with `contents: write` only in the release job; no personal token
 is required. GitHub Actions must be enabled for the repository.
