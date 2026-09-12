@@ -17,9 +17,9 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME kasm.smoke COMMAND kasm)
+    add_test(NAME kasm.smoke COMMAND kasm "${CMAKE_CURRENT_SOURCE_DIR}/tests/sample.asm")
     set_tests_properties(kasm.smoke PROPERTIES
-        PASS_REGULAR_EXPRESSION "Hello, from kasm!"
+        PASS_REGULAR_EXPRESSION "[0-9]+ bytes: hello"
         TIMEOUT 10)
 endif()
 
