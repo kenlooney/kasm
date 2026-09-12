@@ -100,14 +100,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: main-${{ github.run_number }}
+          RELEASE_NUMBER: ${{ github.run_number }}
         shell: bash
         run: |
           archives=(dist/*.zip)
           test "${#archives[@]}" -eq 2
+          # CPack filenames carry the version from project(kasm VERSION ...).
+          linux_archive=(dist/kasm-*-Linux-x86_64.zip)
+          [[ "${linux_archive[0]}" =~ ^dist/kasm-([0-9]+(\.[0-9]+)*)-Linux-x86_64\.zip$ ]]
+          version="${BASH_REMATCH[1]}"
+          RELEASE_TAG="v${version}-build.${RELEASE_NUMBER}"
+          release_title="kasm ${version}"
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${archives[@]}" --clobber
+            gh release edit "$RELEASE_TAG" --title "$release_title"
           else
             gh release create "$RELEASE_TAG" "${archives[@]}" \
-              --target "$GITHUB_SHA" --title "kasm $RELEASE_TAG" --generate-notes
+              --target "$GITHUB_SHA" --title "$release_title" --generate-notes
           fi

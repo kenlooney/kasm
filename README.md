@@ -43,8 +43,10 @@ for 14 days.
 
 To publish, merge your changes from `dev` into `main`. After all four builds
 pass, the workflow publishes both ZIPs to a new GitHub Release with generated
-release notes. The release tag is automatically named `main-<run number>` and
-points to the exact commit built. Previous releases remain available; rerunning
+release notes. The release title uses the CMake version, for example `kasm 0.1.0`.
+The tag is automatically named `v<version>-build.<run number>` (for example
+`v0.1.0-build.3`) and points to the exact commit built. The build number keeps
+tags unique when multiple merges use the same version. Previous releases remain available; rerunning
 the same workflow run replaces that release's matching assets. ZIP filenames
 use the version in `project(kasm VERSION ...)` in `CMakeLists.txt`, which you can
 bump when appropriate without needing to change it for every merge.
