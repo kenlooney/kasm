@@ -1,5 +1,4 @@
-# kasm
-Ken's Assembler
+# Ken's Assembler
 
 ## Build, test, install, and package
 
