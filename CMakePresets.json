@@ -1,0 +1,49 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "Visual Studio",
+            "displayName": "Visual Studio Community 2026 Release - amd64",
+            "description": "Using compilers for Visual Studio 18 2026 (x64 architecture)",
+            "generator": "Visual Studio 18 2026",
+            "toolset": "host=x64",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
+            }
+        },
+        {
+            "name": "GCC-debug",
+            "displayName": "GCC - Linux / WSL2 - Debug",
+            "description": "Build with GCC and Unix Makefiles on Linux or WSL2",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Visual Studio-debug",
+            "displayName": "Visual Studio Community 2026 Release - amd64 - Debug",
+            "configurePreset": "Visual Studio",
+            "configuration": "Debug"
+        },
+        {
+            "name": "GCC-debug",
+            "displayName": "GCC - Linux / WSL2 - Debug",
+            "configurePreset": "GCC-debug"
+        }
+    ]
+}
