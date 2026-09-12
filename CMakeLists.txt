@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(kasm VERSION 0.1.0 LANGUAGES C)
 
-add_executable(kasm main.c)
+add_executable(kasm
+    src/main.c
+    src/source.c)
+target_include_directories(kasm PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
 # Keep Windows ZIPs runnable without a separate Visual C++ runtime install.
 if(MSVC)
     set_property(TARGET kasm PROPERTY MSVC_RUNTIME_LIBRARY

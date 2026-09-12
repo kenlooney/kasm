@@ -12,9 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KASM_SOURCE_H
+#define KASM_SOURCE_H
 
-#include <stdio.h>
+#include <stddef.h>
 
-int main(int argc, char** argv){
-    printf("Hello, from kasm!\n");
-}
+typedef struct {
+    const char *path;
+    char text[4097];
+    size_t length;
+} Source;
+
+int source_load(Source *source, const char *path);
+
+
+
+#endif // KASM_SOURCE_H
