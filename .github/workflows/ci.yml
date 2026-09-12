@@ -1,0 +1,121 @@
+name: Build, test, and package
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.platform }} / ${{ matrix.configuration }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+        platform: [Windows-x64, Linux-x64]
+        include:
+          - platform: Windows-x64
+            os: windows-2022
+            generator: Visual Studio 17 2022
+            architecture: -A x64
+            executable: kasm.exe
+          - platform: Linux-x64
+            os: ubuntu-24.04
+            generator: Unix Makefiles
+            architecture: ''
+            executable: kasm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Configure
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          extra_args=()
+          if [[ -n "$RELEASE_TAG" ]]; then
+            extra_args+=("-DKASM_RELEASE_TAG=$RELEASE_TAG")
+          fi
+          cmake -S . -B build/ci -G "${{ matrix.generator }}" ${{ matrix.architecture }} \
+            -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -DBUILD_TESTING=ON \
+            "${extra_args[@]}"
+
+      - name: Build
+        run: cmake --build build/ci --config ${{ matrix.configuration }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build/ci -C ${{ matrix.configuration }} --output-on-failure --no-tests=error
+
+      - name: Install
+        run: cmake --install build/ci --config ${{ matrix.configuration }} --prefix "$PWD/install/ci"
+
+      - name: Verify installed executable
+        run: ./install/ci/bin/${{ matrix.executable }}
+
+      - name: Package ZIP
+        if: matrix.configuration == 'Release'
+        run: cpack --config build/ci/CPackConfig.cmake -C Release -G ZIP -B dist
+
+      - name: Verify ZIP contents and executable
+        if: matrix.configuration == 'Release'
+        run: |
+          mkdir -p build/unpacked
+          archive=("$PWD"/dist/*.zip)
+          test "${#archive[@]}" -eq 1
+          cd build/unpacked
+          cmake -E tar xf "${archive[0]}"
+          test -f kasm-*/share/doc/kasm/README.md
+          test -f kasm-*/share/doc/kasm/LICENSE
+          ./kasm-*/bin/${{ matrix.executable }}
+
+      - name: Upload ZIP
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: kasm-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    name: Publish release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: kasm-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish ZIPs to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          archives=(dist/*.zip)
+          test "${#archives[@]}" -eq 2
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${archives[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${archives[@]}" \
+              --verify-tag --title "kasm $RELEASE_TAG" --generate-notes
+          fi
