@@ -12,27 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdio.h>
+#ifndef KASM_LEXER_H
+#define KASM_LEXER_H
+
 #include "source.h"
 #include "cursor.h"
 #include "diagnostic.h"
-#include "lexer.h"
+typedef enum {
+    TK_END,
+    TK_PLUS,
+    TK_MINUS,
+    TK_STAR,
+    TK_LPAREN,
+    TK_RPAREN,
+    TK_COMMA,
+    TK_SEMI,
+    TK_LBRACE,
+    TK_RBRACE,
+    TK_COLON
+} TokenKind;
 
-int main(int argc, char** argv){
-    Source source;
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
-        return 1;
-    }
-     if (!source_load(&source, argv[1]))
-        return 1;
+typedef struct {
+    TokenKind kind;
+    Span span;
+    long long value;
+} Token;
 
-    Lexer lexer;
-    lexer_start(&lexer, &source);
-    while (!lexer.failed && lexer.token.kind != TK_END) {
-        Token t = lexer.token;
-        printf("token %d [%zu,%zu) value=%lld\n", (int)t.kind, t.span.start, t.span.end, t.value);
-        lexer_next(&lexer);
-    }
-    return lexer.failed ? 1 : 0;
-}
+typedef struct {
+    Cursor cursor;
+    Token token;
+    int failed;
+} Lexer;
+
+void lexer_start(Lexer *lexer, const Source *source);
+void lexer_next(Lexer *lexer);
+int token_is(const Source *source, Token token, const char *word);
+#endif // KASM_LEXER_H

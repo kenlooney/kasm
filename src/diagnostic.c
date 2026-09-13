@@ -12,27 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdio.h>
-#include "source.h"
-#include "cursor.h"
 #include "diagnostic.h"
-#include "lexer.h"
-
-int main(int argc, char** argv){
-    Source source;
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
-        return 1;
-    }
-     if (!source_load(&source, argv[1]))
-        return 1;
-
-    Lexer lexer;
-    lexer_start(&lexer, &source);
-    while (!lexer.failed && lexer.token.kind != TK_END) {
-        Token t = lexer.token;
-        printf("token %d [%zu,%zu) value=%lld\n", (int)t.kind, t.span.start, t.span.end, t.value);
-        lexer_next(&lexer);
-    }
-    return lexer.failed ? 1 : 0;
+#include "cursor.h"
+#include <stdio.h>
+void diagnostic(const Source *source, Span span, const char *message) {
+    Cursor cursor = cursor_start(source);
+    while (cursor.offset < span.start && cursor_peek(&cursor) != '\0')
+        cursor_advance(&cursor);
+    fprintf(stderr, "%s:%zu:%zu: error: %s [bytes %zu..%zu)\n", source->path, cursor.line,
+            cursor.column, message, span.start, span.end);
 }

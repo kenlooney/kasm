@@ -7,7 +7,7 @@ Run these commands from the repository root (the directory containing
 ```powershell
 cmake --preset windows-debug -DBUILD_TESTING=ON
 cmake --build --preset windows-debug
-ctest --test-dir build/windows-debug -C Debug --output-on-failure
+ctest --test-dir build/windows-debug -C Debug --output-on-failure -V
 ```
 ```bash
 cmake --preset GCC-debug -DBUILD_TESTING=ON

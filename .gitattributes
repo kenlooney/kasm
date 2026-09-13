@@ -1,0 +1,2 @@
+# Byte-oriented test expectations require consistent fixture line endings.
+tests/*.asm text eol=lf
