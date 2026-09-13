@@ -28,6 +28,10 @@ check_lexer(crlf "a\n\t42 \n" 0
     "token 11 [0,1) value=0\ntoken 12 [4,6) value=42\n")
 check_lexer(max "9223372036854775807" 0
     "token 12 [0,19) value=9223372036854775807\n")
+check_lexer(decimal_add "42+7" 0
+    "token 12 [0,2) value=42\ntoken 1 [2,3) value=0\ntoken 12 [3,4) value=7\n")
+check_lexer(binary_add "0b10100001 + 7" 0
+    "token 12 [0,10) value=161\ntoken 1 [11,12) value=0\ntoken 12 [13,14) value=7\n")
 foreach(invalid IN ITEMS 0x 0b 0b102 08 0xGG 123abc 9223372036854775808)
     check_lexer("invalid-${invalid}" "${invalid}" 1 "")
 endforeach()
