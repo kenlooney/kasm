@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "source.h"
 #include "cursor.h"
 #include "diagnostic.h"
 #include "lexer.h"
+#include "expr.h"
 
 int main(int argc, char** argv){
     Source source;
@@ -27,12 +29,23 @@ int main(int argc, char** argv){
      if (!source_load(&source, argv[1]))
         return 1;
 
-    Lexer lexer;
-    lexer_start(&lexer, &source);
-    while (!lexer.failed && lexer.token.kind != TK_END) {
-        Token t = lexer.token;
-        printf("token %d [%zu,%zu) value=%lld\n", (int)t.kind, t.span.start, t.span.end, t.value);
-        lexer_next(&lexer);
+   Parser parser;
+    parser_start(&parser, &source);
+    int root = parse_expression(&parser);
+    while (!parser.lexer.failed && parser.lexer.token.kind == TK_NEWLINE)
+        lexer_next(&parser.lexer);
+    if (root >= 0 && parser.lexer.token.kind != TK_END)
+        parser_error(&parser, "expected end of input");
+    if (root < 0 || parser.failed || parser.lexer.failed) {
+        free(parser.nodes);
+        return 1;
     }
-    return lexer.failed ? 1 : 0;
+    for (int i = 0; i < parser.count; i++) {
+        Expr e = parser.nodes[i];
+        printf("node %d: kind=%d value=%lld left=%d right=%d\n", i, (int)e.kind, e.value, e.left,
+               e.right);
+    }
+    printf("root = %d\n", root);
+    free(parser.nodes);
+    return 0;
 }

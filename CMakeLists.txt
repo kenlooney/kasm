@@ -17,11 +17,22 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
+    add_executable(lexer_test_driver
+        tests/lexer_driver.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(lexer_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+    add_test(NAME parser.integer COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_integer.cmake")
+    add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:lexer_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_literals.cmake")
     add_test(NAME lexer.comments COMMAND "${CMAKE_COMMAND}"
-        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DKASM=$<TARGET_FILE:lexer_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_comments.cmake")
     
    
