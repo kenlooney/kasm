@@ -20,7 +20,8 @@
 typedef enum {
     EX_INT,
     EX_ADD,
-    EX_SUB
+    EX_SUB,
+    EX_MUL
 } ExprKind;
 
 typedef struct {

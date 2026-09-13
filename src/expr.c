@@ -43,6 +43,27 @@ static int node(Parser *parser, Expr expression) {
 static int primary(Parser *parser) {
     Token token = parser->lexer.token;
 
+     if (token.kind == TK_LPAREN) {
+        if (parser->depth == 32) {
+            parser_error(parser, "parentheses nested too deeply");
+            return -1;
+        }
+        parser->depth++;
+        lexer_next(&parser->lexer);
+        int root = parse_expression(parser);
+        parser->depth--;
+        if (root < 0)
+            return -1;
+        if (parser->lexer.token.kind != TK_RPAREN) {
+            parser_error(parser, "expected closing parenthesis");
+            return -1;
+        }
+        parser->nodes[root].span.start = token.span.start;
+        parser->nodes[root].span.end = parser->lexer.token.span.end;
+        lexer_next(&parser->lexer);
+        return root;
+    }
+    
     if (token.kind != TK_NUMBER || parser->lexer.failed) {
         parser_error(parser, "expected integer literal");
         return -1;
@@ -66,15 +87,27 @@ static int binary(Parser *parser, ExprKind kind, int left, int right) {
     Expr expression = {kind, span, 0, left, right};
     return node(parser, expression);
 }
-
-int parse_expression(Parser *parser) {
+static int product(Parser *parser) {
     int left = primary(parser);
+
+    while (left >= 0 &&
+           (parser->lexer.token.kind == TK_STAR)) {
+        TokenKind op = parser->lexer.token.kind;
+        lexer_next(&parser->lexer);
+        int right = primary(parser);
+
+        left = binary(parser, EX_MUL, left, right);
+    }
+    return left;
+}
+int parse_expression(Parser *parser) {
+    int left = product(parser);
 
     while (left >= 0 &&
            (parser->lexer.token.kind == TK_PLUS || parser->lexer.token.kind == TK_MINUS)) {
         TokenKind op = parser->lexer.token.kind;
         lexer_next(&parser->lexer);
-        int right = primary(parser);
+        int right = product(parser);
 
         left = binary(parser, op == TK_PLUS ? EX_ADD : EX_SUB, left, right);
     }

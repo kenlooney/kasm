@@ -31,6 +31,12 @@ if(BUILD_TESTING)
     add_test(NAME parser.add_subtract COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_add_subtract.cmake")
+    add_test(NAME parser.multiply_precedence COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_multiply_precedence.cmake")
+    add_test(NAME parser.parentheses_precedence COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_parentheses_precedence.cmake")
     add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:lexer_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_literals.cmake")
