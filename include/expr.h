@@ -18,7 +18,9 @@
 #include "lexer.h"
 
 typedef enum {
-    EX_INT
+    EX_INT,
+    EX_ADD,
+    EX_SUB
 } ExprKind;
 
 typedef struct {

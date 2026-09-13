@@ -41,12 +41,13 @@ static int node(Parser *parser, Expr expression) {
     return parser->count++;
 }
 static int primary(Parser *parser) {
-    if (parser->failed || parser->lexer.failed)
-        return -1;
-    if (parser->lexer.token.kind != TK_NUMBER) {
+    Token token = parser->lexer.token;
+
+    if (token.kind != TK_NUMBER || parser->lexer.failed) {
         parser_error(parser, "expected integer literal");
         return -1;
     }
+    
     Expr expression;
     expression.kind = EX_INT;
     expression.span = parser->lexer.token.span;
@@ -58,7 +59,24 @@ static int primary(Parser *parser) {
         lexer_next(&parser->lexer);
     return result;
 }
+static int binary(Parser *parser, ExprKind kind, int left, int right) {
+    if (left < 0 || right < 0)
+        return -1;
+    Span span = {parser->nodes[left].span.start, parser->nodes[right].span.end};
+    Expr expression = {kind, span, 0, left, right};
+    return node(parser, expression);
+}
 
 int parse_expression(Parser *parser) {
-    return primary(parser);
+    int left = primary(parser);
+
+    while (left >= 0 &&
+           (parser->lexer.token.kind == TK_PLUS || parser->lexer.token.kind == TK_MINUS)) {
+        TokenKind op = parser->lexer.token.kind;
+        lexer_next(&parser->lexer);
+        int right = primary(parser);
+
+        left = binary(parser, op == TK_PLUS ? EX_ADD : EX_SUB, left, right);
+    }
+    return left;
 }
