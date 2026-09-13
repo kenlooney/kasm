@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-#include <stdio.h>
-#include "source.h"
 #include "cursor.h"
-
-int main(int argc, char** argv){
-    Source source;
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
-        return 1;
-    }
-     if (!source_load(&source, argv[1]))
-        return 1;
-
-    Cursor cursor = cursor_start(&source);
-    while (cursor_peek(&cursor) != '\0') {
-        printf("%zu:%zu byte %u\n", cursor.line, cursor.column,
-               (unsigned int)(unsigned char)cursor_peek(&cursor));
-        cursor_advance(&cursor);
-    }
-    return 0;
+Cursor cursor_start(const Source *source) {
+    Cursor cursor = {source, 0, 1, 1};
+    return cursor;
 }
+char cursor_peek(const Cursor *cursor) {
+    return cursor->source->text[cursor->offset];
+}
+void cursor_advance(Cursor *cursor) {
+    char c = cursor_peek(cursor);
+    if (c == '\0')
+        return;
+    cursor->offset++;
+    if (c == '\n') {
+        cursor->line++;
+        cursor->column = 1;
+    } else {
+        cursor->column++;
+    }
+}
+
+

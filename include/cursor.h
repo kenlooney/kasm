@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KASM_CURSOR_H
+#define KASM_CURSOR_H
 
-#include <stdio.h>
 #include "source.h"
-#include "cursor.h"
 
-int main(int argc, char** argv){
-    Source source;
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
-        return 1;
-    }
-     if (!source_load(&source, argv[1]))
-        return 1;
+typedef struct {
+    const Source *source;
+    size_t offset, line, column;
+} Cursor;
 
-    Cursor cursor = cursor_start(&source);
-    while (cursor_peek(&cursor) != '\0') {
-        printf("%zu:%zu byte %u\n", cursor.line, cursor.column,
-               (unsigned int)(unsigned char)cursor_peek(&cursor));
-        cursor_advance(&cursor);
-    }
-    return 0;
-}
+Cursor cursor_start(const Source *source);
+char cursor_peek(const Cursor *cursor);
+void cursor_advance(Cursor *cursor);
+
+#endif // KASM_CURSOR_H

@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(kasm VERSION 0.1.0 LANGUAGES C)
 
+file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
-    src/main.c
-    src/source.c)
+    ${SOURCES})
 target_include_directories(kasm PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Keep Windows ZIPs runnable without a separate Visual C++ runtime install.
@@ -19,7 +19,11 @@ include(CTest)
 if(BUILD_TESTING)
     add_test(NAME kasm.smoke COMMAND kasm "${CMAKE_CURRENT_SOURCE_DIR}/tests/sample.asm")
     set_tests_properties(kasm.smoke PROPERTIES
-        PASS_REGULAR_EXPRESSION "[0-9]+ bytes: hello"
+        PASS_REGULAR_EXPRESSION "1:1 byte 104\n1:2 byte 101\n1:3 byte 108\n1:4 byte 108\n1:5 byte 111"
+        TIMEOUT 10)
+    add_test(NAME kasm.walk COMMAND kasm "${CMAKE_CURRENT_SOURCE_DIR}/tests/walk.asm")
+    set_tests_properties(kasm.walk PROPERTIES
+        PASS_REGULAR_EXPRESSION "1:1 byte 97\n1:2 byte 10\n2:1 byte 98"
         TIMEOUT 10)
 endif()
 
