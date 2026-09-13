@@ -59,19 +59,22 @@ lexes as an identifier and a colon, but does not yet define a label.
 Other punctuation is rejected, including a standalone `/`, `.`, `=`, `[` and `]`.
 String and character literals are not supported.
 
-### Whitespace and comments
+### Newlines, whitespace, and comments
 
-- Spaces, tabs, carriage returns, line feeds, vertical tabs, and form feeds are
-  skipped. There is no newline token or preserved whitespace.
-- `//` starts a comment that ends at a line feed (`\n`) or EOF.
-- `/* ... */` comments can span lines and end at the first `*/`; they do not nest.
+- Spaces, tabs, vertical tabs, and form feeds are skipped.
+- LF, CRLF, and lone CR produce `TK_NEWLINE` (token ID 13). CRLF is one token
+  spanning two bytes; blank lines also produce newline tokens. No newline is
+  inserted at EOF.
+- `//` starts a comment that ends before LF, CRLF, lone CR, or EOF. The
+  terminating newline remains available as a token.
+- `/* ... */` comments can span lines and end at the first `*/`; they do not
+  nest. Newlines inside block comments are skipped with the comment.
 - Comments produce no tokens and can touch other tokens. `a/**/b` produces two
   identifiers.
 - A semicolon is a `TK_SEMI` token, **not a comment marker**.
 
-Current limitation: an unterminated `/*` comment is silently consumed through
-EOF. Also, a lone carriage return does not end a `//` comment. LF and CRLF line
-endings are supported; both bytes of CRLF count toward source offsets.
+An unterminated `/*` comment is an error, with a span from the opening slash
+through EOF. Adjacent comments are skipped iteratively, without recursive calls.
 
 ### Source limits, token spans, and errors
 
@@ -81,13 +84,17 @@ Files are read in binary mode, preserving their original byte offsets.
 
 Each `Token` contains its kind, a zero-based half-open byte span `[start, end)`,
 and a numeric value. The span selects the original spelling in `Source.text`;
-it excludes surrounding whitespace and comments. Non-number tokens have value
-zero. `TK_END` marks EOF with an empty span.
+it excludes skipped whitespace and comments. A `TK_NEWLINE` span covers the
+original line-ending bytes. Non-number tokens have value zero. `TK_END` marks
+EOF with an empty span.
 
 An invalid character, malformed integer, or integer overflow sets `Lexer.failed`
-and reports `invalid character or integer out of range` to stderr, including the
-file path, one-based line and column, and byte span. Columns count bytes; tabs
-advance one column. Lexing stops on the first error, with no error recovery.
+and reports `invalid character or integer out of range`. An unclosed block
+comment sets the same failure flag and reports `unterminated block comment`.
+Diagnostics go to stderr and include the file path, one-based line and column,
+and byte span. LF, CRLF, and lone CR each advance the line count once. Columns
+count bytes; tabs advance one column. Lexing stops on the first error, with no
+error recovery.
 
 ### Using the lexer from a parser
 
@@ -99,10 +106,14 @@ advance one column. Lexing stops on the first error, with no error recovery.
 - Keep the `Source` alive while using the lexer and resolving token spans.
 
 Check `failed` before using a token: a malformed number still has kind
-`TK_NUMBER`, and an invalid punctuation character leaves kind `TK_END`.
+`TK_NUMBER`, while invalid punctuation and unterminated block comments leave
+kind `TK_END`.
 Calling `lexer_next()` after failure returns `TK_END` without resuming scanning.
-Because newlines are discarded, a future parser cannot use a newline token to
-separate statements without changing the lexer or inspecting the source gaps.
+
+A parser can use `TK_NEWLINE` to separate statements and choose where to allow
+line breaks within expressions. Block comments act as whitespace, including
+when they span multiple lines. The parser must also accept EOF after the last
+statement when the file has no trailing newline.
 
 ### Inspecting tokens
 
@@ -112,7 +123,8 @@ Run the built executable with one source-file path, for example:
 .\build\windows-debug\Debug\kasm.exe example.asm
 ```
 
-For a file containing exactly `label: 42+7;`, the current CLI prints:
+For a file containing `label: 42+7;` followed by an LF newline, the current CLI
+prints:
 
 ```text
 token 11 [0,5) value=0
@@ -121,13 +133,21 @@ token 12 [7,9) value=42
 token 1 [9,10) value=0
 token 12 [10,11) value=7
 token 7 [11,12) value=0
+token 13 [12,13) value=0
 ```
 
 The numeric token IDs come from the current `TokenKind` enum. EOF is not printed.
+With CRLF, the final newline span is `[12,14)`; without a trailing newline,
+the final `token 13` line is absent.
 The program exits with status 0 on successful lexing and 1 on a loading or lexing
 error (or incorrect command-line usage).
 
-### Run Tests
+## Run Tests
+
+The regression suites cover integer literals, comment handling, newline tokens,
+LF/CRLF/CR line endings, unterminated-comment diagnostics, and long sequences
+of adjacent comments.
+
 Run these commands from the repository root (the directory containing
 `CMakePresets.json`). Configure and build before running CTest:
 

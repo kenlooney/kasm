@@ -2,9 +2,16 @@
 function(check_lexer name input expected_status expected_output)
     set(path "${CMAKE_CURRENT_BINARY_DIR}/lexer-${name}.asm")
     if(name STREQUAL "crlf")
+        string(REPLACE "\n" "\r\n" input "${input}")
+    endif()
+    file(CONFIGURE OUTPUT "${path}" CONTENT "${input}" @ONLY NEWLINE_STYLE LF)
+    if(name STREQUAL "crlf")
         file(CONFIGURE OUTPUT "${path}" CONTENT "${input}" @ONLY NEWLINE_STYLE CRLF)
-    else()
-        file(CONFIGURE OUTPUT "${path}" CONTENT "${input}" @ONLY NEWLINE_STYLE LF)
+    endif()
+    if(NOT input MATCHES "\n$")
+        string(LENGTH "${input}" start)
+        math(EXPR end "${start} + 1")
+        string(APPEND expected_output "token 13 [${start},${end}) value=0\n")
     endif()
     execute_process(COMMAND "${KASM}" "${path}"
         RESULT_VARIABLE status OUTPUT_VARIABLE output ERROR_VARIABLE error)
@@ -23,9 +30,9 @@ endfunction()
 
 
 check_lexer(lf "abc_2 42\n0x2A 0b101010 052 0" 0
-    "token 11 [0,5) value=0\ntoken 12 [6,8) value=42\ntoken 12 [9,13) value=42\ntoken 12 [14,22) value=42\ntoken 12 [23,26) value=42\ntoken 12 [27,28) value=0\n")
+    "token 11 [0,5) value=0\ntoken 12 [6,8) value=42\ntoken 13 [8,9) value=0\ntoken 12 [9,13) value=42\ntoken 12 [14,22) value=42\ntoken 12 [23,26) value=42\ntoken 12 [27,28) value=0\n")
 check_lexer(crlf "a\n\t42 \n" 0
-    "token 11 [0,1) value=0\ntoken 12 [4,6) value=42\n")
+    "token 11 [0,1) value=0\ntoken 13 [1,3) value=0\ntoken 12 [4,6) value=42\ntoken 13 [7,9) value=0\n")
 check_lexer(max "9223372036854775807" 0
     "token 12 [0,19) value=9223372036854775807\n")
 check_lexer(decimal_add "42+7" 0

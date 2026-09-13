@@ -39,43 +39,60 @@ void lexer_next(Lexer *lexer) {
         return;
     }
 
-    char c = cursor_peek(cursor);
-    while (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
-           c == '\v' || c == '\f') {
-        cursor_advance(cursor);
+    char c;
+    // Skip trivia iteratively so adjacent comments do not grow the call stack.
+    for (;;) {
         c = cursor_peek(cursor);
+        while (c == ' ' || c == '\t' ||
+               c == '\v' || c == '\f') {
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+        }
+        token.span.start = token.span.end = cursor->offset;
+        if (c == '\0') {
+            token.span.end = cursor->offset;
+            lexer->token = token;
+            return;
+        }
+        // Check for single-line comments
+        if (c == '/' && cursor->source->text[cursor->offset + 1] == '/') {
+            while (c != '\0' && c != '\n' && c != '\r') {
+                cursor_advance(cursor);
+                c = cursor_peek(cursor);
+            }
+            continue;
+        }
+        // Check for multi-line comments
+        if (c == '/' && cursor->source->text[cursor->offset + 1] == '*') {
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+            while (c != '\0' && !(c == '*' && cursor->source->text[cursor->offset + 1] == '/')) {
+                cursor_advance(cursor);
+                c = cursor_peek(cursor);
+            }
+            if (c == '\0') {
+                token.span.end = cursor->offset;
+                lexer->failed = 1;
+                lexer->token = token;
+                diagnostic(cursor->source, token.span, "unterminated block comment");
+                return;
+            }
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+            continue;
+        }
+        break;
     }
-    token.span.start = token.span.end = cursor->offset;
-    if (c == '\0') {
+
+    // Treat CRLF as one logical newline while preserving both source bytes.
+    if (c == '\r' || c == '\n') {
+        token.kind = TK_NEWLINE;
+        cursor_advance(cursor);
+        if (c == '\r' && cursor_peek(cursor) == '\n')
+            cursor_advance(cursor);
         token.span.end = cursor->offset;
         lexer->token = token;
-        return;
-    }
-    // Check for single-line comments
-    if (c == '/' && cursor->source->text[cursor->offset + 1] == '/') {
-        while (c != '\0' && c != '\n') {
-            cursor_advance(cursor);
-            c = cursor_peek(cursor);
-        }
-        token.span.start = token.span.end = cursor->offset;
-        lexer_next(lexer);
-        return;
-    }
-    // Check for multi-line comments
-    if (c == '/' && cursor->source->text[cursor->offset + 1] == '*') {
-        cursor_advance(cursor);
-        cursor_advance(cursor);
-        c = cursor_peek(cursor);
-        while (c != '\0' && !(c == '*' && cursor->source->text[cursor->offset + 1] == '/')) {
-            cursor_advance(cursor);
-            c = cursor_peek(cursor);
-        }
-        if (c == '*' && cursor->source->text[cursor->offset + 1] == '/') {
-            cursor_advance(cursor);
-            cursor_advance(cursor);
-        }
-        token.span.start = token.span.end = cursor->offset;
-        lexer_next(lexer);
         return;
     }
     

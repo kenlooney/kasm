@@ -32,6 +32,7 @@ typedef enum {
     TK_COLON,
     TK_IDENT,
     TK_NUMBER,
+    TK_NEWLINE,
 } TokenKind;
 
 typedef struct {

@@ -25,10 +25,11 @@ void cursor_advance(Cursor *cursor) {
     if (c == '\0')
         return;
     cursor->offset++;
-    if (c == '\n') {
+    if (c == '\r' || (c == '\n' &&
+                      (cursor->offset < 2 || cursor->source->text[cursor->offset - 2] != '\r'))) {
         cursor->line++;
         cursor->column = 1;
-    } else {
+    } else if (c != '\n') {
         cursor->column++;
     }
 }
