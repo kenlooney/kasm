@@ -15,6 +15,9 @@
 #ifndef KASM_PROGRAM_H
 #define KASM_PROGRAM_H
 
+#define MAX_BLOCK_DEPTH 16 // Maximum allowed depth for nested blocks
+
+
 #include "expr.h"
 typedef enum { ST_MOV } StatementKind;
 typedef struct {

@@ -71,20 +71,39 @@ static int statement(Parser *parser, Program *program) {
     program->statements[program->count++] = s;
     return 1;
 }
-
-int parse_program(Parser *parser, Program *program) {
-    program->statements = NULL;
-    program->count = 0;
-    program->capacity = 0;
-    while (parser->lexer.token.kind != TK_END && !parser->lexer.failed) {
+static int sequence(Parser *parser, Program *program, int depth) {
+    while (!parser->failed && !parser->lexer.failed && parser->lexer.token.kind != TK_END &&
+           parser->lexer.token.kind != TK_RBRACE) {
         if (parser->lexer.token.kind == TK_NEWLINE) {
             lexer_next(&parser->lexer);
             continue;
         }
-        if (!statement(parser, program))
+        if (parser->lexer.token.kind == TK_LBRACE) {
+            if (depth == MAX_BLOCK_DEPTH) {
+                parser_error(parser, "blocks nested too deeply");
+                return 0;
+            }
+            lexer_next(&parser->lexer);
+            if (!sequence(parser, program, depth + 1))
+                return 0;
+            if (!take(parser, TK_RBRACE, "expected closing brace"))
+                return 0;
+        } else if (!statement(parser, program))
             return 0;
     }
     return !parser->failed && !parser->lexer.failed;
+}
+int parse_program(Parser *parser, Program *program) {
+    program->statements = NULL;
+    program->count = 0;
+    program->capacity = 0;
+    if (!sequence(parser, program, 0))
+        return 0;
+    if (parser->lexer.token.kind != TK_END) {
+        parser_error(parser, "unexpected closing brace");
+        return 0;
+    }
+    return 1;
 }
 
 

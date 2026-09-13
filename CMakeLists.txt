@@ -17,6 +17,19 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(program_blocks_test
+        tests/program_blocks.c
+        src/program.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(program_blocks_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME parser.blocks COMMAND "${CMAKE_COMMAND}"
+        "-DDRIVER=$<TARGET_FILE:program_blocks_test>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_blocks.cmake")
+
     add_executable(expr_test_driver
         tests/expr_driver.c
         src/expr.c

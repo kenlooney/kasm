@@ -1,7 +1,7 @@
 # Ken's Assembler
 
-Kasm currently loads a source file, parses MOV statements and their expression
-ASTs, and prints the number of statements. Instruction validation, expression
+Kasm currently loads a source file, parses MOV statements, nested blocks, and
+expression ASTs, and prints the number of MOV statements. Instruction validation, expression
 evaluation, and machine-code generation are not implemented yet.
 
 ## Current parser support
@@ -53,6 +53,32 @@ are not checked yet. Each statement requires a semicolon, including the last
 one. Statements can share a line or be separated by newlines and blank lines;
 a trailing newline is optional. Line breaks within an instruction are not
 supported, except inside block comments.
+
+Braces group statements into blocks, which can contain other blocks:
+
+```asm
+mov eax, 1;
+{
+    // Blank lines and comments are allowed inside blocks.
+    mov eax, 40+2;
+
+    {
+        mov eax, (2+3)*4;
+    }
+}
+{ mov eax, 0b00000111; }
+{} // Empty blocks are valid too.
+```
+
+This prints `statements = 4`. MOVs retain their source order in one flat
+statement array; blocks do not create scopes or separate AST nodes. Each MOV
+still needs its semicolon, but a closing brace takes no semicolon.
+
+Blocks may nest up to `MAX_BLOCK_DEPTH`, currently 16 in
+[include/program.h](include/program.h). This guard bounds recursive parser
+calls to protect the C call stack. A 17th nested block reports
+`blocks nested too deeply`. Missing and extra closing braces report
+`expected closing brace` and `unexpected closing brace`, respectively.
 
 The [expression parser](src/expr.c) supports integer literals, binary `+` and
 `-`, multiplication (`*`), and parentheses. Multiplication binds more tightly
@@ -120,8 +146,8 @@ a number: `42+7` produces three tokens.
 | `}` | `TK_RBRACE` |
 | `:` | `TK_COLON` |
 
-The parser uses arithmetic operators, parentheses, commas, and semicolons.
-Braces and colons are tokenized but not accepted by the current grammar.
+The parser uses arithmetic operators, parentheses, commas, semicolons, and braces.
+Colons are tokenized but not accepted by the current grammar.
 For example, `label:` lexes as an identifier and a colon, but does not yet
 define a label.
 Other punctuation is rejected, including a standalone `/`, `.`, `=`, `[` and `]`.
@@ -178,9 +204,10 @@ Check `failed` before using a token: a malformed number still has kind
 kind `TK_END`.
 Calling `lexer_next()` after failure returns `TK_END` without resuming scanning.
 
-The statement parser skips `TK_NEWLINE` between semicolon-terminated statements.
+The statement parser skips `TK_NEWLINE` between statements and blocks at every
+nesting level.
 Block comments act as whitespace, including when they span multiple lines.
-EOF is accepted after the last semicolon without a trailing newline.
+EOF is accepted after the last semicolon or closing brace without a trailing newline.
 
 ### Inspecting tokens
 
@@ -212,13 +239,16 @@ error (or incorrect command-line usage).
 
 ## Run Tests
 
-The eight CTest tests cover:
+The nine CTest tests cover:
 
 - Exact expression ASTs for integers, addition/subtraction, multiplication
   precedence, and parentheses overriding precedence.
 - Multiple MOV statements with LF and CRLF line endings, binary literals in
   instructions, and a missing-semicolon diagnostic.
 - Dynamic storage growth to 300 MOV statements, preserving their operands.
+- Empty, nested, and sibling blocks; blank lines within blocks; statement order
+  and expression references; missing/extra brace diagnostics; and acceptance at
+  `MAX_BLOCK_DEPTH` with rejection one level beyond it.
 - Integer literal lexing, comments, newline tokens, LF/CRLF/CR line endings,
   unterminated-comment diagnostics, and long sequences of adjacent comments.
 
