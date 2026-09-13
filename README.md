@@ -1,7 +1,73 @@
 # Ken's Assembler
 
-Kasm currently loads a source file and prints its lexer tokens. AST construction,
-parsing, instruction validation, and machine-code generation are not implemented yet.
+Kasm currently loads a source file, parses MOV statements and their expression
+ASTs, and prints the number of statements. Instruction validation, expression
+evaluation, and machine-code generation are not implemented yet.
+
+## Current parser support
+
+The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`.
+For example, save this as `example.asm`:
+
+```asm
+mov eax, 40+2;
+mov eax, 0b00000111;
+mov eax, (2+3)*4;
+```
+
+Run it after building with one of the presets below:
+
+```powershell
+.\build\windows-debug\Debug\kasm.exe example.asm
+```
+
+```bash
+./build/GCC-debug/kasm example.asm
+```
+
+Both print:
+
+```text
+statements = 3
+```
+
+Comments can appear on their own lines or alongside instructions:
+
+```asm
+// Set up the first value.
+mov eax, 40+2; // A single-line comment runs to the end of this line.
+
+/* This comment spans multiple lines.
+   Use it to explain a group of instructions. */
+mov eax, 0b00000111;
+
+mov eax, (2+3) /* Multiply the grouped sum by four. */ *4;
+```
+
+This example also prints `statements = 3`. The semicolons terminate the
+instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
+
+Instruction names are case-sensitive: only lowercase `mov` is recognized.
+The destination must be an identifier, but register names and operand validity
+are not checked yet. Each statement requires a semicolon, including the last
+one. Statements can share a line or be separated by newlines and blank lines;
+a trailing newline is optional. Line breaks within an instruction are not
+supported, except inside block comments.
+
+The [expression parser](src/expr.c) supports integer literals, binary `+` and
+`-`, multiplication (`*`), and parentheses. Multiplication binds more tightly
+than addition and subtraction; operators at the same precedence associate
+left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
+addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
+division, and other expression operators are not supported yet.
+
+Each statement references its expression's root in the parser's node array.
+Statement storage grows dynamically, starting at 16 entries and doubling as
+needed; there is no fixed 256-statement limit. The source loader's 4096-byte
+file limit still applies.
+
+The CLI exits with status 0 on successful parsing and 1 on a loading, lexing,
+or parsing error, or incorrect command-line usage. Diagnostics go to stderr.
 
 ## Current lexer support
 
@@ -54,8 +120,10 @@ a number: `42+7` produces three tokens.
 | `}` | `TK_RBRACE` |
 | `:` | `TK_COLON` |
 
-These tokens have no grammatical meaning assigned yet. For example, `label:`
-lexes as an identifier and a colon, but does not yet define a label.
+The parser uses arithmetic operators, parentheses, commas, and semicolons.
+Braces and colons are tokenized but not accepted by the current grammar.
+For example, `label:` lexes as an identifier and a colon, but does not yet
+define a label.
 Other punctuation is rejected, including a standalone `/`, `.`, `=`, `[` and `]`.
 String and character literals are not supported.
 
@@ -110,20 +178,20 @@ Check `failed` before using a token: a malformed number still has kind
 kind `TK_END`.
 Calling `lexer_next()` after failure returns `TK_END` without resuming scanning.
 
-A parser can use `TK_NEWLINE` to separate statements and choose where to allow
-line breaks within expressions. Block comments act as whitespace, including
-when they span multiple lines. The parser must also accept EOF after the last
-statement when the file has no trailing newline.
+The statement parser skips `TK_NEWLINE` between semicolon-terminated statements.
+Block comments act as whitespace, including when they span multiple lines.
+EOF is accepted after the last semicolon without a trailing newline.
 
 ### Inspecting tokens
 
-Run the built executable with one source-file path, for example:
+With `BUILD_TESTING=ON`, the dedicated lexer test driver prints tokens:
 
 ```powershell
-.\build\windows-debug\Debug\kasm.exe example.asm
+.\build\windows-debug\Debug\lexer_test_driver.exe tokens.asm
 ```
 
-For a file containing `label: 42+7;` followed by an LF newline, the current CLI
+On Linux, use `./build/GCC-debug/lexer_test_driver tokens.asm`.
+For a file containing `label: 42+7;` followed by an LF newline, the driver
 prints:
 
 ```text
@@ -139,14 +207,23 @@ token 13 [12,13) value=0
 The numeric token IDs come from the current `TokenKind` enum. EOF is not printed.
 With CRLF, the final newline span is `[12,14)`; without a trailing newline,
 the final `token 13` line is absent.
-The program exits with status 0 on successful lexing and 1 on a loading or lexing
+The driver exits with status 0 on successful lexing and 1 on a loading or lexing
 error (or incorrect command-line usage).
 
 ## Run Tests
 
-The regression suites cover integer literals, comment handling, newline tokens,
-LF/CRLF/CR line endings, unterminated-comment diagnostics, and long sequences
-of adjacent comments.
+The eight CTest tests cover:
+
+- Exact expression ASTs for integers, addition/subtraction, multiplication
+  precedence, and parentheses overriding precedence.
+- Multiple MOV statements with LF and CRLF line endings, binary literals in
+  instructions, and a missing-semicolon diagnostic.
+- Dynamic storage growth to 300 MOV statements, preserving their operands.
+- Integer literal lexing, comments, newline tokens, LF/CRLF/CR line endings,
+  unterminated-comment diagnostics, and long sequences of adjacent comments.
+
+Expression tests use `expr_test_driver` to inspect ASTs independently of the
+statement-parsing CLI. Lexer tests use `lexer_test_driver`.
 
 Run these commands from the repository root (the directory containing
 `CMakePresets.json`). Configure and build before running CTest:
@@ -168,4 +245,5 @@ and replace `-C Debug` with `-C Release`.
 If your terminal is already in `build/GCC-debug`, run `cd ../..` first to return
 to the repository root before using the commands above.
 
-To see test output even when tests pass, add `-V` to the command.
+The commands include `-V` for verbose output even when tests pass; omit it for
+a shorter report.

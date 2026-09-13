@@ -19,7 +19,6 @@
 #include "diagnostic.h"
 #include "lexer.h"
 #include "expr.h"
-#include "program.h"
 
 int main(int argc, char** argv){
     Source source;
@@ -30,16 +29,23 @@ int main(int argc, char** argv){
      if (!source_load(&source, argv[1]))
         return 1;
 
-  Parser parser;
-    Program program;
+   Parser parser;
     parser_start(&parser, &source);
-    if (!parse_program(&parser, &program)) {
-        free(program.statements);
+    int root = parse_expression(&parser);
+    while (!parser.lexer.failed && parser.lexer.token.kind == TK_NEWLINE)
+        lexer_next(&parser.lexer);
+    if (root >= 0 && parser.lexer.token.kind != TK_END)
+        parser_error(&parser, "expected end of input");
+    if (root < 0 || parser.failed || parser.lexer.failed) {
         free(parser.nodes);
         return 1;
     }
-    printf("statements = %d\n", program.count);
-    free(program.statements);
+    for (int i = 0; i < parser.count; i++) {
+        Expr e = parser.nodes[i];
+        printf("node %d: kind=%d value=%lld left=%d right=%d\n", i, (int)e.kind, e.value, e.left,
+               e.right);
+    }
+    printf("root = %d\n", root);
     free(parser.nodes);
     return 0;
 }
