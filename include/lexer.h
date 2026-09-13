@@ -29,7 +29,9 @@ typedef enum {
     TK_SEMI,
     TK_LBRACE,
     TK_RBRACE,
-    TK_COLON
+    TK_COLON,
+    TK_IDENT,
+    TK_NUMBER,
 } TokenKind;
 
 typedef struct {

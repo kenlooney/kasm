@@ -17,7 +17,9 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME smoke COMMAND kasm "${CMAKE_CURRENT_SOURCE_DIR}/tests/sample.asm")
+    add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_literals.cmake")
     
    
 endif()

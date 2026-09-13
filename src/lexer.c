@@ -13,7 +13,15 @@
 // limitations under the License.
 
 #include "lexer.h"
+#include <limits.h>
 #include <string.h>
+
+static int digit_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
 int token_is(const Source *source, Token token, const char *word) {
     size_t length = token.span.end - token.span.start;
     return length == strlen(word) && memcmp(source->text + token.span.start, word, length) == 0;
@@ -32,11 +40,74 @@ void lexer_next(Lexer *lexer) {
     }
 
     char c = cursor_peek(cursor);
+    while (c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
+           c == '\v' || c == '\f') {
+        cursor_advance(cursor);
+        c = cursor_peek(cursor);
+    }
+    token.span.start = token.span.end = cursor->offset;
     if (c == '\0') {
         token.span.end = cursor->offset;
         lexer->token = token;
         return;
     }
+    // Check for identifier
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+        token.kind = TK_IDENT;
+        while ((cursor_peek(cursor) >= 'a' && cursor_peek(cursor) <= 'z') ||
+               (cursor_peek(cursor) >= 'A' && cursor_peek(cursor) <= 'Z') ||
+               (cursor_peek(cursor) >= '0' && cursor_peek(cursor) <= '9') ||
+               cursor_peek(cursor) == '_') {
+            cursor_advance(cursor);
+        }
+        token.span.end = cursor->offset;
+        lexer->token = token;
+        return;
+    }
+    // Check for decimal, hexadecimal, binary, and octal integers
+    if (c >= '0' && c <= '9') {
+        int base = 10;
+        size_t digits_start;
+        token.kind = TK_NUMBER;
+        if (c == '0') {
+            base = 8;
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+            if (c == 'x' || c == 'X') {
+                base = 16;
+                cursor_advance(cursor);
+            } else if (c == 'b' || c == 'B') {
+                base = 2;
+                cursor_advance(cursor);
+            }
+        }
+        digits_start = cursor->offset;
+        for (;;) {
+            int digit;
+            c = cursor_peek(cursor);
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+                  (c >= 'A' && c <= 'Z') || c == '_'))
+                break;
+            digit = digit_value(c);
+            if (digit < 0 || digit >= base) {
+                lexer->failed = 1;
+            } else if (!lexer->failed) {
+                if (token.value > (LLONG_MAX - digit) / base)
+                    lexer->failed = 1;
+                else
+                    token.value = token.value * base + digit;
+            }
+            cursor_advance(cursor);
+        }
+        if ((base == 16 || base == 2) && cursor->offset == digits_start)
+            lexer->failed = 1;
+        token.span.end = cursor->offset;
+        lexer->token = token;
+        if (lexer->failed)
+            diagnostic(cursor->source, token.span, "invalid character or integer out of range");
+        return;
+    }
+    // Check for single-character tokens
     cursor_advance(cursor);
     switch (c) {
     case '+':
