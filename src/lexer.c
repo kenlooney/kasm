@@ -51,6 +51,34 @@ void lexer_next(Lexer *lexer) {
         lexer->token = token;
         return;
     }
+    // Check for single-line comments
+    if (c == '/' && cursor->source->text[cursor->offset + 1] == '/') {
+        while (c != '\0' && c != '\n') {
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+        }
+        token.span.start = token.span.end = cursor->offset;
+        lexer_next(lexer);
+        return;
+    }
+    // Check for multi-line comments
+    if (c == '/' && cursor->source->text[cursor->offset + 1] == '*') {
+        cursor_advance(cursor);
+        cursor_advance(cursor);
+        c = cursor_peek(cursor);
+        while (c != '\0' && !(c == '*' && cursor->source->text[cursor->offset + 1] == '/')) {
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+        }
+        if (c == '*' && cursor->source->text[cursor->offset + 1] == '/') {
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+        }
+        token.span.start = token.span.end = cursor->offset;
+        lexer_next(lexer);
+        return;
+    }
+    
     // Check for identifier
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
         token.kind = TK_IDENT;

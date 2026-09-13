@@ -20,6 +20,9 @@ if(BUILD_TESTING)
     add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_literals.cmake")
+    add_test(NAME lexer.comments COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_comments.cmake")
     
    
 endif()
