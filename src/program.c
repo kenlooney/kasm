@@ -31,7 +31,12 @@ static int statement(Parser *parser, Program *program) {
     Statement s = {0};
     s.span = name.span;
     s.expression = -1;
-    if (token_is(source, name, "mov")) {
+   if(parser->lexer.token.kind == TK_COLON){
+    s.kind = ST_LABEL;
+    s.operand = name;
+    lexer_next(&parser->lexer);
+   }
+    else if (token_is(source, name, "mov")) {
         s.kind = ST_MOV;
         s.operand = parser->lexer.token;
         if (!take(parser, TK_IDENT, "expected register"))

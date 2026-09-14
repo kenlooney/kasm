@@ -19,7 +19,7 @@
 
 
 #include "expr.h"
-typedef enum { ST_MOV, ST_RET } StatementKind;
+typedef enum { ST_MOV, ST_RET, ST_LABEL } StatementKind;
 typedef struct {
     StatementKind kind;
     Span span;

@@ -4,7 +4,9 @@
 #include "generated.h"
 #include <stdio.h>
 #include <string.h>
-#if !defined(_WIN32)
+#if defined(_WIN32)
+#include <windows.h>
+#else
 #include <sys/mman.h>
 #endif
 
@@ -19,8 +21,20 @@ int main(void) {
     }
 
 #if defined(_WIN32)
-    puts("Linux execution harness; Windows arrives next chapter");
-    return 0;
+    void *memory = VirtualAlloc(NULL, code_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if (memory == NULL) {
+        fprintf(stderr, "VirtualAlloc failed\n");
+        return 1;
+    }
+    memcpy(memory, code, code_size);
+
+    DWORD old_protection;
+    if (!VirtualProtect(memory, code_size, PAGE_EXECUTE_READ, &old_protection) ||
+        !FlushInstructionCache(GetCurrentProcess(), memory, code_size)) {
+        fprintf(stderr, "executable memory setup failed\n");
+        VirtualFree(memory, 0, MEM_RELEASE);
+        return 1;
+    }
 #else
 
     void *memory =
@@ -36,6 +50,7 @@ int main(void) {
         munmap(memory, code_size);
         return 1;
     }
+#endif
 
     int (*function)(void);
     _Static_assert(sizeof function == sizeof memory, "x86-64 pointer sizes must match");
@@ -43,9 +58,14 @@ int main(void) {
     memcpy(&function, &memory, sizeof function);
     int result = function();
     printf("result = %d\n", result);
+#if defined(_WIN32)
+    if (!VirtualFree(memory, 0, MEM_RELEASE))
+        return 1;
+#else
     if (munmap(memory, code_size) != 0)
         return 1;
+#endif
     return 0;
 #endif
-#endif
 }
+
