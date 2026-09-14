@@ -1,7 +1,11 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(kasm VERSION 0.1.0 LANGUAGES C)
 
-add_executable(kasm main.c)
+file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
+add_executable(kasm
+    ${SOURCES})
+target_include_directories(kasm PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
 # Keep Windows ZIPs runnable without a separate Visual C++ runtime install.
 if(MSVC)
     set_property(TARGET kasm PROPERTY MSVC_RUNTIME_LIBRARY
@@ -13,10 +17,88 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME kasm.smoke COMMAND kasm)
-    set_tests_properties(kasm.smoke PROPERTIES
-        PASS_REGULAR_EXPRESSION "Hello, from kasm!"
-        TIMEOUT 10)
+    add_executable(semantic_test_driver
+        tests/semantic_driver.c
+        src/semantic.c
+        src/program.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(semantic_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME encode.mov_42 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_mov_42.cmake")
+
+    add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:semantic_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_expression.cmake")
+
+    add_executable(program_blocks_test
+        tests/program_blocks.c
+        src/program.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(program_blocks_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME parser.blocks COMMAND "${CMAKE_COMMAND}"
+        "-DDRIVER=$<TARGET_FILE:program_blocks_test>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_blocks.cmake")
+
+    add_executable(expr_test_driver
+        tests/expr_driver.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(expr_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME parser.multiple_statements COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:semantic_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_multiple_statements.cmake")
+
+    add_executable(program_growth_test
+        tests/program_growth.c
+        src/program.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(program_growth_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME parser.program_growth COMMAND program_growth_test)
+
+    add_executable(lexer_test_driver
+        tests/lexer_driver.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(lexer_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+    add_test(NAME parser.integer COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:expr_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_integer.cmake")
+    add_test(NAME parser.add_subtract COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:expr_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_add_subtract.cmake")
+    add_test(NAME parser.multiply_precedence COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:expr_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_multiply_precedence.cmake")
+    add_test(NAME parser.parentheses_precedence COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:expr_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_parentheses_precedence.cmake")
+    add_test(NAME lexer.literals COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:lexer_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_literals.cmake")
+    add_test(NAME lexer.comments COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:lexer_test_driver>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/lexer_comments.cmake")
+    
+   
 endif()
 
 # CPack configuration
