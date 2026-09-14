@@ -327,6 +327,34 @@ error (or incorrect command-line usage).
 
 ## Building and testing
 
+### Reusable example encoding test
+
+`tests/encode_file.cmake` assembles an existing file and checks that the raw
+`program.bin` bytes match stdout. Pass `EXPECTED_HEX` to also check the expected
+instruction encoding. Run from the repository root after building:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/program.asm" "-DEXPECTED_HEX=B8 2A 00 00 00 C3" -P tests/encode_file.cmake
+```
+
+Change `SOURCE` to reuse the script with another example; omit `EXPECTED_HEX`
+when you only want to check successful assembly and binary/stdout consistency.
+By default, each source path gets its own directory under `build/example-tests`.
+The script prints the resulting binary path. Repeating the same example replaces
+its previous binary. You can override the directory with `-DOUTPUT_DIR=<path>`;
+use different directories for examples that run concurrently.
+
+CTest uses this script for `examples/mov_42.asm`, `examples/ret.asm`, and
+`examples/program.asm`, saving separate binaries under
+`build/windows-debug/examples/Debug/<test-name>/program.bin` with the Windows
+Debug preset. To register another example, add a call inside `BUILD_TESTING`:
+
+```cmake
+add_example_test(my_example examples/my_example.asm "B8 07 00 00 00 C3")
+```
+
+### Configure and run the suite
+
 Build from a source checkout with CMake and a C compiler. The Windows presets
 target Visual Studio 2026 with the C++ build tools installed. The Linux/WSL2
 preset uses GCC and Make. Use a CMake version that supports your generator and

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "emit.h"
+#include <stdio.h>
 
-#ifndef KASM_EMIT_H
-#define KASM_EMIT_H
-
-#include "program.h"
-
-typedef struct {
-    unsigned char *data;
-    int count;
-    int capacity;
-} Bytes;
-
-int byte_push(Bytes *bytes, unsigned char value);
-int encode(const Source *source, Program *program, Bytes *bytes);
-int write_binary(const Bytes *bytes, const char *path);
-#endif // KASM_EMIT_H
+int write_binary(const Bytes *bytes, const char *path) {
+    FILE *file = fopen(path, "wb");
+    if (file == NULL) {
+        perror(path);
+        return 0;
+    }
+    int okay = fwrite(bytes->data, 1, bytes->count, file) == bytes->count;
+    if (fclose(file) != 0)
+        okay = 0;
+    if (!okay)
+        fprintf(stderr, "%s: write failed\n", path);
+    return okay;
+}

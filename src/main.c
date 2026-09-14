@@ -46,7 +46,10 @@ int main(int argc, char **argv)
         return 1;
     for (size_t i = 0; i < bytes.count; i++)
         printf("%02X ", (unsigned int)bytes.data[i]);
-    free(program.statements);
     puts("");
+    if (!write_binary(&bytes, "program.bin"))
+        return 1;
+    free(program.statements);
+   
     return 0;
 }
