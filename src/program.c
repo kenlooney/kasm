@@ -62,7 +62,23 @@ static int statement(Parser *parser, Program *program)
     }
     else if (token_is(source, name, "jmp"))
     {
-        s.kind = ST_NEAR_JMP;
+        Token modifier = parser->lexer.token;
+
+        if (modifier.kind == TK_IDENT &&
+            token_is(source, modifier, "near"))
+            s.kind = ST_NEAR_JMP;
+        else if (modifier.kind == TK_IDENT &&
+                 token_is(source, modifier, "short"))
+            s.kind = ST_SHORT_JMP;
+        else
+        {
+            parser_error(parser, "expected near or short after jmp");
+            return 0;
+        }
+
+        if (!take(parser, TK_IDENT, "expected jump modifier"))
+            return 0;
+
         s.operand = parser->lexer.token;
         if (!take(parser, TK_IDENT, "expected label"))
             return 0;

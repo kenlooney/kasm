@@ -29,6 +29,8 @@ size_t instruction_size(const Statement *statement) {
         return 0;
     case ST_NEAR_JMP:
         return 5;
+    case ST_SHORT_JMP:
+        return 2;
     }
     return 0;
 }
