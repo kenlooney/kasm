@@ -17,7 +17,7 @@
 #include "program.h"
 #include "emit.h"
 #include <stdint.h>
-
+#include "layout.h"
 static int little_endian(Bytes *bytes, uint64_t value, int width) {
     for (int i = 0; i < width; i++) {
         if (!byte_push(bytes, (unsigned char)(value & 255)))
@@ -38,6 +38,18 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
         // ret
         else if (s->kind == ST_RET) {
             if (!byte_push(bytes, 0xC3))
+                return 0;
+        }
+        else if(s->kind == ST_NEAR_JMP) {
+            size_t target;
+            if (!label_offset(source, program, s->operand, &target))
+                return 0;
+            long long displacement = (long long)target - (long long)(s->offset + instruction_size(s));
+            if(displacement < INT32_MIN || displacement > INT32_MAX) {
+                diagnostic(source, s->operand.span, "near jump outside signed 32-bit range");
+                return 0;
+            }
+            if (!byte_push(bytes, 0xE9) || !little_endian(bytes, (uint64_t)displacement, 4))
                 return 0;
         }
     }
