@@ -17,8 +17,22 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
+    add_executable(semantic_test_driver
+        tests/semantic_driver.c
+        src/semantic.c
+        src/program.c
+        src/expr.c
+        src/lexer.c
+        src/source.c
+        src/cursor.c
+        src/diagnostic.c)
+    target_include_directories(semantic_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME encode.mov_42 COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_mov_42.cmake")
+
+    add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:semantic_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_expression.cmake")
 
     add_executable(program_blocks_test
@@ -43,7 +57,7 @@ if(BUILD_TESTING)
         src/diagnostic.c)
     target_include_directories(expr_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     add_test(NAME parser.multiple_statements COMMAND "${CMAKE_COMMAND}"
-        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DKASM=$<TARGET_FILE:semantic_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_multiple_statements.cmake")
 
     add_executable(program_growth_test

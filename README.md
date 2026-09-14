@@ -1,9 +1,43 @@
-# Ken's Assembler
+# Kasm — Ken's Assembler
 
 Kasm currently loads a source file, parses MOV statements, nested blocks, and
-expression ASTs, validates operands, and evaluates expressions. It prints the
-number of MOV statements and their immediate values. Machine-code generation
-is not implemented yet.
+expression ASTs, validates operands, and evaluates expressions. It encodes
+`mov eax, <expression>;` as x86 machine-code bytes and prints them as hexadecimal
+text. Version 0.1.0 is an early assembler implementation with a deliberately
+small instruction set; it does not generate object files or executables.
+
+## Using a release
+
+Download the Windows x64 or Linux x64 ZIP from
+[GitHub Releases](https://github.com/kenlooney/kasm/releases) and extract it.
+Each archive contains `bin/kasm.exe` (Windows) or `bin/kasm` (Linux), plus this
+README and the Apache 2.0 license under `share/doc/kasm`.
+
+From the extracted package directory, create `example.asm` containing
+`mov eax,42;`, then run:
+
+```powershell
+.\bin\kasm.exe example.asm
+```
+
+```bash
+./bin/kasm example.asm
+```
+
+Expected output:
+
+```text
+B8 2A 00 00 00
+```
+
+The CLI accepts exactly one source-file path. Output goes to stdout as one line
+of uppercase hexadecimal bytes, with a space after each byte and a final
+newline. Redirecting stdout saves hex text, not a raw binary file. Instructions
+are encoded in source order and are not executed. Windows packages use the
+static MSVC runtime; Linux packages are built on Ubuntu 24.04.
+
+Source-file links below refer to the repository layout; source files and test
+drivers are not included in the binary ZIPs.
 
 ## Current parser support
 
@@ -29,10 +63,7 @@ Run it after building with one of the presets below:
 Both print:
 
 ```text
-statements = 3
-value = 42
-value = 7
-value = 20
+B8 2A 00 00 00 B8 07 00 00 00 B8 14 00 00 00
 ```
 
 Comments can appear on their own lines or alongside instructions:
@@ -48,7 +79,7 @@ mov eax, 0b00000111;
 mov eax, (2+3) /* Multiply the grouped sum by four. */ *4;
 ```
 
-This example prints the same count and values shown above. The semicolons terminate the
+This example prints the same encoded bytes shown above. The semicolons terminate the
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: only lowercase `mov` is recognized.
@@ -77,11 +108,7 @@ mov eax, 1;
 This prints:
 
 ```text
-statements = 4
-value = 1
-value = 42
-value = 20
-value = 7
+B8 01 00 00 00 B8 2A 00 00 00 B8 14 00 00 00 B8 07 00 00 00
 ```
 
 MOVs retain their source order in one flat
@@ -106,8 +133,8 @@ Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
 
-The CLI exits with status 0 after successful parsing and semantic checking,
-and 1 on a loading, lexing, parsing, or semantic error, or incorrect command-line
+The CLI exits with status 0 after successful encoding,
+and 1 on a loading, lexing, parsing, semantic, or allocation error, or incorrect command-line
 usage. Diagnostics go to stderr.
 
 ## Semantic checking and evaluation
@@ -123,8 +150,7 @@ mov eax, (10+4)*3;
 Produces:
 
 ```text
-statements = 1
-value = 42
+B8 2A 00 00 00
 ```
 
 Only `eax` is supported. Every literal and intermediate expression result must
@@ -144,6 +170,18 @@ Examples rejected by the semantic checker:
 Intermediate results are checked too: `mov eax, (2147483647+1)-1;` is rejected
 even though its final mathematical result would fit. Evaluation computes values
 for later encoding; it does not execute instructions or modify CPU registers.
+
+## Encoding and current limitations
+
+The encoder emits five bytes per MOV: opcode `B8`, followed by the evaluated
+immediate as four bytes in little-endian order. For example, 42 becomes
+`2A 00 00 00`. The byte buffer grows dynamically as instructions are appended.
+
+The current language supports only MOV to `eax`. Other instructions and
+registers, labels, symbol resolution, memory operands, directives, and object
+or executable file formats are not implemented. The immediate range remains
+`0..2147483647`, as enforced by semantic checking. Blocks provide grouping,
+not scope or control flow. Empty input or empty blocks produce only a newline.
 
 ## Current lexer support
 
@@ -287,10 +325,17 @@ the final `token 13` line is absent.
 The driver exits with status 0 on successful lexing and 1 on a loading or lexing
 error (or incorrect command-line usage).
 
-## Run Tests
+## Building and testing
 
-The ten CTest tests cover:
+Build from a source checkout with CMake and a C compiler. The Windows presets
+target Visual Studio 2026 with the C++ build tools installed. The Linux/WSL2
+preset uses GCC and Make. Use a CMake version that supports your generator and
+the repository's version-8 preset file; the basic CMake project requires 3.20
+or newer when configuring without presets.
 
+The eleven CTest tests cover:
+
+- Exact MOV encoding: `mov eax,42;` produces `B8 2A 00 00 00`.
 - Semantic evaluation of `mov eax, (10+4)*3;` to `42`.
 - Exact expression ASTs for integers, addition/subtraction, multiplication
   precedence, and parentheses overriding precedence.
@@ -305,7 +350,9 @@ The ten CTest tests cover:
   unterminated-comment diagnostics, and long sequences of adjacent comments.
 
 Expression tests use `expr_test_driver` to inspect ASTs independently of the
-statement-parsing CLI. Lexer tests use `lexer_test_driver`.
+encoding CLI. Semantic and multiple-statement tests use `semantic_test_driver`
+to inspect statement counts and evaluated values. Lexer tests use
+`lexer_test_driver`. These drivers are built only when testing is enabled.
 
 Run these commands from the repository root (the directory containing
 `CMakePresets.json`). Configure and build before running CTest:
@@ -329,3 +376,32 @@ to the repository root before using the commands above.
 
 The commands include `-V` for verbose output even when tests pass; omit it for
 a shorter report.
+
+After adding a new source file, rerun the configure command before building
+so the generated project includes it.
+
+## Packaging and releases
+
+The repository workflow builds and tests Debug and Release configurations on
+Windows x64 and Linux x64. On a push to `main`, successful builds produce two
+Release ZIPs through CPack and publish a GitHub Release. Tags use
+`v<version>-build.<run-number>`; the version comes from `project(kasm VERSION ...)`
+in `CMakeLists.txt`. A merge to `main` triggers this process through its push.
+
+To build a Windows ZIP locally from the repository root:
+
+```powershell
+cmake --preset windows-release -DBUILD_TESTING=ON
+cmake --build --preset windows-release
+ctest --test-dir build/windows-release -C Release --output-on-failure
+cpack --config build/windows-release/CPackConfig.cmake -C Release -G ZIP -B dist
+```
+
+The package installs the executable under `bin` and documentation under
+`share/doc/kasm`. GitHub's automatically generated source archives are separate
+from these executable packages.
+
+## License
+
+Copyright 2026 Kenneth Looney. Licensed under the Apache License, Version 2.0.
+See [LICENSE](LICENSE), included beside this README in release packages.

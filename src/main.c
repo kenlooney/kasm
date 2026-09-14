@@ -20,6 +20,7 @@
 #include "lexer.h"
 #include "expr.h"
 #include "program.h"
+#include "emit.h"
 
 int main(int argc, char **argv)
 {
@@ -39,9 +40,13 @@ int main(int argc, char **argv)
         return 1;
     if (!check_program(&parser, &program))
         return 1;
-    printf("statements = %d\n", program.count);
-    for (int i = 0; i < program.count; i++)
-        printf("value = %lld\n", program.statements[i].value);
+
+    Bytes bytes = {0};
+    if (!encode(&source, &program, &bytes))
+        return 1;
+    for (size_t i = 0; i < bytes.count; i++)
+        printf("%02X ", (unsigned int)bytes.data[i]);
     free(program.statements);
+    puts("");
     return 0;
 }

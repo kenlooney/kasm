@@ -53,7 +53,10 @@ jobs:
         run: cmake --install build/ci --config ${{ matrix.configuration }} --prefix "$PWD/install/ci"
 
       - name: Verify installed executable
-        run: ./install/ci/bin/${{ matrix.executable }}
+        run: |
+          printf 'mov eax,42;\n' > build/release-smoke.asm
+          output=$(./install/ci/bin/${{ matrix.executable }} build/release-smoke.asm)
+          test "${output//$'\r'/}" = "B8 2A 00 00 00 "
 
       - name: Package ZIP
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
@@ -69,7 +72,8 @@ jobs:
           cmake -E tar xf "${archive[0]}"
           test -f kasm-*/share/doc/kasm/README.md
           test -f kasm-*/share/doc/kasm/LICENSE
-          ./kasm-*/bin/${{ matrix.executable }}
+          output=$(./kasm-*/bin/${{ matrix.executable }} ../release-smoke.asm)
+          test "${output//$'\r'/}" = "B8 2A 00 00 00 "
 
       - name: Upload ZIP
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
