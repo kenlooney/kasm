@@ -17,7 +17,7 @@
 #include "program.h"
 #include "emit.h"
 #include <stdint.h>
-
+#include "layout.h"
 static int little_endian(Bytes *bytes, uint64_t value, int width) {
     for (int i = 0; i < width; i++) {
         if (!byte_push(bytes, (unsigned char)(value & 255)))
@@ -30,6 +30,7 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
     (void)source;
     for (int i = 0; i < program->count; i++) {
         Statement *s = &program->statements[i];
+        size_t size = instruction_size(s);
         // mov
         if (s->kind == ST_MOV) {
             if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, 4))
@@ -38,6 +39,40 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
         // ret
         else if (s->kind == ST_RET) {
             if (!byte_push(bytes, 0xC3))
+                return 0;
+        }
+        // short jmp
+        else if(s->kind == ST_SHORT_JMP) {
+            size_t target;
+            if (!label_offset(source, program, s->operand, &target))
+                return 0;
+            if(size != 2) {
+                diagnostic(source, s->operand.span, "short jump must be 2 bytes");
+                return 0;
+            }
+            long long displacement = (long long)target - (long long)(s->offset + instruction_size(s));
+            if(displacement < INT8_MIN || displacement > INT8_MAX) {
+                diagnostic(source, s->operand.span, "short jump outside signed 8-bit range");
+                return 0;
+            }
+            if (!byte_push(bytes, 0xEB) || !little_endian(bytes, (uint64_t)displacement, 1))
+                return 0;
+        }
+        // near jmp
+        else if(s->kind == ST_NEAR_JMP) {
+            size_t target;
+            if (!label_offset(source, program, s->operand, &target))
+                return 0;
+            if(size != 5) {
+                diagnostic(source, s->operand.span, "near jump must be 5 bytes");
+                return 0;
+            }
+            long long displacement = (long long)target - (long long)(s->offset + size);
+            if(displacement < INT32_MIN || displacement > INT32_MAX) {
+                diagnostic(source, s->operand.span, "near jump outside signed 32-bit range");
+                return 0;
+            }
+            if (!byte_push(bytes, 0xE9) || !little_endian(bytes, (uint64_t)displacement, 4))
                 return 0;
         }
     }
