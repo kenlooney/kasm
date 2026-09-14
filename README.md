@@ -1,8 +1,9 @@
 # Ken's Assembler
 
 Kasm currently loads a source file, parses MOV statements, nested blocks, and
-expression ASTs, and prints the number of MOV statements. Instruction validation, expression
-evaluation, and machine-code generation are not implemented yet.
+expression ASTs, validates operands, and evaluates expressions. It prints the
+number of MOV statements and their immediate values. Machine-code generation
+is not implemented yet.
 
 ## Current parser support
 
@@ -29,6 +30,9 @@ Both print:
 
 ```text
 statements = 3
+value = 42
+value = 7
+value = 20
 ```
 
 Comments can appear on their own lines or alongside instructions:
@@ -44,12 +48,12 @@ mov eax, 0b00000111;
 mov eax, (2+3) /* Multiply the grouped sum by four. */ *4;
 ```
 
-This example also prints `statements = 3`. The semicolons terminate the
+This example prints the same count and values shown above. The semicolons terminate the
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: only lowercase `mov` is recognized.
-The destination must be an identifier, but register names and operand validity
-are not checked yet. Each statement requires a semicolon, including the last
+The parser accepts an identifier as the destination; semantic validation then
+requires lowercase `eax`. Each statement requires a semicolon, including the last
 one. Statements can share a line or be separated by newlines and blank lines;
 a trailing newline is optional. Line breaks within an instruction are not
 supported, except inside block comments.
@@ -70,7 +74,17 @@ mov eax, 1;
 {} // Empty blocks are valid too.
 ```
 
-This prints `statements = 4`. MOVs retain their source order in one flat
+This prints:
+
+```text
+statements = 4
+value = 1
+value = 42
+value = 20
+value = 7
+```
+
+MOVs retain their source order in one flat
 statement array; blocks do not create scopes or separate AST nodes. Each MOV
 still needs its semicolon, but a closing brace takes no semicolon.
 
@@ -92,8 +106,44 @@ Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
 
-The CLI exits with status 0 on successful parsing and 1 on a loading, lexing,
-or parsing error, or incorrect command-line usage. Diagnostics go to stderr.
+The CLI exits with status 0 after successful parsing and semantic checking,
+and 1 on a loading, lexing, parsing, or semantic error, or incorrect command-line
+usage. Diagnostics go to stderr.
+
+## Semantic checking and evaluation
+
+The [semantic checker](src/semantic.c) evaluates expression nodes in dependency
+order, then validates each MOV and stores its immediate in `Statement.value`.
+For example:
+
+```asm
+mov eax, (10+4)*3;
+```
+
+Produces:
+
+```text
+statements = 1
+value = 42
+```
+
+Only `eax` is supported. Every literal and intermediate expression result must
+fit the signed 32-bit range `-2147483648..2147483647`. The final MOV immediate
+must also be nonnegative, giving an accepted range of `0..2147483647`.
+These are the current language restrictions. The lexer's larger literal range
+does not bypass semantic checking.
+
+Examples rejected by the semantic checker:
+
+| Input | Diagnostic |
+| --- | --- |
+| `mov ebx, 7;` | `only register eax is supported` |
+| `mov eax, 1-2;` | `mov immediate must be nonnegative in this language` |
+| `mov eax, 2147483647+1;` | `expression outside signed 32-bit range` |
+
+Intermediate results are checked too: `mov eax, (2147483647+1)-1;` is rejected
+even though its final mathematical result would fit. Evaluation computes values
+for later encoding; it does not execute instructions or modify CPU registers.
 
 ## Current lexer support
 
@@ -239,12 +289,14 @@ error (or incorrect command-line usage).
 
 ## Run Tests
 
-The nine CTest tests cover:
+The ten CTest tests cover:
 
+- Semantic evaluation of `mov eax, (10+4)*3;` to `42`.
 - Exact expression ASTs for integers, addition/subtraction, multiplication
   precedence, and parentheses overriding precedence.
 - Multiple MOV statements with LF and CRLF line endings, binary literals in
-  instructions, and a missing-semicolon diagnostic.
+  instructions, evaluated values (including inside nested blocks), and a
+  missing-semicolon diagnostic.
 - Dynamic storage growth to 300 MOV statements, preserving their operands.
 - Empty, nested, and sibling blocks; blank lines within blocks; statement order
   and expression references; missing/extra brace diagnostics; and acceptance at

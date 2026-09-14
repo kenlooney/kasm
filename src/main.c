@@ -21,25 +21,27 @@
 #include "expr.h"
 #include "program.h"
 
-int main(int argc, char** argv){
+int main(int argc, char **argv)
+{
     Source source;
-    if(argc != 2) {
+    if (argc != 2)
+    {
         fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
         return 1;
     }
-     if (!source_load(&source, argv[1]))
+    if (!source_load(&source, argv[1]))
         return 1;
 
-  Parser parser;
+    Parser parser;
     Program program;
     parser_start(&parser, &source);
-    if (!parse_program(&parser, &program)) {
-        free(program.statements);
-        free(parser.nodes);
+    if (!parse_program(&parser, &program))
         return 1;
-    }
+    if (!check_program(&parser, &program))
+        return 1;
     printf("statements = %d\n", program.count);
+    for (int i = 0; i < program.count; i++)
+        printf("value = %lld\n", program.statements[i].value);
     free(program.statements);
-    free(parser.nodes);
     return 0;
 }

@@ -17,6 +17,10 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
 if(BUILD_TESTING)
+    add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_expression.cmake")
+
     add_executable(program_blocks_test
         tests/program_blocks.c
         src/program.c

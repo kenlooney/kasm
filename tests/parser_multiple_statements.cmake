@@ -1,4 +1,5 @@
 set(path "${CMAKE_CURRENT_BINARY_DIR}/parser-multiple-statements.asm")
+set(expected "statements = 3\nvalue = 42\nvalue = 7\nvalue = 7\n")
 
 # Newlines separate lines; each instruction still requires a semicolon.
 foreach(newline IN ITEMS "\n" "\r\n")
@@ -10,8 +11,8 @@ foreach(newline IN ITEMS "\n" "\r\n")
         message(FATAL_ERROR "Parsing multiple statements failed: exit ${status}: ${error}")
     endif()
     string(REPLACE "\r\n" "\n" output "${output}")
-    if(NOT "${output}" STREQUAL "statements = 3\n")
-        message(FATAL_ERROR "Expected three statements, got: ${output}")
+    if(NOT "${output}" STREQUAL "${expected}")
+        message(FATAL_ERROR "Expected three statements with values 42, 7, 7, got: ${output}")
     endif()
 endforeach()
 
@@ -24,8 +25,8 @@ if(NOT "${status}" STREQUAL "0" OR NOT "${error}" STREQUAL "")
     message(FATAL_ERROR "Parsing multiline blocks failed: exit ${status}: ${error}")
 endif()
 string(REPLACE "\r\n" "\n" output "${output}")
-if(NOT "${output}" STREQUAL "statements = 3\n")
-    message(FATAL_ERROR "Expected three statements across nested blocks, got: ${output}")
+if(NOT "${output}" STREQUAL "${expected}")
+    message(FATAL_ERROR "Expected values 42, 7, 7 across nested blocks, got: ${output}")
 endif()
 
 # The original sample is missing the second statement's semicolon.
