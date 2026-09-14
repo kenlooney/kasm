@@ -13,18 +13,11 @@
 // limitations under the License.
 
 
-#ifndef KASM_EMIT_H
-#define KASM_EMIT_H
+#ifndef KASM_OUTPUT_H
+#define KASM_OUTPUT_H
 
-#include "program.h"
+#include "emit.h"
 
-typedef struct {
-    unsigned char *data;
-    int count;
-    int capacity;
-} Bytes;
+int write_c(const Bytes *bytes, const char *path);
 
-int byte_push(Bytes *bytes, unsigned char value);
-int encode(const Source *source, Program *program, Bytes *bytes);
-int write_binary(const Bytes *bytes, const char *path);
-#endif // KASM_EMIT_H
+#endif // KASM_OUTPUT_H

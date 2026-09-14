@@ -44,6 +44,11 @@ static int statement(Parser *parser, Program *program) {
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    else if (token_is(source, name, "ret")) {
+        s.kind = ST_RET;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     else {
         parser_error(parser, "unknown instruction");
         return 0;

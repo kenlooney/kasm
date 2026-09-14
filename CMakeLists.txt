@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.1.0 LANGUAGES C)
+project(kasm VERSION 0.5.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -16,9 +16,12 @@ install(TARGETS kasm RUNTIME DESTINATION bin)
 install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 
 include(CTest)
+
 if(BUILD_TESTING)
     add_executable(semantic_test_driver
         tests/semantic_driver.c
+        src/output.c
+        src/binary.c
         src/semantic.c
         src/program.c
         src/expr.c
@@ -27,9 +30,17 @@ if(BUILD_TESTING)
         src/cursor.c
         src/diagnostic.c)
     target_include_directories(semantic_test_driver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    add_test(NAME encode.mov_42 COMMAND "${CMAKE_COMMAND}"
-        "-DKASM=$<TARGET_FILE:kasm>"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_mov_42.cmake")
+    function(add_example_test name source expected_hex)
+        add_test(NAME encode.${name} COMMAND "${CMAKE_COMMAND}"
+            "-DKASM=$<TARGET_FILE:kasm>"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/${source}"
+            "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/${name}"
+            "-DEXPECTED_HEX=${expected_hex}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    endfunction()
+    add_example_test(mov_42 examples/mov_42.asm "B8 2A 00 00 00")
+    add_example_test(ret examples/ret.asm "C3")
+    add_example_test(program examples/program.asm "B8 2A 00 00 00 C3")
 
     add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"
