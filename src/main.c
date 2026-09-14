@@ -21,6 +21,7 @@
 #include "expr.h"
 #include "program.h"
 #include "emit.h"
+#include "layout.h"
 
 int main(int argc, char **argv)
 {
@@ -39,6 +40,8 @@ int main(int argc, char **argv)
     if (!parse_program(&parser, &program))
         return 1;
     if (!check_program(&parser, &program))
+        return 1;
+     if (!layout(&source, &program))
         return 1;
 
     Bytes bytes = {0};

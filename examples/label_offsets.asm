@@ -1,0 +1,1 @@
+entry: mov eax,42; done: ret;
