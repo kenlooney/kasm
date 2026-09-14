@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.3.0 LANGUAGES C)
+project(kasm VERSION 0.4.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -20,6 +20,7 @@ include(CTest)
 if(BUILD_TESTING)
     add_executable(semantic_test_driver
         tests/semantic_driver.c
+        src/output.c
         src/binary.c
         src/semantic.c
         src/program.c

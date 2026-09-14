@@ -1,0 +1,13 @@
+#ifndef GENERATED_H
+#define GENERATED_H
+#include <stddef.h>
+static const unsigned char code[] = {
+0xB8,
+0x2A,
+0x00,
+0x00,
+0x00,
+0xC3,
+};
+static const size_t code_size = 6;
+#endif

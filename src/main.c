@@ -49,7 +49,9 @@ int main(int argc, char **argv)
     puts("");
     if (!write_binary(&bytes, "program.bin"))
         return 1;
+    if (!write_c(&bytes, "generated.h"))
+        return 1;
     free(program.statements);
-   
+
     return 0;
 }
