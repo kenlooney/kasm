@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.1.0 LANGUAGES C)
+project(kasm VERSION 0.2.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -30,6 +30,9 @@ if(BUILD_TESTING)
     add_test(NAME encode.mov_42 COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_mov_42.cmake")
+    add_test(NAME encode.ret COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_ret.cmake")
 
     add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"

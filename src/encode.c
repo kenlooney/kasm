@@ -30,8 +30,14 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
     (void)source;
     for (int i = 0; i < program->count; i++) {
         Statement *s = &program->statements[i];
+        // mov
         if (s->kind == ST_MOV) {
             if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // ret
+        else if (s->kind == ST_RET) {
+            if (!byte_push(bytes, 0xC3))
                 return 0;
         }
     }
