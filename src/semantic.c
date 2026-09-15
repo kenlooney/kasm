@@ -40,7 +40,7 @@ int check_program(Parser *parser, Program *program)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        if (s->kind == ST_MOV)
+        if (s->kind == ST_MOV || s->kind == ST_DEC || s->kind == ST_INC)
         {
 
             if (!token_is(source, s->operand, "eax"))

@@ -88,6 +88,46 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // dec instruction
+    else if (token_is(source, name, "dec")) 
+    {
+        s.kind = ST_DEC;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // inc instruction
+    else if (token_is(source, name, "inc"))
+    {
+        s.kind = ST_INC;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // jnz instruction
+    else if (token_is(source, name, "jnz"))
+    {
+        s.kind = ST_JNZ;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // jz instruction
+    else if (token_is(source, name, "jz"))
+    {
+        s.kind = ST_JZ;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     else
     {
         parser_error(parser, "unknown instruction");

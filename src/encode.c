@@ -41,6 +41,36 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xC3))
                 return 0;
         }
+        // dec eax
+        else if (s->kind == ST_DEC) {
+            if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC8))
+                return 0;
+        }
+
+        // inc eax
+        else if (s->kind == ST_INC) {
+            if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC0))
+                return 0;
+        }
+        // Conditional near jumps share the same relative displacement format.
+        else if (s->kind == ST_JNZ || s->kind == ST_JZ) {
+            size_t target;
+            if (!label_offset(source, program, s->operand, &target))
+                return 0;
+            if (size != 6) {
+                diagnostic(source, s->operand.span, "conditional jump must be 6 bytes");
+                return 0;
+            }
+            long long displacement = (long long)target - (long long)(s->offset + size);
+            if (displacement < INT32_MIN || displacement > INT32_MAX) {
+                diagnostic(source, s->operand.span, "conditional jump outside signed 32-bit range");
+                return 0;
+            }
+            unsigned char opcode = s->kind == ST_JNZ ? 0x85 : 0x84;
+            if (!byte_push(bytes, 0x0F) || !byte_push(bytes, opcode) ||
+                !little_endian(bytes, (uint64_t)displacement, 4))
+                return 0;
+        }
         // short jmp
         else if(s->kind == ST_SHORT_JMP) {
             size_t target;

@@ -4,7 +4,8 @@ Kasm 0.12.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
-`jmp short <label>;`, and `jmp abs <label>;`
+`jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
+`jz <label>;`, and `jnz <label>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
 generated function. The instruction set is deliberately small; Kasm does not
@@ -34,6 +35,7 @@ extend that foundation:
 | 0.10.0 | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
 | 0.11.0 (in development) | Add a load-time relocation helper, emit patch metadata in generated headers, and apply patches in both runners before execution. |
 | 0.12.0 (in development) | Add `jmp abs` through a full-width address slot, generate relocation entries, and verify execution of a relocated jump in WSL2. |
+| Next milestones (version pending) | Add INC and DEC on EAX, plus JZ and JNZ for conditional branches and loops. |
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -82,7 +84,8 @@ drivers are not included in the binary ZIPs.
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
-`jmp short <identifier>;`, and `jmp abs <identifier>;`, as well as
+`jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
+`dec <identifier>;`, `jz <identifier>;`, and `jnz <identifier>;`, as well as
 `identifier:` label definitions.
 For example, save this as `example.asm`:
 
@@ -124,7 +127,8 @@ mov eax, (2+3) /* Multiply the grouped sum by four. */ *4;
 This example prints the same encoded bytes shown above. The semicolons terminate the
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
-Instruction names are case-sensitive: use lowercase `mov`, `ret`, and `jmp`.
+Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
+`dec`, `jz`, and `jnz`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax`. Each statement requires a semicolon, including the last
 one. Statements can share a line or be separated by newlines and blank lines;
@@ -165,7 +169,7 @@ The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
 `Statement.offset`, then advances by `instruction_size()`: five bytes for MOV
 or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
-address slot, one for RET, and zero for a label.
+address slot, two for INC or DEC, six for JZ or JNZ, one for RET, and zero for a label.
 Offsets are relative to the beginning of the
 encoded program, not source-file positions or runtime memory addresses.
 
@@ -334,6 +338,69 @@ for `program.asm` when generating the header beside the runner. Relocation is
 required before executing this image. The example's exact bytes and patch
 metadata were checked, and the relocated image executed in WSL2 with `result = 42`.
 
+### Changing EAX and branching on flags
+
+`inc eax;` adds one to EAX at runtime, and `dec eax;` subtracts one. Both require
+lowercase `eax`; other registers report `only register eax is supported`.
+Unlike `mov eax,43-1;`, which evaluates its expression during assembly,
+`mov eax,43; dec eax;` performs the subtraction when the generated code runs.
+
+| Instruction | Encoding | Size |
+| --- | --- | --- |
+| `inc eax;` | `FF C0` | 2 bytes |
+| `dec eax;` | `FF C8` | 2 bytes |
+
+These instructions perform 32-bit arithmetic with wraparound: decrementing zero
+produces `FFFFFFFF`, and incrementing that value produces zero. They update
+arithmetic flags, including ZF (set when the result is zero), while preserving
+the carry flag. Assembly-time expression range checks still apply to MOV
+expressions; they do not limit runtime arithmetic.
+
+`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0. Otherwise
+execution continues with the next instruction. These instructions read the
+existing flag; they do not themselves test EAX or change the flags. Unlike `jmp`,
+they take a label directly, with no `near`, `short`, or `abs` modifier.
+
+| Instruction | Opcode | Displacement | Total size |
+| --- | --- | --- | --- |
+| `jz label;` | `0F 84` | Signed 32-bit, little-endian | 6 bytes |
+| `jnz label;` | `0F 85` | Signed 32-bit, little-endian | 6 bytes |
+
+Both resolve labels after layout and calculate
+`target offset - (instruction offset + 6)`. Missing targets report
+`undefined label`; out-of-range displacements report
+`conditional jump outside signed 32-bit range`.
+
+For example, this loop counts down from three and returns zero:
+
+```asm
+mov eax,3;
+again:
+dec eax;
+jnz again;
+ret;
+```
+
+The label is at offset 5 and JNZ ends at offset 13, so the displacement is -8:
+
+```text
+B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3
+```
+
+To check it with the reusable script, save the snippet as `examples/countdown.asm`
+and run from the repository root after rebuilding:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/countdown.asm" "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3" -P tests/encode_file.cmake
+```
+
+Manual byte checks covered INC, DEC, forward conditional branches, and the
+backward loop. WSL2 execution verified 43 decrementing to 42, 41 incrementing to
+42, zero returning to zero after DEC then INC, both taken and untaken paths for
+JZ and JNZ, and the countdown returning zero. Invalid register operands were
+also rejected. The branch tests exercise ZF behavior; other flags, including
+carry preservation, were not directly measured.
+
 ### Blocks
 
 Braces group statements into blocks, which can contain other blocks:
@@ -375,7 +442,7 @@ left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
 addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
 division, and other expression operators are not supported yet.
 
-Each statement references its expression's root in the parser's node array.
+Each MOV statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
@@ -425,8 +492,9 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows dynamically as
 instructions are appended.
 
-The current language supports MOV to `eax`, operand-free RET, and short, near,
-or absolute indirect JMP to a label. Far jumps, conditional jumps, other instructions and registers,
+The current language supports MOV, INC, and DEC on `eax`, operand-free RET,
+short, near, or absolute indirect JMP, and near JZ/JNZ to a label.
+Far jumps, short conditional jumps, other condition codes, other instructions and registers,
 labels in expressions, memory operands, directives, and object
 or executable file formats are not implemented. The immediate range remains
 `0..2147483647`, as enforced by semantic checking. Blocks provide grouping,
