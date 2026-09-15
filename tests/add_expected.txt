@@ -1,0 +1,4 @@
+0000: mov eax, 35
+0005: add eax, 7
+0010: ret
+Decoding successful.

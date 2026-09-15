@@ -52,6 +52,16 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC0))
                 return 0;
         }
+        // ADD EAX, imm32: EAX is implicit in opcode 05.
+        else if (s->kind == ST_ADD_RIM) {
+            if (!byte_push(bytes, 0x05) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // SUB EAX, imm32: EAX is implicit in opcode 05.
+        else if (s->kind == ST_SUB_RIM) {
+            if (!byte_push(bytes, 0x2D) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
         // Conditional near jumps share the same relative displacement format.
         else if (s->kind == ST_JNZ || s->kind == ST_JZ) {
             size_t target;

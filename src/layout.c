@@ -22,6 +22,9 @@ static int same_name(const Source *source, Token a, Token b) {
 size_t instruction_size(const Statement *statement) {
     switch (statement->kind) {
     case ST_MOV:
+    case ST_ADD_RIM:
+        return 5;
+    case ST_SUB_RIM:
         return 5;
     case ST_RET:
         return 1;

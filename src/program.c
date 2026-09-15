@@ -60,6 +60,37 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // add rim instruction
+    else if (token_is(source, name, "add"))
+    {
+        s.kind = ST_ADD_RIM;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, ADD stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    else if (token_is(source, name, "sub"))
+    {
+        s.kind = ST_SUB_RIM;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, SUB stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     else if (token_is(source, name, "jmp"))
     {
         Token modifier = parser->lexer.token;
