@@ -1,10 +1,10 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.11.0 (in development) loads assembly source, parses statements, label
+Kasm 0.12.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
-It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`, and
-`jmp short <label>;`
+It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
+`jmp short <label>;`, and `jmp abs <label>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
 generated function. The instruction set is deliberately small; Kasm does not
@@ -12,7 +12,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.11.0 (in development)**. Versions **0.6.0
+The current source version is **0.12.0 (in development)**. Versions **0.6.0
 through 0.9.0** record development milestones grouped into 0.10.0 rather than
 separate releases. The descriptions below preserve that feature history.
 
@@ -33,6 +33,7 @@ extend that foundation:
 | 0.9.0 (development milestone) | Encode near jumps with signed relative displacements and resolve forward label references after layout. |
 | 0.10.0 | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
 | 0.11.0 (in development) | Add a load-time relocation helper, emit patch metadata in generated headers, and apply patches in both runners before execution. |
+| 0.12.0 (in development) | Add `jmp abs` through a full-width address slot, generate relocation entries, and verify execution of a relocated jump in WSL2. |
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -80,8 +81,8 @@ drivers are not included in the binary ZIPs.
 ## Current parser support
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
-the operand-free instruction `ret;`, `jmp near <identifier>;`, and
-`jmp short <identifier>;`, as well as
+the operand-free instruction `ret;`, `jmp near <identifier>;`,
+`jmp short <identifier>;`, and `jmp abs <identifier>;`, as well as
 `identifier:` label definitions.
 For example, save this as `example.asm`:
 
@@ -163,7 +164,8 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/labels.asm"
 The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
 `Statement.offset`, then advances by `instruction_size()`: five bytes for MOV
-or a near JMP, two for a short JMP, one for RET, and zero for a label.
+or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
+address slot, one for RET, and zero for a label.
 Offsets are relative to the beginning of the
 encoded program, not source-file positions or runtime memory addresses.
 
@@ -249,15 +251,17 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/near_jump.a
 
 ### Short jumps and explicit jump syntax
 
-Jump instructions require a lowercase `near` or `short` modifier followed by a
+Jump instructions require a lowercase `near`, `short`, or `abs` modifier followed by a
 label name and a semicolon. Omitting the modifier reports
-`expected near or short after jmp`. The internal statement kinds are
-`ST_NEAR_JMP` and `ST_SHORT_JMP`.
+`expected near, short, or abs after jmp`. The internal statement kinds are
+`ST_NEAR_JMP`, `ST_SHORT_JMP`, and `ST_ABS_JMP`.
 
 | Source syntax | Opcode | Displacement | Total size |
 | --- | --- | --- | --- |
 | `jmp near label;` | `E9` | Signed 32-bit, little-endian | 5 bytes |
 | `jmp short label;` | `EB` | Signed 8-bit, -128 through 127 | 2 bytes |
+
+The `abs` form uses an indirect jump and an address slot, described below.
 
 A short jump uses `target offset - (jump offset + 2)`. The assembler checks the
 range and reports `short jump outside signed 8-bit range` if the target is too
@@ -281,6 +285,54 @@ Run the byte check from the repository root after rebuilding:
 ```powershell
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/short_jump.asm" "-DEXPECTED_HEX=EB 05 B8 63 00 00 00 B8 2A 00 00 00 C3" -P tests/encode_file.cmake
 ```
+
+### Absolute indirect jumps
+
+`jmp abs <label>;` emits a six-byte RIP-relative indirect jump followed by an
+eight-byte address slot. Layout reserves all fourteen bytes:
+
+```text
+FF 25 00 00 00 00 | eight-byte target slot
+```
+
+The four zero displacement bytes make the instruction read its destination
+from the slot immediately after it. The slot initially contains the target
+label's image offset in little-endian order. The encoder records a relocation
+at `statement offset + 6`; the loader replaces the stored offset with the loaded
+image's base address plus that offset before execution. The CPU jumps to the
+address it reads; it does not execute the slot as instructions.
+
+This uses a full 64-bit destination rather than a signed relative displacement.
+It is an indirect near jump in x86 terminology, not a segment-changing far jump.
+The current source operand must still name a label in the same image.
+
+For example:
+
+```asm
+jmp abs answer; mov eax,99; answer: mov eax,42; ret;
+```
+
+`answer` is at offset 19 (`0x13`). The 25-byte image before relocation is:
+
+```text
+FF 25 00 00 00 00 13 00 00 00 00 00 00 00 B8 63 00 00 00 B8 2A 00 00 00 C3
+```
+
+The generated header has `patch_count = 1` and `patch_offsets[] = {6}`. The
+encoder allows up to 256 patches and reports `too many relocation patches`
+before exceeding that capacity. An unknown target reports `undefined label`.
+
+To try this example, save it as `examples/abs_jump.asm`, rebuild Kasm, and run
+from the repository root:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/abs_jump.asm" "-DEXPECTED_HEX=FF 25 00 00 00 00 13 00 00 00 00 00 00 00 B8 63 00 00 00 B8 2A 00 00 00 C3" -P tests/encode_file.cmake
+```
+
+For execution, follow the runner commands below, substituting `abs_jump.asm`
+for `program.asm` when generating the header beside the runner. Relocation is
+required before executing this image. The example's exact bytes and patch
+metadata were checked, and the relocated image executed in WSL2 with `result = 42`.
 
 ### Blocks
 
@@ -373,8 +425,8 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows dynamically as
 instructions are appended.
 
-The current language supports MOV to `eax`, operand-free RET, and short or near
-JMP to a label. Far jumps, conditional jumps, other instructions and registers,
+The current language supports MOV to `eax`, operand-free RET, and short, near,
+or absolute indirect JMP to a label. Far jumps, conditional jumps, other instructions and registers,
 labels in expressions, memory operands, directives, and object
 or executable file formats are not implemented. The immediate range remains
 `0..2147483647`, as enforced by semantic checking. Blocks provide grouping,
@@ -493,10 +545,11 @@ placeholder is not applied. `program.bin` contains only image bytes, without
 the patch table. Current relative jumps need no relocation because their source
 and target move together when the image is loaded.
 
-The current encoder does not yet populate relocation entries, so assembly
-examples still generate `patch_count = 0`. A small demonstration in `main.c`
-patches a separate 16-byte buffer; it does not add a relocation to the assembled
-program. There is currently no `examples/relocation.asm` source example.
+The encoder adds one relocation entry for each `jmp abs` address slot. Programs
+using only MOV, RET, and relative jumps still generate `patch_count = 0`.
+A small demonstration in `main.c` patches a separate 16-byte buffer; it does not
+add a relocation to the assembled program. The absolute-jump example above
+exercises relocation of actual generated code.
 
 For the runner workflow, regenerate `generated.h` from an existing example such
 as `program.asm` using the commands above, then recompile the runner. The include
@@ -506,8 +559,10 @@ writes its header under `build/example-tests`, not beside the example runner.
 Manual checks on Windows x64 and WSL2 verified the patched value equals the
 buffer address plus 8, rejection of invalid patch bounds and an out-of-range
 target, and unchanged data for zero patches. Both runners compiled and returned
-42 with an ordinary program containing no relocation entries. These checks
-verify the helper separately from execution of an image with actual relocations.
+42 with an ordinary program containing no relocation entries. In 0.12.0, the
+WSL2 runner also executed the absolute-jump example with one actual relocation
+and returned 42. These manual checks supplement the CTest suite; they are not
+currently registered as CTest tests.
 
 ## Current lexer support
 

@@ -70,9 +70,12 @@ static int statement(Parser *parser, Program *program)
         else if (modifier.kind == TK_IDENT &&
                  token_is(source, modifier, "short"))
             s.kind = ST_SHORT_JMP;
+        else if (modifier.kind == TK_IDENT &&
+                 token_is(source, modifier, "abs"))
+            s.kind = ST_ABS_JMP;
         else
         {
-            parser_error(parser, "expected near or short after jmp");
+            parser_error(parser, "expected near, short, or abs after jmp");
             return 0;
         }
 

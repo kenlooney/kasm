@@ -75,6 +75,29 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xE9) || !little_endian(bytes, (uint64_t)displacement, 4))
                 return 0;
         }
+        // abs jmp
+        else if(s->kind == ST_ABS_JMP) {
+            size_t target;
+            if (!label_offset(source, program, s->operand, &target))
+                return 0;
+            if(size != 14) {
+                diagnostic(source, s->operand.span, "abs jump must be 14 bytes");
+                return 0;
+            }
+            if (bytes->patch_count >= sizeof bytes->patches / sizeof bytes->patches[0]) {
+                diagnostic(source, s->operand.span, "too many relocation patches");
+                return 0;
+            }
+            // RIP points to the address slot immediately after these six bytes.
+            if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0x25) ||
+                !little_endian(bytes, 0, 4))
+                return 0;
+            size_t patch_offset = bytes->count;
+            // The loader replaces this image offset with the absolute address.
+            if (!little_endian(bytes, (uint64_t)target, 8))
+                return 0;
+            bytes->patches[bytes->patch_count++] = patch_offset;
+        }
     }
     return 1;
 }
