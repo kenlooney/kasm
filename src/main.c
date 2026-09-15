@@ -24,6 +24,7 @@
 #include "layout.h"
 #include "relocate.h"
 #include "output.h"
+#include "decode.h"
 
 int main(int argc, char **argv)
 {
@@ -62,6 +63,9 @@ int main(int argc, char **argv)
         return 1;
     if (!write_c(&bytes, "generated.h"))
         return 1;
+    if (!decode(&bytes))
+        return 1;
+    puts("Decoding successful.");
     free(program.statements);
 
     return 0;

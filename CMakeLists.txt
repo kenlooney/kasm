@@ -20,6 +20,7 @@ include(CTest)
 if(BUILD_TESTING)
     add_executable(semantic_test_driver
         tests/semantic_driver.c
+        src/decode.c
         src/layout.c
         src/output.c
         src/binary.c
@@ -42,6 +43,13 @@ if(BUILD_TESTING)
     add_example_test(mov_42 examples/mov_42.asm "B8 2A 00 00 00")
     add_example_test(ret examples/ret.asm "C3")
     add_example_test(program examples/program.asm "B8 2A 00 00 00 C3")
+    add_test(NAME decode.example COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/decode.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/decode"
+        "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF B8 2A 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/decode_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
 
     add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"

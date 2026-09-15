@@ -1,0 +1,6 @@
+0000: mov eax, 3
+0005: dec eax
+0007: jnz target=5
+0013: mov eax, 42
+0018: ret
+Decoding successful.

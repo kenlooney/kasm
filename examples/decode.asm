@@ -1,0 +1,1 @@
+mov eax,3; loop: dec eax; jnz loop; mov eax,42; ret;
