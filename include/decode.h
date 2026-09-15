@@ -12,21 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KASM_DECODE_H
+#define KASM_DECODE_H
 
-#ifndef KASM_EMIT_H
-#define KASM_EMIT_H
+#include "emit.h"
 
-#include "program.h"
+int decode(const Bytes *bytes);
 
-typedef struct {
-    unsigned char *data;
-    size_t count;
-    size_t capacity;
-    size_t patches[256];
-    size_t patch_count;
-} Bytes;
-
-int byte_push(Bytes *bytes, unsigned char value);
-int encode(const Source *source, Program *program, Bytes *bytes);
-int write_binary(const Bytes *bytes, const char *path);
-#endif // KASM_EMIT_H
+#endif // KASM_DECODE_H

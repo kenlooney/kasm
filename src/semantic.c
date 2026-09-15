@@ -40,7 +40,8 @@ int check_program(Parser *parser, Program *program)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        if (s->kind == ST_MOV)
+        if (s->kind == ST_MOV || s->kind == ST_DEC || s->kind == ST_INC ||
+            s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
         {
 
             if (!token_is(source, s->operand, "eax"))
@@ -49,10 +50,11 @@ int check_program(Parser *parser, Program *program)
                 return 0;
             }
         }
-        if (s->kind == ST_MOV)
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
         {
             s->value = parser->nodes[s->expression].value;
-            if (s->value < 0)
+            // ADD accepts signed results; MOV keeps its existing restriction.
+            if (s->kind == ST_MOV && s->value < 0)
             {
                 diagnostic(source, parser->nodes[s->expression].span,
                            "mov immediate must be nonnegative in this language");

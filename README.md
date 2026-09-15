@@ -1,10 +1,11 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.10.0 loads assembly source, parses statements, label
+Kasm 0.15.0 loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
-It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`, and
-`jmp short <label>;`
+It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
+`jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
+`jz <label>;`, `jnz <label>;`, `add eax, <expression>;`, and `sub eax, <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
 generated function. The instruction set is deliberately small; Kasm does not
@@ -12,10 +13,9 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.10.0**, the next planned release after
-**0.5.0**. Versions **0.6.0 through 0.9.0** record development milestones included
-in 0.10.0 rather than separate releases. The descriptions below preserve that
-feature history.
+The current source version is **0.15.0**, prepared for the next release. Versions **0.6.0
+through 0.9.0** record development milestones grouped into 0.10.0 rather than
+separate releases. The descriptions below preserve that feature history.
 
 The 0.1.0 development series established loading, lexing, parsing, expression
 evaluation, and MOV encoding with hexadecimal output. The following milestones
@@ -32,7 +32,18 @@ extend that foundation:
 | 0.7.0 (development milestone) | Parse label definitions, including consecutive labels, without emitting extra bytes. |
 | 0.8.0 (development milestone) | Assign instruction and label offsets before encoding, reject duplicate labels, and provide label-offset lookup. |
 | 0.9.0 (development milestone) | Encode near jumps with signed relative displacements and resolve forward label references after layout. |
-| 0.10.0 (release planned) | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
+| 0.10.0 | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
+| 0.11.0 (development milestone) | Add a load-time relocation helper, emit patch metadata in generated headers, and apply patches in both runners before execution. |
+| 0.12.0 (development milestone) | Add `jmp abs` through a full-width address slot, generate relocation entries, and verify execution of a relocated jump in WSL2. |
+| 0.14.0 (development milestone; 0.13.0 skipped) | Add INC and DEC on EAX, JZ and JNZ for conditional branches and loops, and a decoder with an exact-listing test. |
+| 0.15.0 | Add ADD/SUB EAX immediate expressions, five-byte encoding, and decoder support; add a permanent ADD byte/listing test and an assembler-extension checklist. |
+
+Since 0.10.0, the project has gained load-time relocation, absolute indirect
+jumps, arithmetic and conditional control flow, and inspection of generated
+bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prints
+a decoded listing after its hexadecimal line. Decoder coverage still excludes
+INC and JZ; see the decoder limitations below before using those instructions
+through the current CLI.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -60,17 +71,22 @@ From the extracted package directory, create `example.asm` containing
 ./bin/kasm example.asm
 ```
 
-Expected output:
+Expected output with the current source build:
 
 ```text
 B8 2A 00 00 00
+0000: mov eax, 42
+Decoding successful.
 ```
 
-The CLI accepts exactly one source-file path. Output goes to stdout as one line
-of uppercase hexadecimal bytes, with a space after each byte and a final
-newline. Each successful run also writes `program.bin` (raw bytes) and
+The CLI accepts exactly one source-file path. The current source build prints
+one line of uppercase hexadecimal bytes, with a space after each byte, followed
+by a decoded listing and `Decoding successful.` when decoding succeeds.
+Older releases may print only the hexadecimal line. The CLI writes `program.bin` (raw bytes) and
 `generated.h` (C declarations) in the **current working directory**, replacing
-previous files with those names. Redirecting stdout still saves hex text.
+previous files with those names before decoding. Redirecting stdout saves text,
+including the listing, rather than a raw binary. Unless a full listing is shown,
+the encoding examples below show only the first hexadecimal line.
 Instructions are encoded in source order and are not executed by the CLI. Windows packages use the
 static MSVC runtime; Linux packages are built on Ubuntu 24.04.
 
@@ -80,8 +96,10 @@ drivers are not included in the binary ZIPs.
 ## Current parser support
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
-the operand-free instruction `ret;`, `jmp near <identifier>;`, and
-`jmp short <identifier>;`, as well as
+`add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
+the operand-free instruction `ret;`, `jmp near <identifier>;`,
+`jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
+`dec <identifier>;`, `jz <identifier>;`, and `jnz <identifier>;`, as well as
 `identifier:` label definitions.
 For example, save this as `example.asm`:
 
@@ -123,7 +141,8 @@ mov eax, (2+3) /* Multiply the grouped sum by four. */ *4;
 This example prints the same encoded bytes shown above. The semicolons terminate the
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
-Instruction names are case-sensitive: use lowercase `mov`, `ret`, and `jmp`.
+Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
+`dec`, `jz`, `jnz`, `add`, and `sub`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax`. Each statement requires a semicolon, including the last
 one. Statements can share a line or be separated by newlines and blank lines;
@@ -162,8 +181,9 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/labels.asm"
 
 The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
-`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV
-or a near JMP, two for a short JMP, one for RET, and zero for a label.
+`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB,
+or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
+address slot, two for INC or DEC, six for JZ or JNZ, one for RET, and zero for a label.
 Offsets are relative to the beginning of the
 encoded program, not source-file positions or runtime memory addresses.
 
@@ -249,15 +269,17 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/near_jump.a
 
 ### Short jumps and explicit jump syntax
 
-Jump instructions require a lowercase `near` or `short` modifier followed by a
+Jump instructions require a lowercase `near`, `short`, or `abs` modifier followed by a
 label name and a semicolon. Omitting the modifier reports
-`expected near or short after jmp`. The internal statement kinds are
-`ST_NEAR_JMP` and `ST_SHORT_JMP`.
+`expected near, short, or abs after jmp`. The internal statement kinds are
+`ST_NEAR_JMP`, `ST_SHORT_JMP`, and `ST_ABS_JMP`.
 
 | Source syntax | Opcode | Displacement | Total size |
 | --- | --- | --- | --- |
 | `jmp near label;` | `E9` | Signed 32-bit, little-endian | 5 bytes |
 | `jmp short label;` | `EB` | Signed 8-bit, -128 through 127 | 2 bytes |
+
+The `abs` form uses an indirect jump and an address slot, described below.
 
 A short jump uses `target offset - (jump offset + 2)`. The assembler checks the
 range and reports `short jump outside signed 8-bit range` if the target is too
@@ -281,6 +303,117 @@ Run the byte check from the repository root after rebuilding:
 ```powershell
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/short_jump.asm" "-DEXPECTED_HEX=EB 05 B8 63 00 00 00 B8 2A 00 00 00 C3" -P tests/encode_file.cmake
 ```
+
+### Absolute indirect jumps
+
+`jmp abs <label>;` emits a six-byte RIP-relative indirect jump followed by an
+eight-byte address slot. Layout reserves all fourteen bytes:
+
+```text
+FF 25 00 00 00 00 | eight-byte target slot
+```
+
+The four zero displacement bytes make the instruction read its destination
+from the slot immediately after it. The slot initially contains the target
+label's image offset in little-endian order. The encoder records a relocation
+at `statement offset + 6`; the loader replaces the stored offset with the loaded
+image's base address plus that offset before execution. The CPU jumps to the
+address it reads; it does not execute the slot as instructions.
+
+This uses a full 64-bit destination rather than a signed relative displacement.
+It is an indirect near jump in x86 terminology, not a segment-changing far jump.
+The current source operand must still name a label in the same image.
+
+For example:
+
+```asm
+jmp abs answer; mov eax,99; answer: mov eax,42; ret;
+```
+
+`answer` is at offset 19 (`0x13`). The 25-byte image before relocation is:
+
+```text
+FF 25 00 00 00 00 13 00 00 00 00 00 00 00 B8 63 00 00 00 B8 2A 00 00 00 C3
+```
+
+The generated header has `patch_count = 1` and `patch_offsets[] = {6}`. The
+encoder allows up to 256 patches and reports `too many relocation patches`
+before exceeding that capacity. An unknown target reports `undefined label`.
+
+To try this example, save it as `examples/abs_jump.asm`, rebuild Kasm, and run
+from the repository root:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/abs_jump.asm" "-DEXPECTED_HEX=FF 25 00 00 00 00 13 00 00 00 00 00 00 00 B8 63 00 00 00 B8 2A 00 00 00 C3" -P tests/encode_file.cmake
+```
+
+For execution, follow the runner commands below, substituting `abs_jump.asm`
+for `program.asm` when generating the header beside the runner. Relocation is
+required before executing this image. The example's exact bytes and patch
+metadata were checked, and the relocated image executed in WSL2 with `result = 42`.
+
+### Changing EAX and branching on flags
+
+`inc eax;` adds one to EAX at runtime, and `dec eax;` subtracts one. Both require
+lowercase `eax`; other registers report `only register eax is supported`.
+Unlike `mov eax,43-1;`, which evaluates its expression during assembly,
+`mov eax,43; dec eax;` performs the subtraction when the generated code runs.
+
+| Instruction | Encoding | Size |
+| --- | --- | --- |
+| `inc eax;` | `FF C0` | 2 bytes |
+| `dec eax;` | `FF C8` | 2 bytes |
+
+These instructions perform 32-bit arithmetic with wraparound: decrementing zero
+produces `FFFFFFFF`, and incrementing that value produces zero. They update
+arithmetic flags, including ZF (set when the result is zero), while preserving
+the carry flag. Assembly-time expression range checks still apply to MOV
+expressions; they do not limit runtime arithmetic.
+
+`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0. Otherwise
+execution continues with the next instruction. These instructions read the
+existing flag; they do not themselves test EAX or change the flags. Unlike `jmp`,
+they take a label directly, with no `near`, `short`, or `abs` modifier.
+
+| Instruction | Opcode | Displacement | Total size |
+| --- | --- | --- | --- |
+| `jz label;` | `0F 84` | Signed 32-bit, little-endian | 6 bytes |
+| `jnz label;` | `0F 85` | Signed 32-bit, little-endian | 6 bytes |
+
+Both resolve labels after layout and calculate
+`target offset - (instruction offset + 6)`. Missing targets report
+`undefined label`; out-of-range displacements report
+`conditional jump outside signed 32-bit range`.
+
+For example, this loop counts down from three and returns zero:
+
+```asm
+mov eax,3;
+again:
+dec eax;
+jnz again;
+ret;
+```
+
+The label is at offset 5 and JNZ ends at offset 13, so the displacement is -8:
+
+```text
+B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3
+```
+
+To check it with the reusable script, save the snippet as `examples/countdown.asm`
+and run from the repository root after rebuilding:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/countdown.asm" "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3" -P tests/encode_file.cmake
+```
+
+Manual byte checks covered INC, DEC, forward conditional branches, and the
+backward loop. WSL2 execution verified 43 decrementing to 42, 41 incrementing to
+42, zero returning to zero after DEC then INC, both taken and untaken paths for
+JZ and JNZ, and the countdown returning zero. Invalid register operands were
+also rejected. The branch tests exercise ZF behavior; other flags, including
+carry preservation, were not directly measured.
 
 ### Blocks
 
@@ -323,7 +456,7 @@ left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
 addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
 division, and other expression operators are not supported yet.
 
-Each statement references its expression's root in the parser's node array.
+Each MOV, ADD, or SUB statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
@@ -335,7 +468,7 @@ usage. Diagnostics go to stderr.
 ## Semantic checking and evaluation
 
 The [semantic checker](src/semantic.c) evaluates expression nodes in dependency
-order, then validates each MOV and stores its immediate in `Statement.value`.
+order, then validates operands and stores each MOV, ADD, or SUB immediate in `Statement.value`.
 For example:
 
 ```asm
@@ -373,14 +506,60 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows dynamically as
 instructions are appended.
 
-The current language supports MOV to `eax`, operand-free RET, and short or near
-JMP to a label. Far jumps, conditional jumps, other instructions and registers,
+The current language supports MOV, ADD, SUB, INC, and DEC on `eax`, operand-free RET,
+short, near, or absolute indirect JMP, and near JZ/JNZ to a label.
+Far jumps, short conditional jumps, other condition codes, other instructions and registers,
 labels in expressions, memory operands, directives, and object
-or executable file formats are not implemented. The immediate range remains
-`0..2147483647`, as enforced by semantic checking. Blocks provide grouping,
-not scope or control flow. Empty input or empty blocks print a newline, write an
+or executable file formats are not implemented. MOV immediates must be in
+`0..2147483647`; ADD/SUB accept signed 32-bit expression results, subject to the
+expression restrictions below. Blocks provide grouping,
+not scope or control flow. Empty input or empty blocks print an empty hex line
+and `Decoding successful.`, write an
 empty binary, and generate a header with `code_size = 0` and a placeholder array
 element so the declaration remains valid C.
+
+### ADD and SUB immediate expressions
+
+`add eax, <expression>;` adds the evaluated immediate to EAX at runtime;
+`sub eax, <expression>;` subtracts it. Only lowercase `eax` is accepted. The
+parser requires a comma and a final semicolon, just as for MOV.
+
+| Instruction | Opcode | Immediate | Total size |
+| --- | --- | --- | --- |
+| `add eax,7;` | `05` | `07 00 00 00` | 5 bytes |
+| `sub eax,7;` | `2D` | `07 00 00 00` | 5 bytes |
+
+The destination EAX is implicit in these opcodes. The immediate is four bytes
+in little-endian order. Layout reserves five bytes for either instruction, and
+the decoder prints the immediate as a signed value.
+
+ADD/SUB accept expression results in `-2147483648..2147483647`; MOV retains its
+nonnegative restriction. Every literal and intermediate result must still fit
+the existing signed 32-bit expression limits. Unary minus is not supported, so
+write `0-1` to produce a negative immediate. Runtime arithmetic wraps to 32 bits
+and updates arithmetic flags, including carry; it does not use the assembler's
+expression-overflow checks.
+
+[examples/add.asm](examples/add.asm) loads 35 and adds `3+4`, returning 42:
+
+```asm
+mov eax,35;
+add eax,3+4;
+ret;
+```
+
+Its bytes are `B8 23 00 00 00 05 07 00 00 00 C3`. The permanent `encode.add`
+test checks these bytes and the listing in [tests/add_expected.txt](tests/add_expected.txt).
+Run it after building:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R encode.add --output-on-failure
+```
+
+The SUB counterpart `mov eax,49; sub eax,3+4; ret;` produces
+`B8 31 00 00 00 2D 07 00 00 00 C3`. Both examples returned 42 in manual WSL2
+execution checks. SUB's bytes and listing were also checked manually; SUB does
+not yet have a permanent CTest entry. These runtime checks did not measure flags.
 
 ## Generated C data and execution
 
@@ -393,6 +572,8 @@ static const unsigned char code[] = {
     0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3,
 };
 static const size_t code_size = 6;
+static const size_t patch_offsets[] = {0};
+static const size_t patch_count = 0;
 ```
 
 The examples below require a source checkout and a C compiler. After building
@@ -417,7 +598,7 @@ B8 2A 00 00 00 C3
 To execute the same example:
 
 ```bash
-cc -std=c11 runner.c -o runner
+cc -std=c11 -I../../include runner.c -o runner
 ./runner
 ```
 
@@ -428,7 +609,7 @@ result = 42
 ```
 
 [runner.c](examples/generated/runner.c) allocates writable memory with `mmap`,
-copies the array into it, changes the memory to readable and executable with
+copies the array into it, applies relocation patches, changes the memory to readable and executable with
 `mprotect`, calls it as an `int` function with no arguments, and releases the
 memory with `munmap`. The example sets the return value in `eax` and returns
 with `ret`.
@@ -445,14 +626,15 @@ cd examples\generated
 ..\..\build\windows-debug\Debug\kasm.exe ..\program.asm
 cl /W4 /std:c11 inspect.c /Fe:inspect.exe
 inspect.exe
-cl /W4 /std:c11 runner.c /Fe:runner.exe
+cl /W4 /std:c11 /I..\..\include runner.c /Fe:runner.exe
 runner.exe
 ```
 
 The compiler banner should say **for x64**. The inspector prints the same six
 bytes as on Linux, and the runner prints `result = 42`.
 
-The Windows runner uses `VirtualAlloc` to allocate writable memory,
+The Windows runner uses `VirtualAlloc` to allocate writable memory, copies and
+relocates the bytes, then uses
 `VirtualProtect` to make it readable and executable, `FlushInstructionCache`
 before calling the function, and `VirtualFree` to release the allocation.
 
@@ -462,6 +644,110 @@ Use a complete
 function such as `examples/program.asm`, whose final instruction is `ret;`.
 After changing the assembly, regenerate the header and recompile the C examples
 so they use the new bytes.
+
+### Load-time relocation
+
+The helper in [include/relocate.h](include/relocate.h) converts an image-relative
+offset into an absolute address after the loader knows where the image resides:
+
+```text
+patched address = load address + stored image offset
+```
+
+Each entry in `patch_offsets` identifies the start of an eight-byte field in
+the loaded image. `relocate()` reads that field as a little-endian unsigned
+64-bit offset, adds the image's base address, and writes the resulting address
+back into the same field. The patch location and the target offset are distinct:
+a patch at offset 0 containing the value 8 becomes `base + 8` stored at offset 0.
+
+The helper rejects patches whose eight-byte fields extend outside the image and
+targets at or beyond the image size. A target outside the image reports
+`relocation target outside code`. With zero patches, it leaves the image unchanged.
+Apply relocation once to a freshly copied image while the memory is writable,
+before changing its protection and executing it.
+
+Generated headers now include `patch_offsets` and `patch_count` alongside `code`
+and `code_size`. A zero-count patch array contains a placeholder zero; that
+placeholder is not applied. `program.bin` contains only image bytes, without
+the patch table. Current relative jumps need no relocation because their source
+and target move together when the image is loaded.
+
+The encoder adds one relocation entry for each `jmp abs` address slot. Programs
+using only MOV, RET, and relative jumps still generate `patch_count = 0`.
+A small demonstration in `main.c` patches a separate 16-byte buffer; it does not
+add a relocation to the assembled program. The absolute-jump example above
+exercises relocation of actual generated code.
+
+For the runner workflow, regenerate `generated.h` from an existing example such
+as `program.asm` using the commands above, then recompile the runner. The include
+path option is required to find `relocate.h`. Running the reusable encoding test
+writes its header under `build/example-tests`, not beside the example runner.
+
+Manual checks on Windows x64 and WSL2 verified the patched value equals the
+buffer address plus 8, rejection of invalid patch bounds and an out-of-range
+target, and unchanged data for zero patches. Both runners compiled and returned
+42 with an ordinary program containing no relocation entries. In 0.12.0, the
+WSL2 runner also executed the absolute-jump example with one actual relocation
+and returned 42. These manual checks supplement the CTest suite; they are not
+currently registered as CTest tests.
+
+## Decoding the generated bytes
+
+The [decoder](src/decode.c) inspects the encoded byte buffer after the CLI has
+written its output files. It displays instruction offsets and reconstructed
+operands; it does not execute the program. Offsets and targets are decimal,
+with instruction offsets padded to at least four digits.
+
+[examples/decode.asm](examples/decode.asm) contains:
+
+```asm
+mov eax,3; loop: dec eax; jnz loop; mov eax,42; ret;
+```
+
+The complete CLI output is:
+
+```text
+B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF B8 2A 00 00 00 C3
+0000: mov eax, 3
+0005: dec eax
+0007: jnz target=5
+0013: mov eax, 42
+0018: ret
+Decoding successful.
+```
+
+The JNZ displacement is -8: adding it to the instruction's end at offset 13
+recovers target offset 5. Original label names, comments, and expression spelling
+cannot be recovered from the bytes.
+
+The current decoder recognizes MOV, ADD, and SUB EAX immediate, RET, DEC EAX, short and near
+JMP, near JNZ, and Kasm's fourteen-byte absolute-jump convention. For the latter,
+it reads the unrelocated address slot as an image offset and skips all fourteen
+bytes. Its display still uses `jmpabs image-offset=...`; relative JMP displays
+`jmp target=...`. This is inspection output, not source in Kasm's explicit
+`jmp abs`, `jmp near`, or `jmp short` syntax.
+
+INC and JZ are supported by the encoder but are not yet recognized by the
+decoder. Unknown or truncated encodings print `unknown or truncated encoding`
+and cause the CLI to exit with status 1, even though the output files have already
+been written. This decoder is limited to its supported patterns; it is neither
+a general x86 disassembler nor a verifier that code is safe to execute.
+
+The `decode.example` CTest checks both the exact 19-byte image and the entire
+listing, including the backward target and success message. Expected text is
+stored in [tests/decode_expected.txt](tests/decode_expected.txt). Run it after building:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R decode.example --output-on-failure
+```
+
+The test writes its artifacts to
+`build/windows-debug/examples/Debug/decode`, separately from other examples.
+To reuse the script directly:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/decode.asm" "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF B8 2A 00 00 00 C3" "-DEXPECTED_DECODE_FILE=tests/decode_expected.txt" -P tests/encode_file.cmake
+```
 
 ## Current lexer support
 
@@ -609,7 +895,7 @@ error (or incorrect command-line usage).
 ### Reusable example encoding test
 
 `tests/encode_file.cmake` assembles an existing file and checks that the raw
-`program.bin` bytes match stdout. Pass `EXPECTED_HEX` to also check the expected
+`program.bin` bytes match the first hexadecimal line of stdout. Pass `EXPECTED_HEX` to also check the expected
 instruction encoding. Run from the repository root after building:
 
 ```powershell
@@ -640,9 +926,13 @@ preset uses GCC and Make. Use a CMake version that supports your generator and
 the repository's version-8 preset file; the basic CMake project requires 3.20
 or newer when configuring without presets.
 
-The thirteen CTest tests cover:
+The fifteen CTest tests cover:
 
 - Exact MOV encoding: `mov eax,42;` produces `B8 2A 00 00 00`.
+- ADD expression evaluation, exact emitted bytes, and the decoded listing from
+  `examples/add.asm`.
+- Exact decoding of `examples/decode.asm`, including instruction offsets,
+  the backward JNZ target, and the success message.
 - Exact RET and combined MOV/RET encoding, with saved binary bytes checked
   against stdout and expected bytes in separate example directories.
 - Semantic evaluation of `mov eax, (10+4)*3;` to `42`.
@@ -690,6 +980,89 @@ a shorter report.
 
 After adding a new source file, rerun the configure command before building
 so the generated project includes it.
+
+## Extending the assembler: a checklist
+
+Use this order when adding an instruction. ADD and SUB are useful examples of
+the full path from source text to bytes and back.
+
+1. **Choose the exact syntax and encoding.** Match the complete operand form
+   and CPU mode in the instruction reference, not just the mnemonic. Write down
+   the opcode, any prefixes or ModR/M bytes, immediate width, total size, and
+   effects on registers and flags. Calculate a small expected byte sequence by
+   hand before implementing it. `add eax,7;` uses `05 07 00 00 00`;
+   `sub eax,7;` uses `2D 07 00 00 00`. Each instruction occupies five bytes.
+
+2. **Add a statement kind in [include/program.h](include/program.h).** Give it
+   a consistent name, such as `ST_ADD_RIM` or `ST_SUB_RIM`. Existing fields are
+   sufficient for these forms: `operand` stores the register token, `expression`
+   stores the expression root, `value` stores its evaluated immediate, and
+   `offset` stores the instruction's position in the image.
+
+3. **Parse the operands in [src/program.c](src/program.c).** Recognize the
+   mnemonic and assign its statement kind. For register/immediate instructions,
+   follow MOV's pattern: register, comma, expression, semicolon. Save the register
+   token in `s.operand` and the result of `parse_expression()` in `s.expression`.
+   INC/DEC's one-operand parser is not enough for ADD/SUB. Ordinary instruction
+   names are already identifier tokens; change the lexer only if the new syntax
+   introduces something it cannot tokenize.
+
+4. **Validate and evaluate in [src/semantic.c](src/semantic.c).** Include the
+   new kind in the register check and, when it has an immediate expression, in
+   the code that assigns `s->value` from the evaluated expression. Decide the
+   accepted range explicitly. ADD/SUB currently use signed 32-bit expression
+   results; MOV additionally requires a nonnegative immediate. Forgetting the
+   value assignment can silently encode zero instead of the requested value.
+
+5. **Reserve the full size in [src/layout.c](src/layout.c).** Add the kind to
+   `instruction_size()`. Count every emitted byte, including prefixes, operands,
+   and embedded address slots. ADD/SUB reserve five bytes. An incorrect size
+   shifts later labels and breaks jumps even if the instruction's own bytes
+   look correct.
+
+6. **Emit bytes in [src/encode.c](src/encode.c).** Select the correct opcode and
+   write the operand in its required format. `little_endian(bytes, value, 4)`
+   writes four operand bytes, not a four-byte instruction. ADD/SUB each write
+   one opcode byte followed by four immediate bytes. `FF` is an opcode group,
+   not a prefix to put before every instruction. For branches, resolve the
+   target and calculate a displacement from the instruction's end; for address
+   slots, record relocation patches instead. Propagate allocation/write failures.
+
+7. **Recognize the bytes in [src/decode.c](src/decode.c).** Check enough bytes
+   remain before reading operands, print the instruction and its reconstructed
+   operands, and advance by the complete encoded size. Match the chosen signed
+   or unsigned interpretation of immediates. The CLI currently decodes after
+   writing its files, so forgetting this step can make a correctly encoded
+   program exit with `unknown or truncated encoding`.
+
+8. **Add an example and a permanent test.** Put a small source file under
+   `examples/` and register it in [CMakeLists.txt](CMakeLists.txt). Use
+   `add_example_test(name examples/name.asm "EXPECTED HEX")` for byte checks.
+   Follow `encode.add` when also checking the listing: pass
+   `EXPECTED_DECODE_FILE` to the reusable script and commit that text fixture
+   under `tests/`. Hand-calculated expectations should be independent of the
+   encoder. Files under `build/` are temporary and do not become regression
+   tests automatically.
+
+9. **Rebuild, test, and inspect runtime behavior.** Run the build and CTest
+   commands above. Cover a normal value, zero, supported negative expressions,
+   range boundaries, invalid registers, and malformed operands as appropriate.
+   Test layout with a label or jump after the new instruction. For execution,
+   regenerate `generated.h` beside the runner, then recompile the runner before
+   running it. Check the result against a value calculated by hand; test flags
+   explicitly when their behavior matters. Run Windows and WSL2 checks before
+   a release.
+
+10. **Update documentation and the development milestone.** Record the syntax,
+    supported operands, byte format, limits, and test coverage in this README.
+    Check the version in CMake and the version history agree. A new feature does
+    not require an immediate release.
+
+For example, `mov eax,49; sub eax,3+4; ret;` follows this path:
+the parser stores the expression, semantic checking computes 7, layout reserves
+five bytes for SUB, the encoder emits `2D 07 00 00 00`, the decoder prints
+`sub eax, 7`, and execution returns 42. The expression is evaluated during
+assembly; the subtraction from EAX happens at runtime.
 
 ## Packaging and releases
 

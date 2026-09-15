@@ -22,9 +22,18 @@
 #include "program.h"
 #include "emit.h"
 #include "layout.h"
+#include "relocate.h"
+#include "output.h"
+#include "decode.h"
 
 int main(int argc, char **argv)
 {
+    unsigned char demonstration[16] = {8};
+    size_t patch = 0;
+    if (!relocate(demonstration, sizeof demonstration, &patch, 1))
+        return 1;
+ 
+    
     Source source;
     if (argc != 2)
     {
@@ -54,6 +63,9 @@ int main(int argc, char **argv)
         return 1;
     if (!write_c(&bytes, "generated.h"))
         return 1;
+    if (!decode(&bytes))
+        return 1;
+    puts("Decoding successful.");
     free(program.statements);
 
     return 0;

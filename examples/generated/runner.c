@@ -4,6 +4,7 @@
 #include "generated.h"
 #include <stdio.h>
 #include <string.h>
+#include "relocate.h"
 #if defined(_WIN32)
 #include <windows.h>
 #else
@@ -27,7 +28,10 @@ int main(void) {
         return 1;
     }
     memcpy(memory, code, code_size);
-
+    if (!relocate(memory, code_size, patch_offsets, patch_count)) {
+        VirtualFree(memory, 0, MEM_RELEASE);
+        return 1;
+    }
     DWORD old_protection;
     if (!VirtualProtect(memory, code_size, PAGE_EXECUTE_READ, &old_protection) ||
         !FlushInstructionCache(GetCurrentProcess(), memory, code_size)) {
@@ -44,7 +48,10 @@ int main(void) {
         return 1;
     }
     memcpy(memory, code, code_size);
-
+    if (!relocate(memory, code_size, patch_offsets, patch_count)) {
+        munmap(memory, code_size);
+        return 1;
+    }
     if (mprotect(memory, code_size, PROT_READ | PROT_EXEC) != 0) {
         perror("mprotect");
         munmap(memory, code_size);
@@ -68,4 +75,3 @@ int main(void) {
     return 0;
 #endif
 }
-
