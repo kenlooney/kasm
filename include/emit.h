@@ -20,8 +20,10 @@
 
 typedef struct {
     unsigned char *data;
-    int count;
-    int capacity;
+    size_t count;
+    size_t capacity;
+    size_t patches[256];
+    size_t patch_count;
 } Bytes;
 
 int byte_push(Bytes *bytes, unsigned char value);

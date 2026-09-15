@@ -22,9 +22,17 @@
 #include "program.h"
 #include "emit.h"
 #include "layout.h"
+#include "relocate.h"
+#include "output.h"
 
 int main(int argc, char **argv)
 {
+    unsigned char demonstration[16] = {8};
+    size_t patch = 0;
+    if (!relocate(demonstration, sizeof demonstration, &patch, 1))
+        return 1;
+ 
+    
     Source source;
     if (argc != 2)
     {

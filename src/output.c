@@ -14,6 +14,9 @@
 
 #include "output.h"
 #include <stdio.h>
+
+
+
 int write_c(const Bytes *bytes, const char *path) {
     FILE *file = fopen(path, "w");
     if (file == NULL) {
@@ -26,7 +29,14 @@ int write_c(const Bytes *bytes, const char *path) {
         fprintf(file, "0\n");
     for (size_t i = 0; i < bytes->count; i++)
         fprintf(file, "0x%02X,\n", (unsigned int)bytes->data[i]);
-    fprintf(file, "};\nstatic const size_t code_size = %d;\n", bytes->count);
+    fprintf(file, "};\nstatic const size_t code_size = %zu;\n", bytes->count);
+
+    fprintf(file, "static const size_t patch_offsets[] = {\n");
+    if (bytes->patch_count == 0)
+        fprintf(file, "0\n");
+    for (size_t i = 0; i < bytes->patch_count; i++)
+        fprintf(file, "%zu,\n", bytes->patches[i]);
+    fprintf(file, "};\nstatic const size_t patch_count = %zu;\n", bytes->patch_count);
 
     fprintf(file, "#endif\n");
     int okay = !ferror(file);
@@ -36,3 +46,4 @@ int write_c(const Bytes *bytes, const char *path) {
         fprintf(stderr, "%s: write failed\n", path);
     return okay;
 }
+

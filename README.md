@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.10.0 loads assembly source, parses statements, label
+Kasm 0.11.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`, and
@@ -12,10 +12,9 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.10.0**, the next planned release after
-**0.5.0**. Versions **0.6.0 through 0.9.0** record development milestones included
-in 0.10.0 rather than separate releases. The descriptions below preserve that
-feature history.
+The current source version is **0.11.0 (in development)**. Versions **0.6.0
+through 0.9.0** record development milestones grouped into 0.10.0 rather than
+separate releases. The descriptions below preserve that feature history.
 
 The 0.1.0 development series established loading, lexing, parsing, expression
 evaluation, and MOV encoding with hexadecimal output. The following milestones
@@ -32,7 +31,8 @@ extend that foundation:
 | 0.7.0 (development milestone) | Parse label definitions, including consecutive labels, without emitting extra bytes. |
 | 0.8.0 (development milestone) | Assign instruction and label offsets before encoding, reject duplicate labels, and provide label-offset lookup. |
 | 0.9.0 (development milestone) | Encode near jumps with signed relative displacements and resolve forward label references after layout. |
-| 0.10.0 (release planned) | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
+| 0.10.0 | Add short jumps with signed 8-bit displacements and require explicit `jmp near` or `jmp short` syntax. |
+| 0.11.0 (in development) | Add a load-time relocation helper, emit patch metadata in generated headers, and apply patches in both runners before execution. |
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -393,6 +393,8 @@ static const unsigned char code[] = {
     0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3,
 };
 static const size_t code_size = 6;
+static const size_t patch_offsets[] = {0};
+static const size_t patch_count = 0;
 ```
 
 The examples below require a source checkout and a C compiler. After building
@@ -417,7 +419,7 @@ B8 2A 00 00 00 C3
 To execute the same example:
 
 ```bash
-cc -std=c11 runner.c -o runner
+cc -std=c11 -I../../include runner.c -o runner
 ./runner
 ```
 
@@ -428,7 +430,7 @@ result = 42
 ```
 
 [runner.c](examples/generated/runner.c) allocates writable memory with `mmap`,
-copies the array into it, changes the memory to readable and executable with
+copies the array into it, applies relocation patches, changes the memory to readable and executable with
 `mprotect`, calls it as an `int` function with no arguments, and releases the
 memory with `munmap`. The example sets the return value in `eax` and returns
 with `ret`.
@@ -445,14 +447,15 @@ cd examples\generated
 ..\..\build\windows-debug\Debug\kasm.exe ..\program.asm
 cl /W4 /std:c11 inspect.c /Fe:inspect.exe
 inspect.exe
-cl /W4 /std:c11 runner.c /Fe:runner.exe
+cl /W4 /std:c11 /I..\..\include runner.c /Fe:runner.exe
 runner.exe
 ```
 
 The compiler banner should say **for x64**. The inspector prints the same six
 bytes as on Linux, and the runner prints `result = 42`.
 
-The Windows runner uses `VirtualAlloc` to allocate writable memory,
+The Windows runner uses `VirtualAlloc` to allocate writable memory, copies and
+relocates the bytes, then uses
 `VirtualProtect` to make it readable and executable, `FlushInstructionCache`
 before calling the function, and `VirtualFree` to release the allocation.
 
@@ -462,6 +465,49 @@ Use a complete
 function such as `examples/program.asm`, whose final instruction is `ret;`.
 After changing the assembly, regenerate the header and recompile the C examples
 so they use the new bytes.
+
+### Load-time relocation
+
+The helper in [include/relocate.h](include/relocate.h) converts an image-relative
+offset into an absolute address after the loader knows where the image resides:
+
+```text
+patched address = load address + stored image offset
+```
+
+Each entry in `patch_offsets` identifies the start of an eight-byte field in
+the loaded image. `relocate()` reads that field as a little-endian unsigned
+64-bit offset, adds the image's base address, and writes the resulting address
+back into the same field. The patch location and the target offset are distinct:
+a patch at offset 0 containing the value 8 becomes `base + 8` stored at offset 0.
+
+The helper rejects patches whose eight-byte fields extend outside the image and
+targets at or beyond the image size. A target outside the image reports
+`relocation target outside code`. With zero patches, it leaves the image unchanged.
+Apply relocation once to a freshly copied image while the memory is writable,
+before changing its protection and executing it.
+
+Generated headers now include `patch_offsets` and `patch_count` alongside `code`
+and `code_size`. A zero-count patch array contains a placeholder zero; that
+placeholder is not applied. `program.bin` contains only image bytes, without
+the patch table. Current relative jumps need no relocation because their source
+and target move together when the image is loaded.
+
+The current encoder does not yet populate relocation entries, so assembly
+examples still generate `patch_count = 0`. A small demonstration in `main.c`
+patches a separate 16-byte buffer; it does not add a relocation to the assembled
+program. There is currently no `examples/relocation.asm` source example.
+
+For the runner workflow, regenerate `generated.h` from an existing example such
+as `program.asm` using the commands above, then recompile the runner. The include
+path option is required to find `relocate.h`. Running the reusable encoding test
+writes its header under `build/example-tests`, not beside the example runner.
+
+Manual checks on Windows x64 and WSL2 verified the patched value equals the
+buffer address plus 8, rejection of invalid patch bounds and an out-of-range
+target, and unchanged data for zero patches. Both runners compiled and returned
+42 with an ordinary program containing no relocation entries. These checks
+verify the helper separately from execution of an image with actual relocations.
 
 ## Current lexer support
 

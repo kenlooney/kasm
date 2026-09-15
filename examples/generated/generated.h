@@ -10,4 +10,8 @@ static const unsigned char code[] = {
 0xC3,
 };
 static const size_t code_size = 6;
+static const size_t patch_offsets[] = {
+0
+};
+static const size_t patch_count = 0;
 #endif

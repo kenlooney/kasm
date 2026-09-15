@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.10.0 LANGUAGES C)
+project(kasm VERSION 0.11.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -47,6 +47,7 @@ if(BUILD_TESTING)
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_expression.cmake")
 
+    
     add_executable(program_blocks_test
         tests/program_blocks.c
         src/program.c
@@ -55,6 +56,8 @@ if(BUILD_TESTING)
         src/source.c
         src/cursor.c
         src/diagnostic.c)
+
+    
     target_include_directories(program_blocks_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     add_test(NAME parser.blocks COMMAND "${CMAKE_COMMAND}"
         "-DDRIVER=$<TARGET_FILE:program_blocks_test>"
