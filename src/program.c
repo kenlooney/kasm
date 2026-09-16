@@ -76,6 +76,22 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // and rim instruction
+    else if (token_is(source, name, "and"))
+    {
+        s.kind = ST_AND;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, AND stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // adc rim instruction
     else if (token_is(source, name, "adc"))
     {
@@ -86,6 +102,22 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_COMMA, "expected comma"))
             return 0;
         // Like MOV, ADC stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // cmp rim instruction
+    else if (token_is(source, name, "cmp"))
+    {
+        s.kind = ST_CMP_RIM;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, CMP stores a register token and an expression root.
         s.expression = parse_expression(parser);
         if (s.expression < 0)
             return 0;
@@ -150,6 +182,26 @@ static int statement(Parser *parser, Program *program)
         // Like MOV, SUB stores a register token and an expression root.
         s.expression = parse_expression(parser);
         if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // jb instruction
+    else if (token_is(source, name, "jb"))
+    {
+        s.kind = ST_JB;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // jl instruction
+    else if (token_is(source, name, "jl"))
+    {
+        s.kind = ST_JL;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
             return 0;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;

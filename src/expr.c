@@ -40,8 +40,19 @@ static int node(Parser *parser, Expr expression) {
     parser->nodes[parser->count] = expression;
     return parser->count++;
 }
+static int binary(Parser *parser, ExprKind kind, int left, int right);
 static int primary(Parser *parser) {
     Token token = parser->lexer.token;
+
+    if (token.kind == TK_MINUS) {
+        Expr zero = {EX_INT, token.span, 0, -1, -1};
+        int left = node(parser, zero);
+        if (left < 0)
+            return -1;
+        lexer_next(&parser->lexer);
+        int right = primary(parser);
+        return binary(parser, EX_SUB, left, right);
+    }
 
      if (token.kind == TK_LPAREN) {
         if (parser->depth == 32) {
