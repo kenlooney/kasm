@@ -18,13 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.19.0 (in development)**. Versions **0.6.0
-through 0.9.0** record development milestones grouped into 0.10.0 rather than
-separate releases. The descriptions below preserve that feature history.
-
-The 0.1.0 development series established loading, lexing, parsing, expression
-evaluation, and MOV encoding with hexadecimal output. The following milestones
-extend that foundation:
+The current source version is **0.19.0 (in development)**. 
 
 | Version | Added capability |
 | --- | --- |
