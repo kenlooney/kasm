@@ -1,0 +1,17 @@
+#ifndef GENERATED_H
+#define GENERATED_H
+#include <stddef.h>
+static const unsigned char code[] = {
+0x35,
+0x2A,
+0x00,
+0x00,
+0x00,
+0xC3,
+};
+static const size_t code_size = 6;
+static const size_t patch_offsets[] = {
+0
+};
+static const size_t patch_count = 0;
+#endif

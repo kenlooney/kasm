@@ -60,6 +60,12 @@ int decode(const Bytes *bytes)
                    signed_displacement(read_le(p + 1, 4), 32));
             width = 5;
         }
+        // xor rim
+        else if (p[0] == 0x35 && left >= 5)
+        {
+            printf("xor eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
+            width = 5;
+        }
         // and rim
         else if (p[0] == 0x25 && left >= 5)
         {

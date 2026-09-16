@@ -38,6 +38,7 @@ typedef enum {
     ST_POP,
     ST_OR,
     ST_AND,
+    ST_XOR,
     ST_ADC,
     ST_INT_IMM8,
     ST_CMP_RIM,

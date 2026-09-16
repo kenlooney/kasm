@@ -51,6 +51,11 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0x0D) || !little_endian(bytes, (uint64_t)s->value, 4))
                 return 0;
         }
+        // xor rim
+        else if (s->kind == ST_XOR) {
+            if (!byte_push(bytes, 0x35) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
         // and rim
         else if (s->kind == ST_AND) {
             if (!byte_push(bytes, 0x25) || !little_endian(bytes, (uint64_t)s->value, 4))
