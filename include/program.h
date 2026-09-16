@@ -51,6 +51,7 @@ typedef struct {
     int expression;
     long long value;
     size_t offset;
+    unsigned reg_code;
 } Statement;
 typedef struct {
     Statement *statements;

@@ -52,16 +52,19 @@ int check_program(Parser *parser, Program *program)
         else if (s->kind == ST_MOV || s->kind == ST_DEC ||
                  s->kind == ST_INC || s->kind == ST_ADD_RIM ||
                  s->kind == ST_SUB_RIM || s->kind == ST_OR ||
-                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR )
+                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
-            if (!token_is(source, s->operand, "eax"))
+            if (token_is(source, s->operand, "eax"))
+                s->reg_code = 0; // Assuming 0 corresponds to eax
+            else if (token_is(source, s->operand, "ecx"))
+                s->reg_code = 1;
+            else
             {
-                diagnostic(source, s->operand.span,
-                           "only register eax is supported");
+                diagnostic(source, s->operand.span, "expected eax or ecx");
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR )
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
             s->value = parser->nodes[s->expression].value;
             if (s->kind == ST_INT_IMM8 && (s->value < 0 || s->value > 255))
