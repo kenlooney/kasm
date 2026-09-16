@@ -1,0 +1,5 @@
+0000: mov edx, 42
+0005: add edx, 7
+0011: sub edx, 3
+0017: ret
+Decoding successful.

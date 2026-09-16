@@ -42,6 +42,10 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
                     if (!byte_push(bytes, 0xB9) || !little_endian(bytes, (uint64_t)s->value, 4))
                         return 0;
                     break;
+                case 2: // edx
+                    if (!byte_push(bytes, 0xBA) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
                 default:
                     return 0;
             }
@@ -113,6 +117,10 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
                     if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xC1) || !little_endian(bytes, (uint64_t)s->value, 4))
                         return 0;
                     break;
+                case 2: // edx
+                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xC2) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
                 default:
                     return 0;
             }
@@ -125,7 +133,11 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
                         return 0;
                     break;
                 case 1: // ecx
-                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xE1) || !little_endian(bytes, (uint64_t)s->value, 4))
+                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xE9) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                case 2: // edx
+                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xEA) || !little_endian(bytes, (uint64_t)s->value, 4))
                         return 0;
                     break;
                 default:

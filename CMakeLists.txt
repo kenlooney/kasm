@@ -43,6 +43,20 @@ if(BUILD_TESTING)
     add_example_test(mov_42 examples/mov_42.asm "B8 2A 00 00 00")
     add_example_test(ret examples/ret.asm "C3")
     add_example_test(program examples/program.asm "B8 2A 00 00 00 C3")
+    add_test(NAME encode.ecx_registers COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ecx_registers.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/ecx_registers"
+        "-DEXPECTED_HEX=B9 2A 00 00 00 81 C1 07 00 00 00 81 E9 03 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/ecx_registers_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.edx_registers COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/edx_registers.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/edx_registers"
+        "-DEXPECTED_HEX=BA 2A 00 00 00 81 C2 07 00 00 00 81 EA 03 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/edx_registers_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME encode.xor COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/xor.asm"

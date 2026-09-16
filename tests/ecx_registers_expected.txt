@@ -1,0 +1,5 @@
+0000: mov ecx, 42
+0005: add ecx, 7
+0011: sub ecx, 3
+0017: ret
+Decoding successful.

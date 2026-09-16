@@ -58,9 +58,11 @@ int check_program(Parser *parser, Program *program)
                 s->reg_code = 0; // Assuming 0 corresponds to eax
             else if (token_is(source, s->operand, "ecx"))
                 s->reg_code = 1;
+            else if (token_is(source, s->operand, "edx"))
+                s->reg_code = 2;
             else
             {
-                diagnostic(source, s->operand.span, "expected eax or ecx");
+                diagnostic(source, s->operand.span, "expected eax, ecx, or edx");
                 return 0;
             }
         }

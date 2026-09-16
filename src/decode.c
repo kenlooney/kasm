@@ -34,6 +34,11 @@ int decode(const Bytes *bytes)
             printf("mov ecx, %llu\n", (unsigned long long)read_le(p + 1, 4));
             width = 5;
         }
+        else if (p[0] == 0xBA && left >= 5)
+        {
+            printf("mov edx, %llu\n", (unsigned long long)read_le(p + 1, 4));
+            width = 5;
+        }
         else if (p[0] == 0x05 && left >= 5)
         {
             printf("add eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
@@ -44,6 +49,11 @@ int decode(const Bytes *bytes)
             printf("add ecx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
             width = 6;
         }
+        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xC2)
+        {
+            printf("add edx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
+            width = 6;
+        }
         else if (p[0] == 0x2D && left >= 5)
         {
             printf("sub eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
@@ -52,6 +62,11 @@ int decode(const Bytes *bytes)
         else if (p[0] == 0x81 && left >= 6 && p[1] == 0xE9)
         {
             printf("sub ecx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
+            width = 6;
+        }
+        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xEA)
+        {
+            printf("sub edx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
             width = 6;
         }
         else if (p[0] == 0xC3)
