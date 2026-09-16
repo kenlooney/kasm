@@ -33,8 +33,18 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
         size_t size = instruction_size(s);
         // mov
         if (s->kind == ST_MOV) {
-            if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, 4))
-                return 0;
+            switch (s->reg_code) {
+                case 0: // eax
+                    if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                case 1: // ecx
+                    if (!byte_push(bytes, 0xB9) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                default:
+                    return 0;
+            }
         }
         // ret
         else if (s->kind == ST_RET) {
@@ -94,13 +104,33 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
         }
         // ADD EAX, imm32: EAX is implicit in opcode 05.
         else if (s->kind == ST_ADD_RIM) {
-            if (!byte_push(bytes, 0x05) || !little_endian(bytes, (uint64_t)s->value, 4))
-                return 0;
+            switch (s->reg_code) {
+                case 0: // eax
+                    if (!byte_push(bytes, 0x05) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                case 1: // ecx
+                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xC1) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                default:
+                    return 0;
+            }
         }
         // SUB EAX, imm32: EAX is implicit in opcode 05.
         else if (s->kind == ST_SUB_RIM) {
-            if (!byte_push(bytes, 0x2D) || !little_endian(bytes, (uint64_t)s->value, 4))
-                return 0;
+            switch (s->reg_code) {
+                case 0: // eax
+                    if (!byte_push(bytes, 0x2D) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                case 1: // ecx
+                    if (!byte_push(bytes, 0x81) || !byte_push(bytes, 0xE9) || !little_endian(bytes, (uint64_t)s->value, 4))
+                        return 0;
+                    break;
+                default:
+                    return 0;
+            }
         }
         // Conditional near jumps share the same relative displacement format.
         else if (s->kind == ST_JNZ || s->kind == ST_JZ || s->kind == ST_JB || s->kind == ST_JL) {

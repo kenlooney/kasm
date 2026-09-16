@@ -1,12 +1,13 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.20.0 (in development) loads assembly source, parses statements, label
+Kasm 0.21.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
-It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
-`jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
-`jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
-`add eax, <expression>;`, `sub eax, <expression>;`,
+It encodes `mov eax, <expression>;`, `mov ecx, <expression>;`, `ret;`,
+`jmp near <label>;`, `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`,
+`dec eax;`, `jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
+`add eax, <expression>;`, `add ecx, <expression>;`,
+`sub eax, <expression>;`, `sub ecx, <expression>;`,
 `or eax, <expression>;`, `xor eax, <expression>;`, `and eax, <expression>;`,
 `adc eax, <expression>;`, `cmp eax, <expression>;`,
 `push rax;`, `pop rax;`,
@@ -18,7 +19,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.20.0 (in development)**.
+The current source version is **0.21.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -43,6 +44,7 @@ The current source version is **0.20.0 (in development)**.
 | 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 | 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
 | 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
+| 0.21.0 (in development) | Add register-aware ECX support for MOV, ADD, and SUB, complete the decode logic for the generated opcodes, and add a real regression example covering the new forms. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -56,7 +58,9 @@ Version 0.19.1 replaces the fixed source buffer with dynamically growing
 storage, allowing larger source files without changing the NUL-free ASCII rule.
 Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwise
 instruction set, and keeps the decoder and release notes aligned with the current
-assembler behavior.
+assembler behavior. Version 0.21.0 adds ECX register support for MOV, ADD, and SUB,
+so the encoder and decoder can handle both the implicit `eax` forms and the
+`ecx` ModRM forms without changing the instruction grammar.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -65,6 +69,51 @@ layout and label lookup, and short and near jumps. The earlier development synta
 For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
+
+## Opcode lookup guide
+
+This quick reference is useful when you are extending the encoder and decoder for
+another register form. The general pattern is: parse the register, store a small
+numeric register code, then switch on that code during encoding and match the byte
+patterns during decoding.
+
+| Source form | Encoded bytes | Meaning |
+| --- | --- | --- |
+| `mov eax, imm32;` | `B8 imm32` | Move a 32-bit immediate into `eax`. |
+| `mov ecx, imm32;` | `B9 imm32` | Move a 32-bit immediate into `ecx`. |
+| `add eax, imm32;` | `05 imm32` | Add a signed 32-bit immediate to `eax`. |
+| `add ecx, imm32;` | `81 C1 imm32` | Add a signed 32-bit immediate to `ecx`. |
+| `sub eax, imm32;` | `2D imm32` | Subtract a signed 32-bit immediate from `eax`. |
+| `sub ecx, imm32;` | `81 E9 imm32` | Subtract a signed 32-bit immediate from `ecx`. |
+| `or eax, imm32;` | `0D imm32` | Bitwise OR with `eax`. |
+| `xor eax, imm32;` | `35 imm32` | Bitwise XOR with `eax`. |
+| `and eax, imm32;` | `25 imm32` | Bitwise AND with `eax`. |
+| `cmp eax, imm32;` | `3D imm32` | Compare `eax` against the immediate. |
+| `adc eax, imm32;` | `15 imm32` | Add with carry into `eax`. |
+
+For example, the ECX register case now encodes as:
+
+```asm
+mov ecx, 42;
+add ecx, 7;
+sub ecx, 3;
+ret;
+```
+
+which emits:
+
+```text
+B9 2A 00 00 00 81 C1 07 00 00 00 81 E9 03 00 00 00 C3
+```
+
+The second byte in the `0x81` family decides the exact operation and register:
+
+- `81 C1` = `add ecx, imm32`
+- `81 E9` = `sub ecx, imm32`
+
+This is the same idea as the decoder: match the emitted bytes in reverse, then print
+back the matching source instruction. In other words, the decoder is the mirror image
+of the encoder for these register-aware instruction forms.
 
 ## Using a release
 
@@ -119,7 +168,8 @@ the operand-free instruction `ret;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
 `dec <identifier>;`, `jz <identifier>;`, `jnz <identifier>;`,
 `jb <identifier>;`, and `jl <identifier>;`, as well as
-`identifier:` label definitions.
+`identifier:` label definitions. The currently supported non-`rax` arithmetic
+registers include lowercase `eax` and `ecx`.
 For example, save this as `example.asm`:
 
 ```asm
@@ -164,7 +214,7 @@ Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
 `dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `xor`, `and`, `adc`, `cmp`, `push`, `pop`,
 and `int`.
 The parser accepts an identifier as the destination; semantic validation then
-requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
+requires lowercase `eax` or `ecx` for arithmetic and MOV, or `rax` for PUSH/POP.
 Each instruction requires a semicolon, including the last
 one. Statements can share a line or be separated by newlines and blank lines;
 a trailing newline is optional. Line breaks within an instruction are not

@@ -57,6 +57,13 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=B8 23 00 00 00 05 07 00 00 00 C3"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/add_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.ecx_registers COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ecx_registers.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/ecx_registers"
+        "-DEXPECTED_HEX=B9 2A 00 00 00 81 C1 07 00 00 00 81 E9 03 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/ecx_registers_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME decode.example COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/decode.asm"
