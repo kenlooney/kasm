@@ -76,6 +76,22 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // and rim instruction
+    else if (token_is(source, name, "and"))
+    {
+        s.kind = ST_AND;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, AND stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // adc rim instruction
     else if (token_is(source, name, "adc"))
     {

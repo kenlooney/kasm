@@ -7,7 +7,8 @@ It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
 `jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
 `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `adc eax, <expression>;`, `cmp eax, <expression>;`,
+`or eax, <expression>;`, `and eax, <expression>;`,
+`adc eax, <expression>;`, `cmp eax, <expression>;`,
 `push rax;`, `pop rax;`,
 and `int <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
@@ -45,7 +46,7 @@ extend that foundation:
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
-| 0.19.0 (in development) | Add CMP EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
+| 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -53,8 +54,8 @@ bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prin
 a decoded listing after its hexadecimal line. Version 0.18.1 fixes decoder
 coverage for INC and JZ, so those instructions now complete the CLI's decoded
 listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
-comparison and flag-setting workflows, plus unsigned-below and signed-less-than
-conditional branches.
+comparison and flag-setting workflows, AND bitwise operations, plus unsigned-
+below and signed-less-than conditional branches.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -108,7 +109,8 @@ drivers are not included in the binary ZIPs.
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
-`or <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
+`or <identifier>, <expression>;`, `and <identifier>, <expression>;`,
+`adc <identifier>, <expression>;`,
 `cmp <identifier>, <expression>;`,
 `int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
@@ -158,7 +160,7 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `adc`, `cmp`, `push`, `pop`,
+`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `and`, `adc`, `cmp`, `push`, `pop`,
 and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
@@ -502,14 +504,14 @@ calls to protect the C call stack. A 17th nested block reports
 `blocks nested too deeply`. Missing and extra closing braces report
 `expected closing brace` and `unexpected closing brace`, respectively.
 
-The [expression parser](src/expr.c) supports integer literals, binary `+` and
-`-`, multiplication (`*`), and parentheses. Multiplication binds more tightly
-than addition and subtraction; operators at the same precedence associate
-left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
-addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
-division, and other expression operators are not supported yet.
+The [expression parser](src/expr.c) supports integer literals, unary `-`, binary
+`+` and `-`, multiplication (`*`), and parentheses. Multiplication binds more
+tightly than addition and subtraction; operators at the same precedence
+associate left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4`
+groups the addition first. Parentheses may nest up to 32 levels. Unary `+`,
+symbols, division, and other expression operators are not supported yet.
 
-Each MOV, ADD, SUB, OR, ADC, or INT statement references its expression's root in the parser's node array.
+Each MOV, ADD, SUB, OR, AND, ADC, CMP, or INT statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
@@ -521,7 +523,8 @@ usage. Diagnostics go to stderr.
 ## Semantic checking and evaluation
 
 The [semantic checker](src/semantic.c) evaluates expression nodes in dependency
-order, then validates operands and stores each MOV, ADD, SUB, OR, ADC, or INT immediate in `Statement.value`.
+order, then validates operands and stores each MOV, ADD, SUB, OR, AND, ADC, CMP,
+or INT immediate in `Statement.value`.
 For example:
 
 ```asm
@@ -560,9 +563,9 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows dynamically as
 instructions are appended.
 
-The current language supports MOV, ADD, SUB, OR, ADC, INC, and DEC on `eax`,
+The current language supports MOV, ADD, SUB, OR, AND, ADC, CMP, INC, and DEC on `eax`,
 PUSH/POP on `rax`, INT with an immediate vector, operand-free RET,
-short, near, or absolute indirect JMP, and near JZ/JNZ to a label.
+short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a label.
 Far jumps, short conditional jumps, other condition codes, other instructions and registers,
 labels in expressions, memory operands, directives, and object
 or executable file formats are not implemented. MOV immediates must be in
@@ -591,8 +594,8 @@ the decoder prints the immediate as a signed value.
 
 ADD/SUB accept expression results in `-2147483648..2147483647`; MOV retains its
 nonnegative restriction. Every literal and intermediate result must still fit
-the existing signed 32-bit expression limits. Unary minus is not supported, so
-write `0-1` to produce a negative immediate. Runtime arithmetic wraps to 32 bits
+the existing signed 32-bit expression limits. Unary minus can be written as
+`-1` or `-(1+1)`. Runtime arithmetic wraps to 32 bits
 and updates arithmetic flags, including carry; it does not use the assembler's
 expression-overflow checks.
 
@@ -641,6 +644,27 @@ The program produces `B8 28 00 00 00 0D 02 00 00 00 C3`. The binary patterns
 Exact bytes and the decoded listing were checked manually, and WSL2 execution
 returned `result = 42`. These checks are not yet registered as a permanent
 CTest test, and flags were not directly tested.
+
+### Bitwise AND
+
+`and eax, <expression>;` combines the current EAX value with the evaluated
+immediate, clearing each result bit unless it is set in both operands. It
+requires `eax`, a comma, an expression, and a semicolon. The expression uses
+the same signed 32-bit limits as ADD/SUB/OR; a negative result supplies its
+32-bit two's-complement bit pattern.
+
+The encoding is `25` followed by four immediate bytes in little-endian order,
+for a total of five bytes. The decoder reads the immediate and prints
+`and eax, <value>` with a signed decimal value.
+
+```asm
+mov eax,42;
+and eax,-1;
+ret;
+```
+
+This produces `B8 2A 00 00 00 25 FF FF FF FF C3`. Unary negative expressions
+are supported, so `-1` is equivalent to `0-1`.
 
 ### Adding with carry
 
