@@ -46,27 +46,61 @@ int main(int argc, char **argv)
     Parser parser;
     Program program;
     parser_start(&parser, &source);
-    if (!parse_program(&parser, &program))
+    if (!parse_program(&parser, &program)) {
+        free(parser.nodes);
+        source_free(&source);
         return 1;
-    if (!check_program(&parser, &program))
+    }
+    if (!check_program(&parser, &program)) {
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
-     if (!layout(&source, &program))
+    }
+    if (!layout(&source, &program)) {
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
+    }
 
     Bytes bytes = {0};
-    if (!encode(&source, &program, &bytes))
+    if (!encode(&source, &program, &bytes)) {
+        free(bytes.data);
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
+    }
     for (size_t i = 0; i < bytes.count; i++)
         printf("%02X ", (unsigned int)bytes.data[i]);
     puts("");
-    if (!write_binary(&bytes, "program.bin"))
+    if (!write_binary(&bytes, "program.bin")) {
+        free(bytes.data);
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
-    if (!write_c(&bytes, "generated.h"))
+    }
+    if (!write_c(&bytes, "generated.h")) {
+        free(bytes.data);
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
-    if (!decode(&bytes))
+    }
+    if (!decode(&bytes)) {
+        free(bytes.data);
+        free(parser.nodes);
+        free(program.statements);
+        source_free(&source);
         return 1;
+    }
     puts("Decoding successful.");
+    free(bytes.data);
+    free(parser.nodes);
     free(program.statements);
+    source_free(&source);
 
     return 0;
 }

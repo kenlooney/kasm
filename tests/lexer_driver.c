@@ -22,5 +22,7 @@ int main(int argc, char **argv) {
                token.span.start, token.span.end, token.value);
         lexer_next(&lexer);
     }
-    return lexer.failed ? 1 : 0;
+    int result = lexer.failed ? 1 : 0;
+    source_free(&source);
+    return result;
 }

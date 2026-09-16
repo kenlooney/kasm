@@ -8,6 +8,9 @@
 int main(void) {
     Source source = {0};
     source.path = "program-growth.asm";
+    source.text = malloc(4097);
+    if (source.text == NULL)
+        return 2;
     for (int i = 0; i < 300; i++)
         source.length += (size_t)sprintf(source.text + source.length, "mov eax,%d;", i);
 
@@ -27,6 +30,7 @@ int main(void) {
     }
     free(program.statements);
     free(parser.nodes);
+    free(source.text);
     if (!ok)
         fprintf(stderr, "Expected 300 MOV statements with their original operands intact\n");
     return ok ? 0 : 1;

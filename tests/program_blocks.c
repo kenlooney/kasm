@@ -11,6 +11,9 @@ int main(int argc, char **argv) {
         return 2;
     Source source = {0};
     source.path = "blocks.asm";
+    source.text = malloc(4097);
+    if (source.text == NULL)
+        return 2;
     int expected_count = 0;
     int expected_success = 1;
     int ordered = 0;
@@ -32,7 +35,7 @@ int main(int argc, char **argv) {
         expected_success = strcmp(argv[1], "limit") == 0;
         size_t depth = (size_t)MAX_BLOCK_DEPTH + !expected_success;
         const char *instruction = "mov eax, 7;";
-        if (depth > (sizeof(source.text) - strlen(instruction) - 1) / 2) {
+        if (depth > (4097 - strlen(instruction) - 1) / 2) {
             fprintf(stderr, "Depth test exceeds Source storage\n");
             return 2;
         }
@@ -69,6 +72,7 @@ int main(int argc, char **argv) {
     }
     free(program.statements);
     free(parser.nodes);
+    free(source.text);
     if (!ok)
         fprintf(stderr, "Block case %s failed validation\n", argv[1]);
     return ok ? 0 : 1;

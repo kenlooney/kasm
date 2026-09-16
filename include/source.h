@@ -19,11 +19,12 @@
 
 typedef struct {
     const char *path;
-    char text[4097];
+    char *text;
     size_t length;
 } Source;
 
 int source_load(Source *source, const char *path);
+void source_free(Source *source);
 
 
 
