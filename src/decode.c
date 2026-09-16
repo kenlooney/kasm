@@ -32,6 +32,12 @@ int decode(const Bytes *bytes) {
         } else if (p[0] == 0xC3) {
             puts("ret");
             width = 1;
+        } else if (p[0] == 0x50) {
+            puts("push rax");
+            width = 1;
+        } else if (p[0] == 0x58) {
+            puts("pop rax");
+            width = 1;
     
         } else if (p[0] == 0xFF && left >= 2 && p[1] == 0xC8) {
             puts("dec eax");

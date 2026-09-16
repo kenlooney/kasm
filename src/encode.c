@@ -52,6 +52,16 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC0))
                 return 0;
         }
+        // push eax
+        else if (s->kind == ST_PUSH) {
+            if (!byte_push(bytes, 0x50))
+                return 0;
+        }
+        // pop eax
+        else if (s->kind == ST_POP) {
+            if (!byte_push(bytes, 0x58))
+                return 0;
+        }
         // ADD EAX, imm32: EAX is implicit in opcode 05.
         else if (s->kind == ST_ADD_RIM) {
             if (!byte_push(bytes, 0x05) || !little_endian(bytes, (uint64_t)s->value, 4))

@@ -40,13 +40,23 @@ int check_program(Parser *parser, Program *program)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        if (s->kind == ST_MOV || s->kind == ST_DEC || s->kind == ST_INC ||
-            s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        if (s->kind == ST_PUSH || s->kind == ST_POP)
         {
-
+            if (!token_is(source, s->operand, "rax"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require register rax");
+                return 0;
+            }
+        }
+        else if (s->kind == ST_MOV || s->kind == ST_DEC ||
+                 s->kind == ST_INC || s->kind == ST_ADD_RIM ||
+                 s->kind == ST_SUB_RIM)
+        {
             if (!token_is(source, s->operand, "eax"))
             {
-                diagnostic(source, s->operand.span, "only register eax is supported");
+                diagnostic(source, s->operand.span,
+                           "only register eax is supported");
                 return 0;
             }
         }

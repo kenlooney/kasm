@@ -60,6 +60,26 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // push instruction
+    else if (token_is(source, name, "push"))
+    {
+        s.kind = ST_PUSH;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // pop instruction
+    else if (token_is(source, name, "pop"))
+    {
+        s.kind = ST_POP;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // add rim instruction
     else if (token_is(source, name, "add"))
     {
