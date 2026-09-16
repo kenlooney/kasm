@@ -32,6 +32,11 @@ typedef enum {
     ST_JZ,
     ST_ADD_RIM,
     ST_SUB_RIM,
+    ST_PUSH,
+    ST_POP,
+    ST_OR,
+    ST_ADC,
+    ST_INT_IMM8,
 
 } StatementKind;
 typedef struct {

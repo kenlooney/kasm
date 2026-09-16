@@ -40,19 +40,36 @@ int check_program(Parser *parser, Program *program)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        if (s->kind == ST_MOV || s->kind == ST_DEC || s->kind == ST_INC ||
-            s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        if (s->kind == ST_PUSH || s->kind == ST_POP)
         {
-
-            if (!token_is(source, s->operand, "eax"))
+            if (!token_is(source, s->operand, "rax"))
             {
-                diagnostic(source, s->operand.span, "only register eax is supported");
+                diagnostic(source, s->operand.span,
+                           "push/pop require register rax");
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        else if (s->kind == ST_MOV || s->kind == ST_DEC ||
+                 s->kind == ST_INC || s->kind == ST_ADD_RIM ||
+                 s->kind == ST_SUB_RIM || s->kind == ST_OR ||
+                 s->kind == ST_ADC)
+        {
+            if (!token_is(source, s->operand, "eax"))
+            {
+                diagnostic(source, s->operand.span,
+                           "only register eax is supported");
+                return 0;
+            }
+        }
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8)
         {
             s->value = parser->nodes[s->expression].value;
+            if (s->kind == ST_INT_IMM8 && (s->value < 0 || s->value > 255))
+            {
+                diagnostic(source, parser->nodes[s->expression].span,
+                           "interrupt vector must be in range 0..255");
+                return 0;
+            }
             // ADD accepts signed results; MOV keeps its existing restriction.
             if (s->kind == ST_MOV && s->value < 0)
             {

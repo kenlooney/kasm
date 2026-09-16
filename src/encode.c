@@ -46,10 +46,36 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC8))
                 return 0;
         }
+        // or rim
+        //TODO: Complete encoding for OR rim instruction
+        else if (s->kind == ST_OR) {
+            if (!byte_push(bytes, 0x0D) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // adc rim
+        else if (s->kind == ST_ADC) {
+            if (!byte_push(bytes, 0x15) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // int imm8
+        else if (s->kind == ST_INT_IMM8) {
+            if (!byte_push(bytes, 0xCD) || !little_endian(bytes, (uint64_t)s->value, 1))
+                return 0;
+        }
 
         // inc eax
         else if (s->kind == ST_INC) {
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC0))
+                return 0;
+        }
+        // push eax
+        else if (s->kind == ST_PUSH) {
+            if (!byte_push(bytes, 0x50))
+                return 0;
+        }
+        // pop eax
+        else if (s->kind == ST_POP) {
+            if (!byte_push(bytes, 0x58))
                 return 0;
         }
         // ADD EAX, imm32: EAX is implicit in opcode 05.

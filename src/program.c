@@ -60,6 +60,69 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // or rim instruction
+    else if (token_is(source, name, "or"))
+    {
+        s.kind = ST_OR;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, OR stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // adc rim instruction
+    else if (token_is(source, name, "adc"))
+    {
+        s.kind = ST_ADC;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, ADC stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // int imm8 instruction
+    else if (token_is(source, name, "int"))
+    {
+        s.kind = ST_INT_IMM8;
+        // INT takes an expression directly, with no register or comma.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // push instruction
+    else if (token_is(source, name, "push"))
+    {
+        s.kind = ST_PUSH;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // pop instruction
+    else if (token_is(source, name, "pop"))
+    {
+        s.kind = ST_POP;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // add rim instruction
     else if (token_is(source, name, "add"))
     {
