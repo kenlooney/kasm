@@ -75,6 +75,17 @@ int decode(const Bytes *bytes)
             puts("dec eax");
             width = 2;
         }
+        else if (p[0] == 0xFF && left >= 2 && p[1] == 0xC0)
+        {
+            puts("inc eax");
+            width = 2;
+        }
+        else if (p[0] == 0x0F && left >= 6 && p[1] == 0x84)
+        {
+            width = 6;
+            long long d = signed_displacement(read_le(p + 2, 4), 32);
+            printf("jz target=%lld\n", (long long)(at + width) + d);
+        }
         else if ((p[0] == 0xE9 && left >= 5) || (p[0] == 0xEB && left >= 2))
         {
             width = p[0] == 0xEB ? 2 : 5;
