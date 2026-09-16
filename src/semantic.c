@@ -51,7 +51,8 @@ int check_program(Parser *parser, Program *program)
         }
         else if (s->kind == ST_MOV || s->kind == ST_DEC ||
                  s->kind == ST_INC || s->kind == ST_ADD_RIM ||
-                 s->kind == ST_SUB_RIM)
+                 s->kind == ST_SUB_RIM || s->kind == ST_OR ||
+                 s->kind == ST_ADC)
         {
             if (!token_is(source, s->operand, "eax"))
             {
@@ -60,7 +61,7 @@ int check_program(Parser *parser, Program *program)
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC)
         {
             s->value = parser->nodes[s->expression].value;
             // ADD accepts signed results; MOV keeps its existing restriction.

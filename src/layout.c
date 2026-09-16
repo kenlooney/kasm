@@ -51,6 +51,10 @@ size_t instruction_size(const Statement *statement)
         return 1;
     case ST_POP:
         return 1;
+    case ST_OR:
+        return 5;
+    case ST_ADC:
+        return 5;
     }
     return 0;
 }

@@ -46,6 +46,17 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC8))
                 return 0;
         }
+        // or rim
+        //TODO: Complete encoding for OR rim instruction
+        else if (s->kind == ST_OR) {
+            if (!byte_push(bytes, 0x0D) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // adc rim
+        else if (s->kind == ST_ADC) {
+            if (!byte_push(bytes, 0x15) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
 
         // inc eax
         else if (s->kind == ST_INC) {
