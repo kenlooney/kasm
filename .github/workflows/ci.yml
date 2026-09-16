@@ -56,7 +56,8 @@ jobs:
         run: |
           printf 'mov eax,42;\n' > build/release-smoke.asm
           output=$(./install/ci/bin/${{ matrix.executable }} build/release-smoke.asm)
-          test "${output//$'\r'/}" = "B8 2A 00 00 00 "
+          expected=$'B8 2A 00 00 00 \n0000: mov eax, 42\nDecoding successful.'
+          test "${output//$'\r'/}" = "$expected"
 
       - name: Package ZIP
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
@@ -73,7 +74,8 @@ jobs:
           test -f kasm-*/share/doc/kasm/README.md
           test -f kasm-*/share/doc/kasm/LICENSE
           output=$(./kasm-*/bin/${{ matrix.executable }} ../release-smoke.asm)
-          test "${output//$'\r'/}" = "B8 2A 00 00 00 "
+          expected=$'B8 2A 00 00 00 \n0000: mov eax, 42\nDecoding successful.'
+          test "${output//$'\r'/}" = "$expected"
 
       - name: Upload ZIP
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
