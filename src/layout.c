@@ -57,6 +57,8 @@ size_t instruction_size(const Statement *statement)
         return 1;
     case ST_OR:
         return 5;
+    case ST_XOR:
+        return 5;
     case ST_AND:
         return 5;
     case ST_ADC:

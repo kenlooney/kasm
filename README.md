@@ -1,13 +1,13 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.19.1 (in development) loads assembly source, parses statements, label
+Kasm 0.20.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
 `jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
 `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `and eax, <expression>;`,
+`or eax, <expression>;`, `xor eax, <expression>;`, `and eax, <expression>;`,
 `adc eax, <expression>;`, `cmp eax, <expression>;`,
 `push rax;`, `pop rax;`,
 and `int <expression>;`
@@ -18,7 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.19.1 (in development)**.
+The current source version is **0.20.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -42,6 +42,7 @@ The current source version is **0.19.1 (in development)**.
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
 | 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 | 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
+| 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -53,6 +54,9 @@ comparison and flag-setting workflows, AND bitwise operations, plus unsigned-
 below and signed-less-than conditional branches.
 Version 0.19.1 replaces the fixed source buffer with dynamically growing
 storage, allowing larger source files without changing the NUL-free ASCII rule.
+Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwise
+instruction set, and keeps the decoder and release notes aligned with the current
+assembler behavior.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -106,8 +110,8 @@ drivers are not included in the binary ZIPs.
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
-`or <identifier>, <expression>;`, `and <identifier>, <expression>;`,
-`adc <identifier>, <expression>;`,
+`or <identifier>, <expression>;`, `xor <identifier>, <expression>;`,
+`and <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
 `cmp <identifier>, <expression>;`,
 `int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
@@ -157,7 +161,7 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `and`, `adc`, `cmp`, `push`, `pop`,
+`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `xor`, `and`, `adc`, `cmp`, `push`, `pop`,
 and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
