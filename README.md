@@ -66,6 +66,36 @@ For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
 
+## Opcode lookup guide
+
+This quick reference is useful when you are extending the encoder and decoder for
+another register form. The general pattern is: parse the register, store a small
+numeric register code, then switch on that code during encoding and match the byte
+patterns during decoding.
+
+| Source form | Encoded bytes | Meaning |
+| --- | --- | --- |
+| `mov eax, imm32;` | `B8 imm32` | Move a 32-bit immediate into `eax`. |
+| `mov ecx, imm32;` | `B9 imm32` | Move a 32-bit immediate into `ecx`. |
+| `add eax, imm32;` | `05 imm32` | Add a signed 32-bit immediate to `eax`. |
+| `add ecx, imm32;` | `81 C1 imm32` | Add a signed 32-bit immediate to `ecx`. |
+| `sub eax, imm32;` | `2D imm32` | Subtract a signed 32-bit immediate from `eax`. |
+| `sub ecx, imm32;` | `81 E9 imm32` | Subtract a signed 32-bit immediate from `ecx`. |
+| `or eax, imm32;` | `0D imm32` | Bitwise OR with `eax`. |
+| `xor eax, imm32;` | `35 imm32` | Bitwise XOR with `eax`. |
+| `and eax, imm32;` | `25 imm32` | Bitwise AND with `eax`. |
+| `cmp eax, imm32;` | `3D imm32` | Compare `eax` against the immediate. |
+| `adc eax, imm32;` | `15 imm32` | Add with carry into `eax`. |
+
+The second byte in the `0x81` family decides the exact operation and register:
+
+- `81 C1` = `add ecx, imm32`
+- `81 E9` = `sub ecx, imm32`
+
+This is the same idea as the decoder: match the emitted bytes in reverse, then print
+back the matching source instruction. In other words, the decoder is the mirror image
+of the encoder for these register-aware instruction forms.
+
 ## Using a release
 
 Download the Windows x64 or Linux x64 ZIP from
