@@ -1,12 +1,13 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.18.1 (in development) loads assembly source, parses statements, label
+Kasm 0.19.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
 `jz <label>;`, `jnz <label>;`, `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `adc eax, <expression>;`, `push rax;`, `pop rax;`,
+`or eax, <expression>;`, `adc eax, <expression>;`, `cmp eax, <expression>;`,
+`push rax;`, `pop rax;`,
 and `int <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
@@ -15,7 +16,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.18.1 (in development)**. Versions **0.6.0
+The current source version is **0.19.0 (in development)**. Versions **0.6.0
 through 0.9.0** record development milestones grouped into 0.10.0 rather than
 separate releases. The descriptions below preserve that feature history.
 
@@ -43,13 +44,15 @@ extend that foundation:
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
+| 0.19.0 (in development) | Add CMP EAX immediate expressions, five-byte encoding, flag-setting semantics, and decoder support. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
 bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prints
 a decoded listing after its hexadecimal line. Version 0.18.1 fixes decoder
 coverage for INC and JZ, so those instructions now complete the CLI's decoded
-listing successfully.
+listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
+comparison and flag-setting workflows.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -104,6 +107,7 @@ drivers are not included in the binary ZIPs.
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
 `or <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
+`cmp <identifier>, <expression>;`,
 `int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
@@ -151,7 +155,7 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `push`, `pop`, and `int`.
+`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `cmp`, `push`, `pop`, and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
 Each instruction requires a semicolon, including the last
@@ -191,7 +195,7 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/labels.asm"
 
 The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
-`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC,
+`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC, CMP,
 or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
 address slot, two for INC, DEC, or INT, six for JZ or JNZ, one for RET, PUSH, or POP,
 and zero for a label.
@@ -425,6 +429,35 @@ backward loop. WSL2 execution verified 43 decrementing to 42, 41 incrementing to
 JZ and JNZ, and the countdown returning zero. Invalid register operands were
 also rejected. The branch tests exercise ZF behavior; other flags, including
 carry preservation, were not directly measured.
+
+### Comparing EAX and setting flags
+
+`cmp eax, <expression>;` compares EAX with a signed 32-bit immediate without
+changing EAX. It updates the arithmetic flags as if the immediate were
+subtracted from EAX, including ZF, which allows a following conditional jump to
+test the result. The operand must be lowercase `eax`; other registers report
+`only register eax is supported`.
+
+| Instruction | Encoding | Immediate | Size |
+| --- | --- | --- | --- |
+| `cmp eax, expression;` | `3D` | Signed 32-bit, little-endian | 5 bytes |
+
+The expression is evaluated during assembly and must be in the signed 32-bit
+range. For example:
+
+```asm
+mov eax,42;
+cmp eax,40+2;
+ret;
+```
+
+This produces the following bytes and leaves EAX unchanged at runtime:
+
+```text
+B8 2A 00 00 00 3D 2A 00 00 00 C3
+```
+
+The decoded listing includes `cmp eax, 42`.
 
 ### Blocks
 

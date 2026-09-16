@@ -57,6 +57,8 @@ size_t instruction_size(const Statement *statement)
         return 5;
     case ST_INT_IMM8:
         return 2;
+    case ST_CMP_RIM:
+        return 5;
     }
     return 0;
 }

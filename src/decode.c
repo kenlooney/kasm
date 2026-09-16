@@ -60,6 +60,11 @@ int decode(const Bytes *bytes)
                    signed_displacement(read_le(p + 1, 4), 32));
             width = 5;
         }
+        else if (p[0] == 0x3D && left >= 5)
+        {
+            printf("cmp eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
+            width = 5;
+        }
         else if (p[0] == 0x15 && left >= 5)
         {
             printf("adc eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
