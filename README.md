@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.18.0 (in development) loads assembly source, parses statements, label
+Kasm 0.18.1 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -15,7 +15,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.18.0 (in development)**. Versions **0.6.0
+The current source version is **0.18.1 (in development)**. Versions **0.6.0
 through 0.9.0** record development milestones grouped into 0.10.0 rather than
 separate releases. The descriptions below preserve that feature history.
 
@@ -42,13 +42,14 @@ extend that foundation:
 | 0.16.0 (in development) | Add OR EAX immediate expressions and PUSH/POP RAX, with layout, operand validation, and decoding support. |
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
+| 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
 bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prints
-a decoded listing after its hexadecimal line. Decoder coverage still excludes
-INC and JZ; see the decoder limitations below before using those instructions
-through the current CLI.
+a decoded listing after its hexadecimal line. Version 0.18.1 fixes decoder
+coverage for INC and JZ, so those instructions now complete the CLI's decoded
+listing successfully.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
