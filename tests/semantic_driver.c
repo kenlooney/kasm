@@ -21,5 +21,6 @@ int main(int argc, char **argv) {
     }
     free(program.statements);
     free(parser.nodes);
+    source_free(&source);
     return ok ? 0 : 1;
 }

@@ -38,6 +38,7 @@ int main(int argc, char** argv){
         parser_error(&parser, "expected end of input");
     if (root < 0 || parser.failed || parser.lexer.failed) {
         free(parser.nodes);
+        source_free(&source);
         return 1;
     }
     for (int i = 0; i < parser.count; i++) {
@@ -47,5 +48,6 @@ int main(int argc, char** argv){
     }
     printf("root = %d\n", root);
     free(parser.nodes);
+    source_free(&source);
     return 0;
 }

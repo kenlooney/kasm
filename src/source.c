@@ -14,20 +14,49 @@
 
 #include "source.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 int source_load(Source *source, const char *path) {
     FILE *file = fopen(path, "rb");
     source->path = path;
+    source->text = NULL;
     source->length = 0;
     if (file == NULL) {
         perror(path);
         return 0;
     }
+    size_t capacity = 1;
+    source->text = malloc(capacity);
+    if (source->text == NULL) {
+        fprintf(stderr, "%s: failed to allocate source buffer\n", path);
+        fclose(file);
+        return 0;
+    }
     int c;
     while ((c = fgetc(file)) != EOF) {
-        if (source->length == 4096 || c == 0 || c > 127) {
-            fprintf(stderr, "%s: expected at most 4096 non-NUL ASCII bytes\n", path);
+        if (c == 0 || c > 127) {
+            fprintf(stderr, "%s: expected NUL-free ASCII source\n", path);
             fclose(file);
+            source_free(source);
             return 0;
+        }
+        if (source->length == capacity - 1) {
+            if (capacity > SIZE_MAX / 2) {
+                fprintf(stderr, "%s: source file is too large\n", path);
+                fclose(file);
+                source_free(source);
+                return 0;
+            }
+            capacity *= 2;
+            char *text = realloc(source->text, capacity);
+            if (text == NULL) {
+                fprintf(stderr, "%s: failed to grow source buffer\n", path);
+                fclose(file);
+                source_free(source);
+                return 0;
+            }
+            source->text = text;
         }
         source->text[source->length++] = (char)c;
     }
@@ -35,7 +64,15 @@ int source_load(Source *source, const char *path) {
     if (fclose(file) != 0)
         failed = 1;
     source->text[source->length] = '\0';
-    if (failed)
+    if (failed) {
         fprintf(stderr, "%s: read failed\n", path);
+        source_free(source);
+    }
     return !failed;
+}
+
+void source_free(Source *source) {
+    free(source->text);
+    source->text = NULL;
+    source->length = 0;
 }

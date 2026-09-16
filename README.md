@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.19.0 (in development) loads assembly source, parses statements, label
+Kasm 0.19.1 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -18,7 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.19.0 (in development)**. 
+The current source version is **0.19.1 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -41,6 +41,7 @@ The current source version is **0.19.0 (in development)**.
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
 | 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
+| 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -50,6 +51,8 @@ coverage for INC and JZ, so those instructions now complete the CLI's decoded
 listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
 comparison and flag-setting workflows, AND bitwise operations, plus unsigned-
 below and signed-less-than conditional branches.
+Version 0.19.1 replaces the fixed source buffer with dynamically growing
+storage, allowing larger source files without changing the NUL-free ASCII rule.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -507,8 +510,8 @@ symbols, division, and other expression operators are not supported yet.
 
 Each MOV, ADD, SUB, OR, AND, ADC, CMP, or INT statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
-needed; there is no fixed 256-statement limit. The source loader's 4096-byte
-file limit still applies.
+needed; there is no fixed 256-statement limit. Source files are stored in a
+dynamically growing buffer.
 
 The CLI exits with status 0 after successful encoding and file output,
 and 1 on a loading, lexing, parsing, semantic, allocation, or file-output error, or incorrect command-line
@@ -1019,9 +1022,11 @@ through EOF. Adjacent comments are skipped iteratively, without recursive calls.
 
 ### Source limits, token spans, and errors
 
-The [source loader](src/source.c) accepts at most 4096 non-NUL ASCII bytes per
-file. It rejects embedded NUL bytes and non-ASCII input, including a UTF-8 BOM.
-Files are read in binary mode, preserving their original byte offsets.
+The [source loader](src/source.c) stores input in a dynamically growing buffer.
+There is no project-defined source-byte limit; practical limits are available
+memory and the platform's allocation limits. It rejects embedded NUL bytes and
+non-ASCII input, including a UTF-8 BOM. Files are read in binary mode,
+preserving their original byte offsets.
 
 Each `Token` contains its kind, a zero-based half-open byte span `[start, end)`,
 and a numeric value. The span selects the original spelling in `Source.text`;
