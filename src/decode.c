@@ -60,6 +60,17 @@ int decode(const Bytes *bytes)
                    signed_displacement(read_le(p + 1, 4), 32));
             width = 5;
         }
+        // and rim
+        else if (p[0] == 0x25 && left >= 5)
+        {
+            printf("and eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
+            width = 5;
+        }
+        else if (p[0] == 0x3D && left >= 5)
+        {
+            printf("cmp eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
+            width = 5;
+        }
         else if (p[0] == 0x15 && left >= 5)
         {
             printf("adc eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
@@ -98,6 +109,18 @@ int decode(const Bytes *bytes)
             width = 6;
             long long d = signed_displacement(read_le(p + 2, 4), 32);
             printf("jnz target=%lld\n", (long long)(at + width) + d);
+        }
+        else if (p[0] == 0x0F && left >= 6 && p[1] == 0x82)
+        {
+            width = 6;
+            long long d = signed_displacement(read_le(p + 2, 4), 32);
+            printf("jb target=%lld\n", (long long)(at + width) + d);
+        }
+        else if (p[0] == 0x0F && left >= 6 && p[1] == 0x8C)
+        {
+            width = 6;
+            long long d = signed_displacement(read_le(p + 2, 4), 32);
+            printf("jl target=%lld\n", (long long)(at + width) + d);
         }
         else if (p[0] == 0xFF && left >= 14 && p[1] == 0x25 && read_le(p + 2, 4) == 0)
         {

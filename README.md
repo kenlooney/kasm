@@ -1,12 +1,15 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.18.1 (in development) loads assembly source, parses statements, label
+Kasm 0.19.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
-`jz <label>;`, `jnz <label>;`, `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `adc eax, <expression>;`, `push rax;`, `pop rax;`,
+`jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
+`add eax, <expression>;`, `sub eax, <expression>;`,
+`or eax, <expression>;`, `and eax, <expression>;`,
+`adc eax, <expression>;`, `cmp eax, <expression>;`,
+`push rax;`, `pop rax;`,
 and `int <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
@@ -15,7 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.18.1 (in development)**. Versions **0.6.0
+The current source version is **0.19.0 (in development)**. Versions **0.6.0
 through 0.9.0** record development milestones grouped into 0.10.0 rather than
 separate releases. The descriptions below preserve that feature history.
 
@@ -43,13 +46,16 @@ extend that foundation:
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
+| 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
 bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prints
 a decoded listing after its hexadecimal line. Version 0.18.1 fixes decoder
 coverage for INC and JZ, so those instructions now complete the CLI's decoded
-listing successfully.
+listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
+comparison and flag-setting workflows, AND bitwise operations, plus unsigned-
+below and signed-less-than conditional branches.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -103,12 +109,15 @@ drivers are not included in the binary ZIPs.
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
-`or <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
+`or <identifier>, <expression>;`, `and <identifier>, <expression>;`,
+`adc <identifier>, <expression>;`,
+`cmp <identifier>, <expression>;`,
 `int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
-`dec <identifier>;`, `jz <identifier>;`, and `jnz <identifier>;`, as well as
+`dec <identifier>;`, `jz <identifier>;`, `jnz <identifier>;`,
+`jb <identifier>;`, and `jl <identifier>;`, as well as
 `identifier:` label definitions.
 For example, save this as `example.asm`:
 
@@ -151,7 +160,8 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `push`, `pop`, and `int`.
+`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `and`, `adc`, `cmp`, `push`, `pop`,
+and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
 Each instruction requires a semicolon, including the last
@@ -191,7 +201,7 @@ cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/labels.asm"
 
 The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
-`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC,
+`Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC, CMP,
 or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
 address slot, two for INC, DEC, or INT, six for JZ or JNZ, one for RET, PUSH, or POP,
 and zero for a label.
@@ -381,17 +391,21 @@ arithmetic flags, including ZF (set when the result is zero), while preserving
 the carry flag. Assembly-time expression range checks still apply to MOV
 expressions; they do not limit runtime arithmetic.
 
-`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0. Otherwise
-execution continues with the next instruction. These instructions read the
-existing flag; they do not themselves test EAX or change the flags. Unlike `jmp`,
-they take a label directly, with no `near`, `short`, or `abs` modifier.
+`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0.
+`jb <label>;` jumps when CF is 1, and `jl <label>;` jumps when SF differs from
+OF. Otherwise execution continues with the next instruction. These instructions
+read the existing flags; they do not themselves test EAX or change the flags.
+Unlike `jmp`, they take a label directly, with no `near`, `short`, or `abs`
+modifier.
 
 | Instruction | Opcode | Displacement | Total size |
 | --- | --- | --- | --- |
 | `jz label;` | `0F 84` | Signed 32-bit, little-endian | 6 bytes |
 | `jnz label;` | `0F 85` | Signed 32-bit, little-endian | 6 bytes |
+| `jb label;` | `0F 82` | Signed 32-bit, little-endian | 6 bytes |
+| `jl label;` | `0F 8C` | Signed 32-bit, little-endian | 6 bytes |
 
-Both resolve labels after layout and calculate
+All four resolve labels after layout and calculate
 `target offset - (instruction offset + 6)`. Missing targets report
 `undefined label`; out-of-range displacements report
 `conditional jump outside signed 32-bit range`.
@@ -419,12 +433,42 @@ and run from the repository root after rebuilding:
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/countdown.asm" "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3" -P tests/encode_file.cmake
 ```
 
-Manual byte checks covered INC, DEC, forward conditional branches, and the
-backward loop. WSL2 execution verified 43 decrementing to 42, 41 incrementing to
-42, zero returning to zero after DEC then INC, both taken and untaken paths for
-JZ and JNZ, and the countdown returning zero. Invalid register operands were
-also rejected. The branch tests exercise ZF behavior; other flags, including
-carry preservation, were not directly measured.
+Manual byte and decode checks covered INC, DEC, forward conditional branches,
+the backward loop, and forward and backward JB/JL targets. WSL2 execution
+verified 43 decrementing to 42, 41 incrementing to 42, zero returning to zero
+after DEC then INC, both taken and untaken paths for JZ and JNZ, and the
+countdown returning zero. Invalid register operands were also rejected. The
+branch tests exercise ZF behavior; JB/JL runtime flags and other flags,
+including carry preservation, were not directly measured.
+
+### Comparing EAX and setting flags
+
+`cmp eax, <expression>;` compares EAX with a signed 32-bit immediate without
+changing EAX. It updates the arithmetic flags as if the immediate were
+subtracted from EAX, including ZF, which allows a following conditional jump to
+test the result. The operand must be lowercase `eax`; other registers report
+`only register eax is supported`.
+
+| Instruction | Encoding | Immediate | Size |
+| --- | --- | --- | --- |
+| `cmp eax, expression;` | `3D` | Signed 32-bit, little-endian | 5 bytes |
+
+The expression is evaluated during assembly and must be in the signed 32-bit
+range. For example:
+
+```asm
+mov eax,42;
+cmp eax,40+2;
+ret;
+```
+
+This produces the following bytes and leaves EAX unchanged at runtime:
+
+```text
+B8 2A 00 00 00 3D 2A 00 00 00 C3
+```
+
+The decoded listing includes `cmp eax, 42`.
 
 ### Blocks
 
@@ -460,14 +504,14 @@ calls to protect the C call stack. A 17th nested block reports
 `blocks nested too deeply`. Missing and extra closing braces report
 `expected closing brace` and `unexpected closing brace`, respectively.
 
-The [expression parser](src/expr.c) supports integer literals, binary `+` and
-`-`, multiplication (`*`), and parentheses. Multiplication binds more tightly
-than addition and subtraction; operators at the same precedence associate
-left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
-addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
-division, and other expression operators are not supported yet.
+The [expression parser](src/expr.c) supports integer literals, unary `-`, binary
+`+` and `-`, multiplication (`*`), and parentheses. Multiplication binds more
+tightly than addition and subtraction; operators at the same precedence
+associate left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4`
+groups the addition first. Parentheses may nest up to 32 levels. Unary `+`,
+symbols, division, and other expression operators are not supported yet.
 
-Each MOV, ADD, SUB, OR, ADC, or INT statement references its expression's root in the parser's node array.
+Each MOV, ADD, SUB, OR, AND, ADC, CMP, or INT statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
@@ -479,7 +523,8 @@ usage. Diagnostics go to stderr.
 ## Semantic checking and evaluation
 
 The [semantic checker](src/semantic.c) evaluates expression nodes in dependency
-order, then validates operands and stores each MOV, ADD, SUB, OR, ADC, or INT immediate in `Statement.value`.
+order, then validates operands and stores each MOV, ADD, SUB, OR, AND, ADC, CMP,
+or INT immediate in `Statement.value`.
 For example:
 
 ```asm
@@ -518,9 +563,9 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows dynamically as
 instructions are appended.
 
-The current language supports MOV, ADD, SUB, OR, ADC, INC, and DEC on `eax`,
+The current language supports MOV, ADD, SUB, OR, AND, ADC, CMP, INC, and DEC on `eax`,
 PUSH/POP on `rax`, INT with an immediate vector, operand-free RET,
-short, near, or absolute indirect JMP, and near JZ/JNZ to a label.
+short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a label.
 Far jumps, short conditional jumps, other condition codes, other instructions and registers,
 labels in expressions, memory operands, directives, and object
 or executable file formats are not implemented. MOV immediates must be in
@@ -549,8 +594,8 @@ the decoder prints the immediate as a signed value.
 
 ADD/SUB accept expression results in `-2147483648..2147483647`; MOV retains its
 nonnegative restriction. Every literal and intermediate result must still fit
-the existing signed 32-bit expression limits. Unary minus is not supported, so
-write `0-1` to produce a negative immediate. Runtime arithmetic wraps to 32 bits
+the existing signed 32-bit expression limits. Unary minus can be written as
+`-1` or `-(1+1)`. Runtime arithmetic wraps to 32 bits
 and updates arithmetic flags, including carry; it does not use the assembler's
 expression-overflow checks.
 
@@ -599,6 +644,27 @@ The program produces `B8 28 00 00 00 0D 02 00 00 00 C3`. The binary patterns
 Exact bytes and the decoded listing were checked manually, and WSL2 execution
 returned `result = 42`. These checks are not yet registered as a permanent
 CTest test, and flags were not directly tested.
+
+### Bitwise AND
+
+`and eax, <expression>;` combines the current EAX value with the evaluated
+immediate, clearing each result bit unless it is set in both operands. It
+requires `eax`, a comma, an expression, and a semicolon. The expression uses
+the same signed 32-bit limits as ADD/SUB/OR; a negative result supplies its
+32-bit two's-complement bit pattern.
+
+The encoding is `25` followed by four immediate bytes in little-endian order,
+for a total of five bytes. The decoder reads the immediate and prints
+`and eax, <value>` with a signed decimal value.
+
+```asm
+mov eax,42;
+and eax,-1;
+ret;
+```
+
+This produces `B8 2A 00 00 00 25 FF FF FF FF C3`. Unary negative expressions
+are supported, so `-1` is equivalent to `0-1`.
 
 ### Adding with carry
 
@@ -854,16 +920,15 @@ The JNZ displacement is -8: adding it to the instruction's end at offset 13
 recovers target offset 5. Original label names, comments, and expression spelling
 cannot be recovered from the bytes.
 
-The current decoder recognizes MOV, ADD, SUB, OR, and ADC EAX immediate, INT imm8, PUSH/POP RAX,
-RET, DEC EAX, short and near
-JMP, near JNZ, and Kasm's fourteen-byte absolute-jump convention. For the latter,
+The current decoder recognizes MOV, ADD, SUB, OR, ADC, and CMP EAX immediate,
+INT imm8, PUSH/POP RAX, RET, DEC/INC EAX, short and near JMP, near JZ/JNZ/JB/JL,
+and Kasm's fourteen-byte absolute-jump convention. For the latter,
 it reads the unrelocated address slot as an image offset and skips all fourteen
 bytes. Its display still uses `jmpabs image-offset=...`; relative JMP displays
 `jmp target=...`. This is inspection output, not source in Kasm's explicit
 `jmp abs`, `jmp near`, or `jmp short` syntax.
 
-INC and JZ are supported by the encoder but are not yet recognized by the
-decoder. Unknown or truncated encodings print `unknown or truncated encoding`
+Unknown or truncated encodings print `unknown or truncated encoding`
 and cause the CLI to exit with status 1, even though the output files have already
 been written. This decoder is limited to its supported patterns; it is neither
 a general x86 disassembler nor a verifier that code is safe to execute.
