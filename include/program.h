@@ -36,6 +36,7 @@ typedef enum {
     ST_POP,
     ST_OR,
     ST_ADC,
+    ST_INT_IMM8,
 
 } StatementKind;
 typedef struct {

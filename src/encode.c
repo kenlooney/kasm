@@ -57,6 +57,11 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
             if (!byte_push(bytes, 0x15) || !little_endian(bytes, (uint64_t)s->value, 4))
                 return 0;
         }
+        // int imm8
+        else if (s->kind == ST_INT_IMM8) {
+            if (!byte_push(bytes, 0xCD) || !little_endian(bytes, (uint64_t)s->value, 1))
+                return 0;
+        }
 
         // inc eax
         else if (s->kind == ST_INC) {

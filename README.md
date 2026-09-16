@@ -1,12 +1,13 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.17.0 (in development) loads assembly source, parses statements, label
+Kasm 0.18.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
 `jz <label>;`, `jnz <label>;`, `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `adc eax, <expression>;`, `push rax;`, and `pop rax;`
+`or eax, <expression>;`, `adc eax, <expression>;`, `push rax;`, `pop rax;`,
+and `int <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
 generated function. The instruction set is deliberately small; Kasm does not
@@ -14,7 +15,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.17.0 (in development)**. Versions **0.6.0
+The current source version is **0.18.0 (in development)**. Versions **0.6.0
 through 0.9.0** record development milestones grouped into 0.10.0 rather than
 separate releases. The descriptions below preserve that feature history.
 
@@ -40,6 +41,7 @@ extend that foundation:
 | 0.15.0 | Add ADD/SUB EAX immediate expressions, five-byte encoding, and decoder support; add a permanent ADD byte/listing test and an assembler-extension checklist. |
 | 0.16.0 (in development) | Add OR EAX immediate expressions and PUSH/POP RAX, with layout, operand validation, and decoding support. |
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
+| 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -101,6 +103,7 @@ drivers are not included in the binary ZIPs.
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
 `or <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
+`int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
@@ -147,7 +150,7 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `push`, and `pop`.
+`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `push`, `pop`, and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
 Each instruction requires a semicolon, including the last
@@ -189,7 +192,7 @@ The [layout pass](src/layout.c) runs after semantic checking and before byte
 encoding. Starting at byte offset zero, it stores the current offset in each
 `Statement.offset`, then advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC,
 or a near JMP, two for a short JMP, fourteen for an absolute JMP including its
-address slot, two for INC or DEC, six for JZ or JNZ, one for RET, PUSH, or POP,
+address slot, two for INC, DEC, or INT, six for JZ or JNZ, one for RET, PUSH, or POP,
 and zero for a label.
 Offsets are relative to the beginning of the
 encoded program, not source-file positions or runtime memory addresses.
@@ -463,7 +466,7 @@ left to right. Thus `2+3*4` parses as `2+(3*4)`, while `(2+3)*4` groups the
 addition first. Parentheses may nest up to 32 levels. Unary signs, symbols,
 division, and other expression operators are not supported yet.
 
-Each MOV, ADD, SUB, OR, or ADC statement references its expression's root in the parser's node array.
+Each MOV, ADD, SUB, OR, ADC, or INT statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
 needed; there is no fixed 256-statement limit. The source loader's 4096-byte
 file limit still applies.
@@ -475,7 +478,7 @@ usage. Diagnostics go to stderr.
 ## Semantic checking and evaluation
 
 The [semantic checker](src/semantic.c) evaluates expression nodes in dependency
-order, then validates operands and stores each MOV, ADD, SUB, OR, or ADC immediate in `Statement.value`.
+order, then validates operands and stores each MOV, ADD, SUB, OR, ADC, or INT immediate in `Statement.value`.
 For example:
 
 ```asm
@@ -515,13 +518,14 @@ immediate as four bytes in little-endian order. For example, 42 becomes
 instructions are appended.
 
 The current language supports MOV, ADD, SUB, OR, ADC, INC, and DEC on `eax`,
-PUSH/POP on `rax`, operand-free RET,
+PUSH/POP on `rax`, INT with an immediate vector, operand-free RET,
 short, near, or absolute indirect JMP, and near JZ/JNZ to a label.
 Far jumps, short conditional jumps, other condition codes, other instructions and registers,
 labels in expressions, memory operands, directives, and object
 or executable file formats are not implemented. MOV immediates must be in
 `0..2147483647`; ADD/SUB/OR/ADC accept signed 32-bit expression results, subject to the
-expression restrictions below. Blocks provide grouping,
+expression restrictions below. INT requires a final value in `0..255`.
+Blocks provide grouping,
 not scope or control flow. Empty input or empty blocks print an empty hex line
 and `Decoding successful.`, write an
 empty binary, and generate a header with `code_size = 0` and a placeholder array
@@ -633,6 +637,42 @@ returned 16 and 15 respectively. The existing 15 Windows CTest tests also passed
 The ADC checks are currently temporary manual checks under `build/adc-check`,
 not permanent CTest entries. They verify incoming carry behavior, but do not
 directly measure the outgoing flags.
+
+### Software interrupt encoding
+
+`int <expression>;` takes one immediate operand, with no register or comma.
+The internal statement kind is `ST_INT_IMM8`. The expression is evaluated during
+assembly and must produce a value in `0..255`; values outside that range report
+`interrupt vector must be in range 0..255`. Existing expression limits still
+apply to literals and intermediate results.
+
+The encoding is opcode `CD` followed by a single unsigned vector byte. Layout
+reserves two bytes, and the decoder displays the vector in hexadecimal:
+
+| Source | Bytes | Decoded instruction |
+| --- | --- | --- |
+| `int 0;` | `CD 00` | `int 0x00` |
+| `int 0x10;` | `CD 10` | `int 0x10` |
+| `int 8+8;` | `CD 10` | `int 0x10` |
+| `int 255;` | `CD FF` | `int 0xFF` |
+
+To check encoding, save `int 0x10;` as `examples/interrupt.asm` and run from the
+repository root after rebuilding:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/interrupt.asm" "-DEXPECTED_HEX=CD 10" -P tests/encode_file.cmake
+```
+
+This test assembles and decodes the bytes; it does not execute the interrupt.
+INT support alone does not add a real-mode target, boot-image generation, or
+BIOS services to the existing x86-64 Windows/WSL2 runner. BIOS-style use of
+`int 0x10` needs the appropriate execution environment and CPU mode.
+
+Manual tests checked the four valid cases above, each followed by RET to verify
+the next decoded offset is 2. Negative (`0-1`) and oversized (`256`) vectors
+were rejected. All 15 existing CTest tests passed. The temporary INT checks live
+under `build/int-check`; they are not permanent CTest entries, and no interrupts
+were executed.
 
 ### Saving and restoring RAX
 
@@ -813,7 +853,7 @@ The JNZ displacement is -8: adding it to the instruction's end at offset 13
 recovers target offset 5. Original label names, comments, and expression spelling
 cannot be recovered from the bytes.
 
-The current decoder recognizes MOV, ADD, SUB, OR, and ADC EAX immediate, PUSH/POP RAX,
+The current decoder recognizes MOV, ADD, SUB, OR, and ADC EAX immediate, INT imm8, PUSH/POP RAX,
 RET, DEC EAX, short and near
 JMP, near JNZ, and Kasm's fourteen-byte absolute-jump convention. For the latter,
 it reads the unrelocated address slot as an image offset and skips all fourteen

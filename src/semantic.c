@@ -61,9 +61,15 @@ int check_program(Parser *parser, Program *program)
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC)
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8)
         {
             s->value = parser->nodes[s->expression].value;
+            if (s->kind == ST_INT_IMM8 && (s->value < 0 || s->value > 255))
+            {
+                diagnostic(source, parser->nodes[s->expression].span,
+                           "interrupt vector must be in range 0..255");
+                return 0;
+            }
             // ADD accepts signed results; MOV keeps its existing restriction.
             if (s->kind == ST_MOV && s->value < 0)
             {

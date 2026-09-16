@@ -92,6 +92,17 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // int imm8 instruction
+    else if (token_is(source, name, "int"))
+    {
+        s.kind = ST_INT_IMM8;
+        // INT takes an expression directly, with no register or comma.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // push instruction
     else if (token_is(source, name, "push"))
     {

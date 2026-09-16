@@ -65,6 +65,11 @@ int decode(const Bytes *bytes)
             printf("adc eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
             width = 5;
         }
+        else if (p[0] == 0xCD && left >= 2)
+        {
+            printf("int 0x%02X\n", (unsigned int)p[1]);
+            width = 2;
+        }
         else if (p[0] == 0xFF && left >= 2 && p[1] == 0xC8)
         {
             puts("dec eax");
