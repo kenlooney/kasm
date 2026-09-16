@@ -5,7 +5,8 @@ definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
-`jz <label>;`, `jnz <label>;`, `add eax, <expression>;`, `sub eax, <expression>;`,
+`jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
+`add eax, <expression>;`, `sub eax, <expression>;`,
 `or eax, <expression>;`, `adc eax, <expression>;`, `cmp eax, <expression>;`,
 `push rax;`, `pop rax;`,
 and `int <expression>;`
@@ -44,7 +45,7 @@ extend that foundation:
 | 0.17.0 (in development) | Add ADC EAX immediate expressions, encoding and decoding, with runtime checks for carry clear and carry set. |
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
-| 0.19.0 (in development) | Add CMP EAX immediate expressions, five-byte encoding, flag-setting semantics, and decoder support. |
+| 0.19.0 (in development) | Add CMP EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -52,7 +53,8 @@ bytes. Version 0.15.0 extends that arithmetic with ADD and SUB. The CLI now prin
 a decoded listing after its hexadecimal line. Version 0.18.1 fixes decoder
 coverage for INC and JZ, so those instructions now complete the CLI's decoded
 listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
-comparison and flag-setting workflows.
+comparison and flag-setting workflows, plus unsigned-below and signed-less-than
+conditional branches.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -112,7 +114,8 @@ The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
-`dec <identifier>;`, `jz <identifier>;`, and `jnz <identifier>;`, as well as
+`dec <identifier>;`, `jz <identifier>;`, `jnz <identifier>;`,
+`jb <identifier>;`, and `jl <identifier>;`, as well as
 `identifier:` label definitions.
 For example, save this as `example.asm`:
 
@@ -155,7 +158,8 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `add`, `sub`, `or`, `adc`, `cmp`, `push`, `pop`, and `int`.
+`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `adc`, `cmp`, `push`, `pop`,
+and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
 Each instruction requires a semicolon, including the last
@@ -385,17 +389,21 @@ arithmetic flags, including ZF (set when the result is zero), while preserving
 the carry flag. Assembly-time expression range checks still apply to MOV
 expressions; they do not limit runtime arithmetic.
 
-`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0. Otherwise
-execution continues with the next instruction. These instructions read the
-existing flag; they do not themselves test EAX or change the flags. Unlike `jmp`,
-they take a label directly, with no `near`, `short`, or `abs` modifier.
+`jz <label>;` jumps when ZF is 1, and `jnz <label>;` jumps when ZF is 0.
+`jb <label>;` jumps when CF is 1, and `jl <label>;` jumps when SF differs from
+OF. Otherwise execution continues with the next instruction. These instructions
+read the existing flags; they do not themselves test EAX or change the flags.
+Unlike `jmp`, they take a label directly, with no `near`, `short`, or `abs`
+modifier.
 
 | Instruction | Opcode | Displacement | Total size |
 | --- | --- | --- | --- |
 | `jz label;` | `0F 84` | Signed 32-bit, little-endian | 6 bytes |
 | `jnz label;` | `0F 85` | Signed 32-bit, little-endian | 6 bytes |
+| `jb label;` | `0F 82` | Signed 32-bit, little-endian | 6 bytes |
+| `jl label;` | `0F 8C` | Signed 32-bit, little-endian | 6 bytes |
 
-Both resolve labels after layout and calculate
+All four resolve labels after layout and calculate
 `target offset - (instruction offset + 6)`. Missing targets report
 `undefined label`; out-of-range displacements report
 `conditional jump outside signed 32-bit range`.
@@ -423,12 +431,13 @@ and run from the repository root after rebuilding:
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/countdown.asm" "-DEXPECTED_HEX=B8 03 00 00 00 FF C8 0F 85 F8 FF FF FF C3" -P tests/encode_file.cmake
 ```
 
-Manual byte checks covered INC, DEC, forward conditional branches, and the
-backward loop. WSL2 execution verified 43 decrementing to 42, 41 incrementing to
-42, zero returning to zero after DEC then INC, both taken and untaken paths for
-JZ and JNZ, and the countdown returning zero. Invalid register operands were
-also rejected. The branch tests exercise ZF behavior; other flags, including
-carry preservation, were not directly measured.
+Manual byte and decode checks covered INC, DEC, forward conditional branches,
+the backward loop, and forward and backward JB/JL targets. WSL2 execution
+verified 43 decrementing to 42, 41 incrementing to 42, zero returning to zero
+after DEC then INC, both taken and untaken paths for JZ and JNZ, and the
+countdown returning zero. Invalid register operands were also rejected. The
+branch tests exercise ZF behavior; JB/JL runtime flags and other flags,
+including carry preservation, were not directly measured.
 
 ### Comparing EAX and setting flags
 
@@ -887,16 +896,15 @@ The JNZ displacement is -8: adding it to the instruction's end at offset 13
 recovers target offset 5. Original label names, comments, and expression spelling
 cannot be recovered from the bytes.
 
-The current decoder recognizes MOV, ADD, SUB, OR, and ADC EAX immediate, INT imm8, PUSH/POP RAX,
-RET, DEC EAX, short and near
-JMP, near JNZ, and Kasm's fourteen-byte absolute-jump convention. For the latter,
+The current decoder recognizes MOV, ADD, SUB, OR, ADC, and CMP EAX immediate,
+INT imm8, PUSH/POP RAX, RET, DEC/INC EAX, short and near JMP, near JZ/JNZ/JB/JL,
+and Kasm's fourteen-byte absolute-jump convention. For the latter,
 it reads the unrelocated address slot as an image offset and skips all fourteen
 bytes. Its display still uses `jmpabs image-offset=...`; relative JMP displays
 `jmp target=...`. This is inspection output, not source in Kasm's explicit
 `jmp abs`, `jmp near`, or `jmp short` syntax.
 
-INC and JZ are supported by the encoder but are not yet recognized by the
-decoder. Unknown or truncated encodings print `unknown or truncated encoding`
+Unknown or truncated encodings print `unknown or truncated encoding`
 and cause the CLI to exit with status 1, even though the output files have already
 been written. This decoder is limited to its supported patterns; it is neither
 a general x86 disassembler nor a verifier that code is safe to execute.

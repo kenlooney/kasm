@@ -170,6 +170,26 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    // jb instruction
+    else if (token_is(source, name, "jb"))
+    {
+        s.kind = ST_JB;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // jl instruction
+    else if (token_is(source, name, "jl"))
+    {
+        s.kind = ST_JL;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected operand name"))
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     else if (token_is(source, name, "jmp"))
     {
         Token modifier = parser->lexer.token;

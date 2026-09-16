@@ -30,6 +30,8 @@ typedef enum {
     ST_INC,
     ST_JNZ,
     ST_JZ,
+    ST_JB,
+    ST_JL,
     ST_ADD_RIM,
     ST_SUB_RIM,
     ST_PUSH,

@@ -93,7 +93,7 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
                 return 0;
         }
         // Conditional near jumps share the same relative displacement format.
-        else if (s->kind == ST_JNZ || s->kind == ST_JZ) {
+        else if (s->kind == ST_JNZ || s->kind == ST_JZ || s->kind == ST_JB || s->kind == ST_JL) {
             size_t target;
             if (!label_offset(source, program, s->operand, &target))
                 return 0;
@@ -106,7 +106,7 @@ int encode(const Source *source, Program *program, Bytes *bytes) {
                 diagnostic(source, s->operand.span, "conditional jump outside signed 32-bit range");
                 return 0;
             }
-            unsigned char opcode = s->kind == ST_JNZ ? 0x85 : 0x84;
+            unsigned char opcode = s->kind == ST_JNZ ? 0x85 : s->kind == ST_JZ ? 0x84 : s->kind == ST_JB ? 0x82 : 0x8C;
             if (!byte_push(bytes, 0x0F) || !byte_push(bytes, opcode) ||
                 !little_endian(bytes, (uint64_t)displacement, 4))
                 return 0;

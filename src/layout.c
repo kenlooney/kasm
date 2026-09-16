@@ -47,6 +47,10 @@ size_t instruction_size(const Statement *statement)
         return 6;
     case ST_JZ:
         return 6;
+    case ST_JB:
+        return 6;
+    case ST_JL:
+        return 6;
     case ST_PUSH:
         return 1;
     case ST_POP:

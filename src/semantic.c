@@ -52,7 +52,7 @@ int check_program(Parser *parser, Program *program)
         else if (s->kind == ST_MOV || s->kind == ST_DEC ||
                  s->kind == ST_INC || s->kind == ST_ADD_RIM ||
                  s->kind == ST_SUB_RIM || s->kind == ST_OR ||
-                 s->kind == ST_ADC || s->kind == ST_CMP_RIM)
+                 s->kind == ST_ADC || s->kind == ST_CMP_RIM )
         {
             if (!token_is(source, s->operand, "eax"))
             {
