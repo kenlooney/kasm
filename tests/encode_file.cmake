@@ -18,7 +18,10 @@ get_filename_component(OUTPUT_DIR "${OUTPUT_DIR}" ABSOLUTE)
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
 # Each invocation writes program.bin in its example's own working directory.
 file(REMOVE "${OUTPUT_DIR}/program.bin")
-execute_process(COMMAND "${KASM}" "--bits" "64" "${SOURCE}"
+if(NOT DEFINED BITS)
+    set(BITS 64)
+endif()
+execute_process(COMMAND "${KASM}" "--bits" "${BITS}" "${SOURCE}"
     WORKING_DIRECTORY "${OUTPUT_DIR}"
     RESULT_VARIABLE status OUTPUT_VARIABLE output ERROR_VARIABLE error
     TIMEOUT 10)

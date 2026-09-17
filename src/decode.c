@@ -15,7 +15,7 @@ static long long signed_displacement(uint64_t value, int bits)
         return (long long)value;
     return (long long)value - (long long)((uint64_t)1 << bits);
 }
-int decode(const Bytes *bytes)
+int decode(const Bytes *bytes, const Target *target)
 {
     size_t at = 0;
     while (at < bytes->count)
@@ -24,50 +24,30 @@ int decode(const Bytes *bytes)
         size_t left = bytes->count - at;
         size_t width = 0;
         printf("%04zu: ", at);
-        if (p[0] == 0xB8 && left >= 5)
+        int immediate_width = target->mode == MODE_16 ? 2 : 4;
+        const char *registers16[] = {"ax", "cx", "dx", "bx"};
+        const char *registers32[] = {"eax", "ecx", "edx", "ebx"};
+        const char **registers = target->mode == MODE_16 ? registers16 : registers32;
+        if (p[0] >= 0xB8 && p[0] <= 0xBA && left >= (size_t)(1 + immediate_width))
         {
-            printf("mov eax, %llu\n", (unsigned long long)read_le(p + 1, 4));
-            width = 5;
+            printf("mov %s, %llu\n", registers[p[0] - 0xB8],
+                   (unsigned long long)read_le(p + 1, immediate_width));
+            width = 1 + immediate_width;
         }
-        else if (p[0] == 0xB9 && left >= 5)
+        else if ((p[0] == 0x05 || p[0] == 0x2D) &&
+                 left >= (size_t)(1 + immediate_width))
         {
-            printf("mov ecx, %llu\n", (unsigned long long)read_le(p + 1, 4));
-            width = 5;
+            printf("%s %s, %lld\n", p[0] == 0x05 ? "add" : "sub", registers[0],
+                   signed_displacement(read_le(p + 1, immediate_width), immediate_width * 8));
+            width = 1 + immediate_width;
         }
-        else if (p[0] == 0xBA && left >= 5)
+        else if (p[0] == 0x81 && left >= (size_t)(2 + immediate_width) &&
+                 ((p[1] >= 0xC1 && p[1] <= 0xC3) ||
+                  (p[1] >= 0xE9 && p[1] <= 0xEB)))
         {
-            printf("mov edx, %llu\n", (unsigned long long)read_le(p + 1, 4));
-            width = 5;
-        }
-        else if (p[0] == 0x05 && left >= 5)
-        {
-            printf("add eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
-            width = 5;
-        }
-        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xC1)
-        {
-            printf("add ecx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
-            width = 6;
-        }
-        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xC2)
-        {
-            printf("add edx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
-            width = 6;
-        }
-        else if (p[0] == 0x2D && left >= 5)
-        {
-            printf("sub eax, %lld\n", signed_displacement(read_le(p + 1, 4), 32));
-            width = 5;
-        }
-        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xE9)
-        {
-            printf("sub ecx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
-            width = 6;
-        }
-        else if (p[0] == 0x81 && left >= 6 && p[1] == 0xEA)
-        {
-            printf("sub edx, %lld\n", signed_displacement(read_le(p + 2, 4), 32));
-            width = 6;
+            printf("%s %s, %lld\n", p[1] < 0xE0 ? "add" : "sub", registers[p[1] & 7],
+                   signed_displacement(read_le(p + 2, immediate_width), immediate_width * 8));
+            width = 2 + immediate_width;
         }
         else if (p[0] == 0xC3)
         {

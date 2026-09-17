@@ -27,13 +27,7 @@ int expression_uses_location(const Parser *parser, int expression)
 
 int check_program(Parser *parser, Program *program, const Target *target)
 {
-    if (target->mode == MODE_16)
-    {
-        const Source *source = parser->lexer.cursor.source;
-        Span span = {0};
-        diagnostic(source, span, "16-bit mode is not supported");
-        return 0;
-    }
+
     if (target->mode == MODE_32)
     {
         const Source *source = parser->lexer.cursor.source;
@@ -158,9 +152,123 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 return 0;
             }
         }
-        else if (s->kind == ST_MOV || s->kind == ST_DEC ||
-                 s->kind == ST_INC || s->kind == ST_ADD_RIM ||
-                 s->kind == ST_SUB_RIM || s->kind == ST_OR ||
+
+        if (s->kind == ST_MOV)
+        {
+
+            if (token_is(source, s->operand, "eax"))
+            {
+                s->reg_code = 0;      // Assuming 0 corresponds to eax
+                s->operand_bits = 32; // eax is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "ax"))
+            {
+                s->reg_code = 0;      // Assuming 0 corresponds to ax
+                s->operand_bits = 16; // ax is a 16-bit register
+            }
+
+            else if (token_is(source, s->operand, "ecx"))
+            {
+                s->reg_code = 1;      // Assuming 1 corresponds to ecx
+                s->operand_bits = 32; // ecx is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "cx"))
+            {
+                s->reg_code = 1;      // Assuming 1 corresponds to cx
+                s->operand_bits = 16; // cx is a 16-bit register
+            }
+            else if (token_is(source, s->operand, "edx"))
+            {
+                s->reg_code = 2;      // Assuming 2 corresponds to edx
+                s->operand_bits = 32; // edx is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "dx"))
+            {
+                s->reg_code = 2;      // Assuming 2 corresponds to dx
+                s->operand_bits = 16; // dx is a 16-bit register
+            }
+            else
+            {
+                diagnostic(source, s->operand.span,
+                           "expected eax, ax, ecx, cx, edx, or dx");
+                return 0;
+            }
+            if (target->mode == MODE_16 && s->operand_bits != 16)
+            {
+                diagnostic(source, s->operand.span,
+                           "16-bit mode requires 16-bit registers: ax, cx, or dx");
+                return 0;
+            }
+            if (target->mode != MODE_16 && s->operand_bits != 32)
+            {
+                diagnostic(source, s->operand.span,
+                           "This target requires 32-bit registers: eax, ecx, or edx");
+                return 0;
+            }
+        }
+        if (s->kind == ST_MOV && s->operand_bits == 16 && s->value > 65535)
+        {
+            diagnostic(source, parser->nodes[s->expression].span,
+                       "mov ax/cx/dx immediate must fit in 16 bits");
+            return 0;
+        }
+
+        else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        {
+            if (token_is(source, s->operand, "eax"))
+            {
+                s->reg_code = 0;      // Assuming 0 corresponds to eax
+                s->operand_bits = 32; // eax is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "ax"))
+            {
+                s->reg_code = 0;      // Assuming 0 corresponds to ax
+                s->operand_bits = 16; // ax is a 16-bit register
+            }
+            else if (token_is(source, s->operand, "ecx"))
+            {
+                s->reg_code = 1;      // Assuming 1 corresponds to ecx
+                s->operand_bits = 32; // ecx is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "cx"))
+            {
+                s->reg_code = 1;      // Assuming 1 corresponds to cx
+                s->operand_bits = 16; // cx is a 16-bit register
+            }
+            else if (token_is(source, s->operand, "edx"))
+            {
+                s->reg_code = 2;      // Assuming 2 corresponds to edx
+                s->operand_bits = 32; // edx is a 32-bit register
+            }
+            else if (token_is(source, s->operand, "dx"))
+            {
+                s->reg_code = 2;      // Assuming 2 corresponds to dx
+                s->operand_bits = 16; // dx is a 16-bit register
+            }
+            else
+            {
+                diagnostic(source, s->operand.span,
+                           "expected eax, ecx, edx, ax, cx, or dx");
+                return 0;
+            }
+
+            if (target->mode == MODE_16 && s->operand_bits != 16)
+            {
+                diagnostic(source, s->operand.span,
+                           "MODE_16 requires ax, cx, or dx");
+                return 0;
+            }
+
+            if (target->mode != MODE_16 && s->operand_bits != 32)
+            {
+                diagnostic(source, s->operand.span,
+                           "this target requires eax, ecx, or edx");
+                return 0;
+            }
+        }
+        else if (s->kind == ST_DEC ||
+                 s->kind == ST_INC ||
+                 s->kind == ST_OR ||
                  s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
             if (token_is(source, s->operand, "eax"))
