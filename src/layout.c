@@ -25,10 +25,10 @@ size_t instruction_size(const Statement *statement)
     switch (statement->kind)
     {
     case ST_MOV:
+        return 5;
     case ST_ADD_RIM:
-        return 5;
     case ST_SUB_RIM:
-        return 5;
+        return statement->reg_code == 0 ? 5 : 6;
     case ST_RET:
         return 1;
     case ST_LABEL:
