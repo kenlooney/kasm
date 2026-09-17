@@ -37,3 +37,5 @@ foreach(directive dd dword dq qword)
     reject(${directive}_expression_overflow "${directive} 2147483647+1;"
         "expression outside signed 32-bit range")
 endforeach()
+reject(times_missing_directive "times 2 42;" "expected data directive after TIMES count")
+reject(fill_negative_count "fill 0-1 db 42;" "TIMES/FILL count must be nonnegative and fit size_t")

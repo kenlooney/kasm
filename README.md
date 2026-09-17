@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.23.0 (in development) loads assembly source, parses statements, label
+Kasm 0.24.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -19,7 +19,7 @@ generate object files or standalone executables. Data directives `db`/`byte`,
 
 ## Version history
 
-The current source version is **0.23.0 (in development)**.
+The current source version is **0.24.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -46,6 +46,7 @@ The current source version is **0.23.0 (in development)**.
 | 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
 | 0.22.0 (in development) | Make CPU mode explicit with `--bits 16`, `--bits 32`, or `--bits 64`; reject the currently unsupported 16-bit and 32-bit modes before encoding. |
 | 0.23.0 (in development) | Add DB/byte, DW/word, DD/dword, and DQ/qword data directives, expression lists, range checks, little-endian emission, and label offsets across embedded data; skip instruction-only decoding for images containing data. |
+| 0.24.0 (in development) | Add TIMES/FILL repetition for data directives, including repeated expression lists, count validation, overflow-safe layout, and byte-level regression tests. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -61,6 +62,7 @@ Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwi
 instruction set, and keeps the decoder and release notes aligned with the current
 assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
 rejects unsupported 16-bit and 32-bit targets before encoding.
+Version 0.24.0 adds TIMES/FILL repetition for raw data declarations.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -70,7 +72,7 @@ For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
 
-## Data directives (0.23.0)
+## Data directives (0.24.0)
 
 Data directives emit values directly, without an instruction opcode:
 
@@ -104,6 +106,16 @@ and 64-bit expression values are not yet supported. Even though their current
 range diagnostics name wider storage limits, the expression evaluator rejects
 results above 2147483647 first.
 
+Prefix a data directive with `times <count>` or `fill <count>` to repeat its
+complete comma-separated list. The count is an expression, must be nonnegative,
+and must fit `size_t`.
+
+```asm
+times 3 db 170;          // AA AA AA
+fill 2 dw 4660,0;        // 34 12 00 00 34 12 00 00
+times 2 dd 42;           // 2A 00 00 00 2A 00 00 00
+```
+
 Labels include the size of preceding data. Executable examples must jump over
 embedded data, as in `examples/data_all_jump.asm`, which mixes all four widths.
 Data-only examples are
@@ -112,16 +124,18 @@ encoding fixtures, not functions to execute.
 The CLI still writes `program.bin` and `generated.h` for images containing data,
 but prints `Data emitted; instruction-only decoding skipped.` instead of trying
 to disassemble the image. Instruction-only images retain their decoded listing.
-TIMES repetition, strings, alignment, and symbol-valued data remain future work.
+TIMES/FILL repetition is supported for data directives; strings, alignment, and
+symbol-valued data remain future work.
 
 Permanent tests cover all eight spellings, expression values, range boundaries,
-exact bytes, mixed-width layout, jump targets, and invalid lists and ranges.
-The Windows Debug build and all 29 CTest tests passed after adding DD/DQ,
-including 40 invalid-input cases within `semantic.data_invalid`.
+exact bytes, mixed-width layout, jump targets, TIMES/FILL repetition, and invalid
+lists and ranges.
+The Windows Debug build validates the data-directive suite, including
+`encode.times_fill` and invalid-input cases within `semantic.data_invalid`.
 After configuring and building, run them with:
 
 ```powershell
-ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|semantic.data_invalid)" --output-on-failure
+ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|encode.times_fill|semantic.data_invalid)" --output-on-failure
 ```
 
 ## Opcode lookup guide
