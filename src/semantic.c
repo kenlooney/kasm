@@ -16,14 +16,14 @@
 
 int check_program(Parser *parser, Program *program, const Target *target)
 {
-    if(target->mode == MODE_16)
+    if (target->mode == MODE_16)
     {
         const Source *source = parser->lexer.cursor.source;
         Span span = {0};
         diagnostic(source, span, "16-bit mode is not supported");
         return 0;
     }
-    if(target->mode == MODE_32)
+    if (target->mode == MODE_32)
     {
         const Source *source = parser->lexer.cursor.source;
         Span span = {0};
@@ -54,25 +54,41 @@ int check_program(Parser *parser, Program *program, const Target *target)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        if (s->kind == ST_DB) {
-            for(size_t j = 0; j < s->data_count; j++) {
+        
+        if (is_data_kind(s->kind) && s->repeat_expression >= 0)
+        {
+            Expr *count = &parser->nodes[s->repeat_expression];
+            if (count->value < 0 || (uint64_t)count->value > SIZE_MAX)
+            {
+                diagnostic(source, count->span,
+                           "TIMES/FILL count must be nonnegative and fit size_t");
+                return 0;
+            }
+            s->repeat_count = (size_t)count->value;
+        }
+
+        if (s->kind == ST_DB)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
-                if(expression->value < 0 || expression->value > 255)
+                if (expression->value < 0 || expression->value > 255)
                 {
                     diagnostic(source, expression->span, "declare byte element must be in range 0..255");
                     return 0;
                 }
                 element->value = (uint64_t)expression->value;
-            
             }
             continue;
         }
-        if (s->kind == ST_DW) {
-            for(size_t j = 0; j < s->data_count; j++) {
+        if (s->kind == ST_DW)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
-                if(expression->value < 0 || expression->value > 65535)
+                if (expression->value < 0 || expression->value > 65535)
                 {
                     diagnostic(source, expression->span, "declare word element must be in range 0..65535");
                     return 0;
@@ -81,11 +97,13 @@ int check_program(Parser *parser, Program *program, const Target *target)
             }
             continue;
         }
-        if (s->kind == ST_DD) {
-            for(size_t j = 0; j < s->data_count; j++) {
+        if (s->kind == ST_DD)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
-                if(expression->value < 0 || expression->value > 4294967295)
+                if (expression->value < 0 || expression->value > 4294967295)
                 {
                     diagnostic(source, expression->span, "declare double word element must be in range 0..4294967295");
                     return 0;
@@ -94,11 +112,13 @@ int check_program(Parser *parser, Program *program, const Target *target)
             }
             continue;
         }
-        if (s->kind == ST_DQ) {
-            for(size_t j = 0; j < s->data_count; j++) {
+        if (s->kind == ST_DQ)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
-                if(expression->value < 0 || expression->value > 18446744073709551615ULL)
+                if (expression->value < 0 || expression->value > 18446744073709551615ULL)
                 {
                     diagnostic(source, expression->span, "declare quad word element must be in range 0..18446744073709551615");
                     return 0;

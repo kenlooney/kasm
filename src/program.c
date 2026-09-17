@@ -28,24 +28,31 @@ static int take(Parser *parser, TokenKind kind, const char *message)
 
 static int append_data(Parser *parser, Program *program, int expression)
 {
-    if (program->data_count == program->data_capacity) {
+    if (program->data_count == program->data_capacity)
+    {
         size_t capacity;
-        if (program->data_capacity == 0) {
+        if (program->data_capacity == 0)
+        {
             capacity = 16;
-        } else {
-            if (program->data_capacity > SIZE_MAX / 2) {
+        }
+        else
+        {
+            if (program->data_capacity > SIZE_MAX / 2)
+            {
                 parser_error(parser, "too many data elements");
                 return 0;
             }
             capacity = program->data_capacity * 2;
         }
-        if (capacity > SIZE_MAX / sizeof(DataElement)) {
+        if (capacity > SIZE_MAX / sizeof(DataElement))
+        {
             parser_error(parser, "too many data elements");
             return 0;
         }
         DataElement *data = realloc(program->data,
                                     capacity * sizeof(DataElement));
-        if (data == NULL) {
+        if (data == NULL)
+        {
             parser_error(parser, "out of memory");
             return 0;
         }
@@ -56,6 +63,42 @@ static int append_data(Parser *parser, Program *program, int expression)
     return 1;
 }
 
+static unsigned data_width_for(const Source *source, Token name)
+{
+    if (token_is(source, name, "db") || token_is(source, name, "byte"))
+        return 1;
+    if (token_is(source, name, "dw") || token_is(source, name, "word"))
+        return 2;
+    if (token_is(source, name, "dd") || token_is(source, name, "dword"))
+        return 4;
+    if (token_is(source, name, "dq") || token_is(source, name, "qword"))
+        return 8;
+    return 0;
+}
+
+static int parse_data(Parser *parser, Program *program,
+                      Statement *s, unsigned width)
+{
+    s->kind = width == 1 ? ST_DB : width == 2 ? ST_DW
+                               : width == 4   ? ST_DD
+                                              : ST_DQ;
+    s->data_width = width;
+    s->data_start = program->data_count;
+    for (;;)
+    {
+        int expression = parse_expression(parser);
+        if (expression < 0)
+            return 0;
+        if (!append_data(parser, program, expression))
+            return 0;
+        s->data_count++;
+        if (parser->lexer.token.kind != TK_COMMA)
+            break;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+    }
+    return take(parser, TK_SEMI, "expected semicolon");
+}
 
 static int statement(Parser *parser, Program *program)
 {
@@ -66,6 +109,8 @@ static int statement(Parser *parser, Program *program)
     Statement s = {0};
     s.span = name.span;
     s.expression = -1;
+    s.repeat_expression = -1;
+    s.repeat_count = 1;
     if (parser->lexer.token.kind == TK_COLON)
     {
         s.kind = ST_LABEL;
@@ -73,38 +118,63 @@ static int statement(Parser *parser, Program *program)
         lexer_next(&parser->lexer);
     }
     // Data directives share one expression-list parser.
-    else if (token_is(source, name, "db") || token_is(source, name, "byte") ||
-             token_is(source, name, "dw") || token_is(source, name, "word") ||
-             token_is(source, name, "dd") || token_is(source, name, "dword") ||
-             token_is(source, name, "dq") || token_is(source, name, "qword") )
+    // else if (token_is(source, name, "db") || token_is(source, name, "byte") ||
+    //          token_is(source, name, "dw") || token_is(source, name, "word") ||
+    //          token_is(source, name, "dd") || token_is(source, name, "dword") ||
+    //          token_is(source, name, "dq") || token_is(source, name, "qword") )
+    // {
+    //     int is_byte = token_is(source, name, "db") ||
+    //                   token_is(source, name, "byte");
+    //     int is_word = token_is(source, name, "dw") ||
+    //                   token_is(source, name, "word");
+    //     int is_dword = token_is(source, name, "dd") ||
+    //                    token_is(source, name, "dword");
+    //     int is_qword = token_is(source, name, "dq") ||
+    //                    token_is(source, name, "qword");
+    //     s.kind = is_byte ? ST_DB : is_word ? ST_DW : is_dword ? ST_DD : ST_DQ;
+    //     s.data_width = is_byte ? 1 : is_word ? 2 : is_dword ? 4 : 8;
+    //     s.data_start = program->data_count;
+    //     for (;;)
+    //     {
+    //         int expr = parse_expression(parser);
+    //         if (expr < 0)
+    //             return 0;
+    //         if (!append_data(parser, program, expr))
+    //             return 0;
+    //         s.data_count++;
+    //         if (parser->lexer.token.kind != TK_COMMA)
+    //             break;
+    //         if (!take(parser, TK_COMMA, "expected comma"))
+    //             return 0;
+    //     }
+    //     if (!take(parser, TK_SEMI, "expected semicolon"))
+    //         return 0;
+    // }
+    else if (token_is(source, name, "times") || token_is(source, name, "fill"))
     {
-        int is_byte = token_is(source, name, "db") ||
-                      token_is(source, name, "byte");
-        int is_word = token_is(source, name, "dw") ||
-                      token_is(source, name, "word");
-        int is_dword = token_is(source, name, "dd") ||
-                       token_is(source, name, "dword");
-        int is_qword = token_is(source, name, "dq") ||
-                       token_is(source, name, "qword");
-        s.kind = is_byte ? ST_DB : is_word ? ST_DW : is_dword ? ST_DD : ST_DQ;
-        s.data_width = is_byte ? 1 : is_word ? 2 : is_dword ? 4 : 8;
-        s.data_start = program->data_count;
-        for (;;)
+        s.repeat_expression = parse_expression(parser);
+        if (s.repeat_expression < 0)
+            return 0;
+        Token directive = parser->lexer.token;
+        unsigned width = directive.kind == TK_IDENT
+                             ? data_width_for(source, directive)
+                             : 0;
+        if (width == 0)
         {
-            int expr = parse_expression(parser);
-            if (expr < 0)
-                return 0;
-            if (!append_data(parser, program, expr))
-                return 0;
-            s.data_count++;
-            if (parser->lexer.token.kind != TK_COMMA)
-                break;
-            if (!take(parser, TK_COMMA, "expected comma"))
-                return 0;
+            parser_error(parser, "expected data directive after TIMES count");
+            return 0;
         }
-        if (!take(parser, TK_SEMI, "expected semicolon"))
+        if (!take(parser, TK_IDENT, "expected data directive"))
+            return 0;
+        if (!parse_data(parser, program, &s, width))
             return 0;
     }
+    else if (data_width_for(source, name) != 0)
+    {
+        if (!parse_data(parser, program, &s, data_width_for(source, name)))
+            return 0;
+    }
+
     else if (token_is(source, name, "mov"))
     {
         s.kind = ST_MOV;
@@ -316,7 +386,7 @@ static int statement(Parser *parser, Program *program)
             return 0;
     }
     // dec instruction
-    else if (token_is(source, name, "dec")) 
+    else if (token_is(source, name, "dec"))
     {
         s.kind = ST_DEC;
         s.operand = parser->lexer.token;

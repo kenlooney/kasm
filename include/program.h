@@ -16,7 +16,7 @@
 #define KASM_PROGRAM_H
 
 #define MAX_BLOCK_DEPTH 16 // Maximum allowed depth for nested blocks
-
+#define KASM_IMAGE_LIMIT (4096u * 4096u)
 
 #include "expr.h"
 #include "target.h"
@@ -53,6 +53,11 @@ typedef enum {
 
 } StatementKind;
 
+static inline int is_data_kind(StatementKind kind)
+{
+    return kind == ST_DB || kind == ST_DW || kind == ST_DD || kind == ST_DQ;
+}
+
 typedef struct {
     int expression; /* index into parser->nodes*/
     uint64_t value; /* filled by semantic checker */
@@ -69,6 +74,8 @@ typedef struct {
     size_t data_start; /* index into program->data */
     size_t data_count; /* elements belonging to this statement */
     unsigned data_width; /* bytes per data element */
+    int repeat_expression; /* expression-node index, or -1 for plain data */
+    size_t repeat_count; /* number of times to repeat the data element */
 } Statement;
 
 

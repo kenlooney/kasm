@@ -34,8 +34,7 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
     {
         Statement *s = &program->statements[i];
         size_t size = instruction_size(s);
-        
-        
+
         // mov
         if (s->kind == ST_MOV)
         {
@@ -98,35 +97,16 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         }
 
         // Data Directives (e.g., DB)
-        else if (s->kind == ST_DB) {
-            for (size_t j = 0; j < s->data_count; j++) {
-                const DataElement *element = &program->data[s->data_start + j];
-                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
-                    return 0;
-            }
-        }
-        // Data Directives (e.g., DW)
-        else if (s->kind == ST_DW) {
-            for (size_t j = 0; j < s->data_count; j++) {
-                const DataElement *element = &program->data[s->data_start + j];
-                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
-                    return 0;
-            }
-        }
-        // Data Directives (e.g., DD)
-        else if (s->kind == ST_DD) {
-            for (size_t j = 0; j < s->data_count; j++) {
-                const DataElement *element = &program->data[s->data_start + j];
-                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
-                    return 0;
-            }
-        }
-        // Data Directives (e.g., DQ)
-        else if (s->kind == ST_DQ) {
-            for (size_t j = 0; j < s->data_count; j++) {
-                const DataElement *element = &program->data[s->data_start + j];
-                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
-                    return 0;
+        else if (is_data_kind(s->kind))
+        {
+            for (size_t repeat = 0; repeat < s->repeat_count; repeat++)
+            {
+                for (size_t j = 0; j < s->data_count; j++)
+                {
+                    const DataElement *element = &program->data[s->data_start + j];
+                    if (!little_endian(bytes, element->value, (int)s->data_width))
+                        return 0;
+                }
             }
         }
 

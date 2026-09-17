@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.23.0 LANGUAGES C)
+project(kasm VERSION 0.24.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -71,6 +71,12 @@ if(BUILD_TESTING)
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/data_invalid"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/data_invalid.cmake")
+    add_test(NAME encode.times_fill COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/times_fill.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/times_fill"
+        "-DEXPECTED_HEX=AA AA AA 34 12 00 00 34 12 00 00 2A 00 00 00 2A 00 00 00 2A 00 00 00 00 00 00 00 2A 00 00 00 00 00 00 00"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME encode.ecx_registers COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ecx_registers.asm"
