@@ -18,6 +18,6 @@
 #include "emit.h"
 #include "target.h"
 
-int decode(const Bytes *bytes);
+int decode(const Bytes *bytes, const Target *target);
 
 #endif // KASM_DECODE_H

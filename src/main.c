@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "source.h"
 #include "cursor.h"
 #include "diagnostic.h"
@@ -130,7 +131,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        if (!decode(&bytes))
+        if (!decode(&bytes, &target))
         {
             free(bytes.data);
             free(parser.nodes);

@@ -34,9 +34,12 @@ size_t instruction_size(const Statement *statement)
         return statement->data_count * 8;
 
     case ST_MOV:
-        return 5;
+        return statement->operand_bits == 16 ? 3 : 5;;
     case ST_ADD_RIM:
     case ST_SUB_RIM:
+        if(statement->operand_bits == 16)
+            return statement->reg_code == 0 ? 3 : 4;
+        
         return statement->reg_code == 0 ? 5 : 6;
     case ST_RET:
         return 1;
