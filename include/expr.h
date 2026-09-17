@@ -21,7 +21,9 @@ typedef enum {
     EX_INT,
     EX_ADD,
     EX_SUB,
-    EX_MUL
+    EX_MUL,
+    EX_CURRENT_OFFSET, /* $ */
+    EX_SECTION_START, /* $$ */
 } ExprKind;
 
 typedef struct {

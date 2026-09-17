@@ -1,25 +1,20 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.24.1 (in development) loads assembly source, parses statements, label
-definitions, and nested blocks, validates
-operands, evaluates expressions, and assigns byte offsets before encoding.
-It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
-`jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
-`jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
-`add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `xor eax, <expression>;`, `and eax, <expression>;`,
-`adc eax, <expression>;`, `cmp eax, <expression>;`,
-`push rax;`, `pop rax;`,
-and `int <expression>;`
-as x86 machine-code bytes, prints hexadecimal output, and writes both a
-raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
-generated function. The instruction set is deliberately small; Kasm does not
-generate object files or standalone executables. Data directives `db`/`byte`,
-`dw`/`word`, `dd`/`dword`, and `dq`/`qword` emit raw values alongside instructions.
+Kasm 0.25.1 (in development) is a small C assembler for a deliberately limited
+x86-64 instruction set. It owns source text, lexes tokens, parses expressions
+and statements, validates operands, assigns image offsets, resolves labels and
+relocations, emits machine-code bytes, and can decode supported instruction
+images back into a listing.
+
+The project also emits raw data directives and assembly-time repetition. The
+current target is hosted x86-64 code; `MODE_16` and `MODE_32` are recognized by
+the CLI but remain rejected targets. A raw data image is not automatically a
+bootable program, and Kasm does not yet generate object files or standalone
+executables.
 
 ## Version history
 
-The current source version is **0.24.1 (in development)**.
+The current source version is **0.25.1 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -48,6 +43,8 @@ The current source version is **0.24.1 (in development)**.
 | 0.23.0 (in development) | Add DB/byte, DW/word, DD/dword, and DQ/qword data directives, expression lists, range checks, little-endian emission, and label offsets across embedded data; skip instruction-only decoding for images containing data. |
 | 0.24.0 (in development) | Add TIMES/FILL repetition for data directives, including repeated expression lists, count validation, overflow-safe layout, and byte-level regression tests. |
 | 0.24.1 (in development) | Restore the default one-source-file CLI invocation as 64-bit mode, preserving compatibility with existing tests and installed-package smoke checks. |
+| 0.25.0 (in development) | Add `$` and `$$` location-aware expressions, resolve dynamic TIMES/FILL counts during layout, and add a 512-byte NASM-style padding regression for `times 510-($-$$) db 0;`. |
+| 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -63,9 +60,13 @@ Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwi
 instruction set, and keeps the decoder and release notes aligned with the current
 assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
 rejects unsupported 16-bit and 32-bit targets before encoding.
-Version 0.24.0 adds TIMES/FILL repetition for raw data declarations.
-Version 0.24.1 restores the default 64-bit CLI invocation alongside explicit
-`--bits 64` selection.
+Version 0.24.0 adds TIMES/FILL repetition for raw data declarations. Version
+0.24.1 restores the default 64-bit CLI invocation alongside explicit `--bits 64`
+selection. Version 0.25.0 adds location-aware repeat counts: `$` means the
+current image offset and `$$` means the image section start, allowing dynamic
+padding expressions to be resolved during layout. Version 0.25.1 makes the
+512-byte boot-padding test portable across CI platforms by measuring binary
+length through HEX output rather than NUL-containing CMake strings.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -75,7 +76,7 @@ For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
 
-## Data directives (0.24.0)
+## Data directives and layout expressions (0.25.0)
 
 Data directives emit values directly, without an instruction opcode:
 
@@ -127,18 +128,40 @@ encoding fixtures, not functions to execute.
 The CLI still writes `program.bin` and `generated.h` for images containing data,
 but prints `Data emitted; instruction-only decoding skipped.` instead of trying
 to disassemble the image. Instruction-only images retain their decoded listing.
-TIMES/FILL repetition is supported for data directives; strings, alignment, and
+TIMES/FILL repetition is supported for data directives. Strings, alignment, and
 symbol-valued data remain future work.
 
+### Location-aware padding
+
+The assembler also supports `$` and `$$` inside repeat-count expressions:
+
+```asm
+mov eax, 42;
+times 510-($-$$) db 0;
+dw 0xAA55;
+```
+
+`$` is the current image offset and `$$` is the image start, which is offset
+zero for the current single-image layout. The count is resolved during layout,
+after earlier statements have known sizes. In this example, `mov eax, 42;` is
+five bytes, so the padding count is `510 - (5 - 0) = 505`, followed by the
+little-endian signature bytes `55 AA`.
+
+This produces a 512-byte data image. It is a tested layout fixture, not yet a
+bootable sector: a signature alone does not define an entry convention, segment
+state, stack, BIOS services, or an emulator workflow. Negative padding is
+rejected before the repeat count is converted to `size_t`.
+
 Permanent tests cover all eight spellings, expression values, range boundaries,
-exact bytes, mixed-width layout, jump targets, TIMES/FILL repetition, and invalid
-lists and ranges.
+exact bytes, mixed-width layout, jump targets, constant and location-aware
+TIMES/FILL repetition, and invalid lists and ranges.
 The Windows Debug build validates the data-directive suite, including
-`encode.times_fill` and invalid-input cases within `semantic.data_invalid`.
+`encode.times_fill`, `encode.boot_pad`, and invalid-input cases within
+`semantic.data_invalid`.
 After configuring and building, run them with:
 
 ```powershell
-ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|encode.times_fill|semantic.data_invalid)" --output-on-failure
+ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|encode.times_fill|encode.boot_pad|semantic.data_invalid)" --output-on-failure
 ```
 
 ## Opcode lookup guide

@@ -185,6 +185,9 @@ void lexer_next(Lexer *lexer) {
     case ':':
         token.kind = TK_COLON;
         break;
+    case '$':
+        token.kind = TK_DOLLAR;
+        break;
     default:
 
     {
