@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.25.0 (in development) is a small C assembler for a deliberately limited
+Kasm 0.25.1 (in development) is a small C assembler for a deliberately limited
 x86-64 instruction set. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -14,7 +14,7 @@ executables.
 
 ## Version history
 
-The current source version is **0.25.0 (in development)**.
+The current source version is **0.25.1 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -44,6 +44,7 @@ The current source version is **0.25.0 (in development)**.
 | 0.24.0 (in development) | Add TIMES/FILL repetition for data directives, including repeated expression lists, count validation, overflow-safe layout, and byte-level regression tests. |
 | 0.24.1 (in development) | Restore the default one-source-file CLI invocation as 64-bit mode, preserving compatibility with existing tests and installed-package smoke checks. |
 | 0.25.0 (in development) | Add `$` and `$$` location-aware expressions, resolve dynamic TIMES/FILL counts during layout, and add a 512-byte NASM-style padding regression for `times 510-($-$$) db 0;`. |
+| 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -63,7 +64,9 @@ Version 0.24.0 adds TIMES/FILL repetition for raw data declarations. Version
 0.24.1 restores the default 64-bit CLI invocation alongside explicit `--bits 64`
 selection. Version 0.25.0 adds location-aware repeat counts: `$` means the
 current image offset and `$$` means the image section start, allowing dynamic
-padding expressions to be resolved during layout.
+padding expressions to be resolved during layout. Version 0.25.1 makes the
+512-byte boot-padding test portable across CI platforms by measuring binary
+length through HEX output rather than NUL-containing CMake strings.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax

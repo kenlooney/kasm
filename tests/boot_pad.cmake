@@ -27,14 +27,13 @@ if(NOT EXISTS "${OUTPUT_DIR}/program.bin")
     message(FATAL_ERROR "Assembler did not create program.bin")
 endif()
 
-file(READ "${OUTPUT_DIR}/program.bin" actual_binary)
-string(LENGTH "${actual_binary}" actual_len)
+file(READ "${OUTPUT_DIR}/program.bin" actual_hex HEX)
+string(TOUPPER "${actual_hex}" actual_hex)
+string(LENGTH "${actual_hex}" hex_length)
+math(EXPR actual_len "${hex_length} / 2")
 if(NOT actual_len EQUAL 512)
     message(FATAL_ERROR "Expected 512 bytes, got ${actual_len}")
 endif()
-
-file(READ "${OUTPUT_DIR}/program.bin" actual_hex HEX)
-string(TOUPPER "${actual_hex}" actual_hex)
 
 string(REPEAT "00" 505 zeros)
 string(CONCAT expected_hex "B82A000000" "${zeros}" "55AA")
