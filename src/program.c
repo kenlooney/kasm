@@ -74,12 +74,20 @@ static int statement(Parser *parser, Program *program)
     }
     // Data directives share one expression-list parser.
     else if (token_is(source, name, "db") || token_is(source, name, "byte") ||
-             token_is(source, name, "dw") || token_is(source, name, "word"))
+             token_is(source, name, "dw") || token_is(source, name, "word") ||
+             token_is(source, name, "dd") || token_is(source, name, "dword") ||
+             token_is(source, name, "dq") || token_is(source, name, "qword") )
     {
         int is_byte = token_is(source, name, "db") ||
                       token_is(source, name, "byte");
-        s.kind = is_byte ? ST_DB : ST_DW;
-        s.data_width = is_byte ? 1 : 2;
+        int is_word = token_is(source, name, "dw") ||
+                      token_is(source, name, "word");
+        int is_dword = token_is(source, name, "dd") ||
+                       token_is(source, name, "dword");
+        int is_qword = token_is(source, name, "dq") ||
+                       token_is(source, name, "qword");
+        s.kind = is_byte ? ST_DB : is_word ? ST_DW : is_dword ? ST_DD : ST_DQ;
+        s.data_width = is_byte ? 1 : is_word ? 2 : is_dword ? 4 : 8;
         s.data_start = program->data_count;
         for (;;)
         {

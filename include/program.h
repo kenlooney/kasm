@@ -48,6 +48,8 @@ typedef enum {
     ST_CMP_RIM,
     ST_DB,
     ST_DW,
+    ST_DD,
+    ST_DQ,
 
 } StatementKind;
 
