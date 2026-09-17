@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.24.0 (in development) loads assembly source, parses statements, label
+Kasm 0.24.1 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -19,7 +19,7 @@ generate object files or standalone executables. Data directives `db`/`byte`,
 
 ## Version history
 
-The current source version is **0.24.0 (in development)**.
+The current source version is **0.24.1 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -47,6 +47,7 @@ The current source version is **0.24.0 (in development)**.
 | 0.22.0 (in development) | Make CPU mode explicit with `--bits 16`, `--bits 32`, or `--bits 64`; reject the currently unsupported 16-bit and 32-bit modes before encoding. |
 | 0.23.0 (in development) | Add DB/byte, DW/word, DD/dword, and DQ/qword data directives, expression lists, range checks, little-endian emission, and label offsets across embedded data; skip instruction-only decoding for images containing data. |
 | 0.24.0 (in development) | Add TIMES/FILL repetition for data directives, including repeated expression lists, count validation, overflow-safe layout, and byte-level regression tests. |
+| 0.24.1 (in development) | Restore the default one-source-file CLI invocation as 64-bit mode, preserving compatibility with existing tests and installed-package smoke checks. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -63,6 +64,8 @@ instruction set, and keeps the decoder and release notes aligned with the curren
 assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
 rejects unsupported 16-bit and 32-bit targets before encoding.
 Version 0.24.0 adds TIMES/FILL repetition for raw data declarations.
+Version 0.24.1 restores the default 64-bit CLI invocation alongside explicit
+`--bits 64` selection.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
