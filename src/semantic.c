@@ -81,6 +81,32 @@ int check_program(Parser *parser, Program *program, const Target *target)
             }
             continue;
         }
+        if (s->kind == ST_DD) {
+            for(size_t j = 0; j < s->data_count; j++) {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if(expression->value < 0 || expression->value > 4294967295)
+                {
+                    diagnostic(source, expression->span, "declare double word element must be in range 0..4294967295");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
+        if (s->kind == ST_DQ) {
+            for(size_t j = 0; j < s->data_count; j++) {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if(expression->value < 0 || expression->value > 18446744073709551615ULL)
+                {
+                    diagnostic(source, expression->span, "declare quad word element must be in range 0..18446744073709551615");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
         if (s->kind == ST_PUSH || s->kind == ST_POP)
         {
             if (!token_is(source, s->operand, "rax"))

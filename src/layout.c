@@ -28,6 +28,10 @@ size_t instruction_size(const Statement *statement)
         return statement->data_count;
     case ST_DW :
         return statement->data_count * 2;
+    case ST_DD :
+        return statement->data_count * 4;
+    case ST_DQ :
+        return statement->data_count * 8;
 
     case ST_MOV:
         return 5;

@@ -113,6 +113,22 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
                     return 0;
             }
         }
+        // Data Directives (e.g., DD)
+        else if (s->kind == ST_DD) {
+            for (size_t j = 0; j < s->data_count; j++) {
+                const DataElement *element = &program->data[s->data_start + j];
+                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
+                    return 0;
+            }
+        }
+        // Data Directives (e.g., DQ)
+        else if (s->kind == ST_DQ) {
+            for (size_t j = 0; j < s->data_count; j++) {
+                const DataElement *element = &program->data[s->data_start + j];
+                if(!little_endian(bytes, (uint64_t)element->value, (int)s->data_width)) 
+                    return 0;
+            }
+        }
 
         // ret
         else if (s->kind == ST_RET)
