@@ -54,6 +54,33 @@ int check_program(Parser *parser, Program *program, const Target *target)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
+        if (s->kind == ST_DB) {
+            for(size_t j = 0; j < s->data_count; j++) {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if(expression->value < 0 || expression->value > 255)
+                {
+                    diagnostic(source, expression->span, "declare byte element must be in range 0..255");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            
+            }
+            continue;
+        }
+        if (s->kind == ST_DW) {
+            for(size_t j = 0; j < s->data_count; j++) {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if(expression->value < 0 || expression->value > 65535)
+                {
+                    diagnostic(source, expression->span, "declare word element must be in range 0..65535");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
         if (s->kind == ST_PUSH || s->kind == ST_POP)
         {
             if (!token_is(source, s->operand, "rax"))

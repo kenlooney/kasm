@@ -24,6 +24,11 @@ size_t instruction_size(const Statement *statement)
 {
     switch (statement->kind)
     {
+    case ST_DB :
+        return statement->data_count;
+    case ST_DW :
+        return statement->data_count * 2;
+
     case ST_MOV:
         return 5;
     case ST_ADD_RIM:
@@ -67,6 +72,7 @@ size_t instruction_size(const Statement *statement)
         return 2;
     case ST_CMP_RIM:
         return 5;
+    
     }
     return 0;
 }
@@ -77,7 +83,12 @@ int layout(const Source *source, Program *program, const Target *target)
     {
         Statement *s = &program->statements[i];
         s->offset = offset;
-        offset += instruction_size(s);
+        size_t size = instruction_size(s);
+        if(offset > SIZE_MAX - size) {
+            diagnostic(source, s->operand.span, "image size overflow");
+            return 0;
+        }
+        offset += size;
         if (s->kind != ST_LABEL)
             continue;
         for (int j = 0; j < i; j++)

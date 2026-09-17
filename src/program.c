@@ -25,6 +25,38 @@ static int take(Parser *parser, TokenKind kind, const char *message)
     lexer_next(&parser->lexer);
     return !parser->lexer.failed;
 }
+
+static int append_data(Parser *parser, Program *program, int expression)
+{
+    if (program->data_count == program->data_capacity) {
+        size_t capacity;
+        if (program->data_capacity == 0) {
+            capacity = 16;
+        } else {
+            if (program->data_capacity > SIZE_MAX / 2) {
+                parser_error(parser, "too many data elements");
+                return 0;
+            }
+            capacity = program->data_capacity * 2;
+        }
+        if (capacity > SIZE_MAX / sizeof(DataElement)) {
+            parser_error(parser, "too many data elements");
+            return 0;
+        }
+        DataElement *data = realloc(program->data,
+                                    capacity * sizeof(DataElement));
+        if (data == NULL) {
+            parser_error(parser, "out of memory");
+            return 0;
+        }
+        program->data = data;
+        program->data_capacity = capacity;
+    }
+    program->data[program->data_count++] = (DataElement){expression, 0};
+    return 1;
+}
+
+
 static int statement(Parser *parser, Program *program)
 {
     Token name = parser->lexer.token;
@@ -39,6 +71,31 @@ static int statement(Parser *parser, Program *program)
         s.kind = ST_LABEL;
         s.operand = name;
         lexer_next(&parser->lexer);
+    }
+    // Data directives share one expression-list parser.
+    else if (token_is(source, name, "db") || token_is(source, name, "byte") ||
+             token_is(source, name, "dw") || token_is(source, name, "word"))
+    {
+        int is_byte = token_is(source, name, "db") ||
+                      token_is(source, name, "byte");
+        s.kind = is_byte ? ST_DB : ST_DW;
+        s.data_width = is_byte ? 1 : 2;
+        s.data_start = program->data_count;
+        for (;;)
+        {
+            int expr = parse_expression(parser);
+            if (expr < 0)
+                return 0;
+            if (!append_data(parser, program, expr))
+                return 0;
+            s.data_count++;
+            if (parser->lexer.token.kind != TK_COMMA)
+                break;
+            if (!take(parser, TK_COMMA, "expected comma"))
+                return 0;
+        }
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
     }
     else if (token_is(source, name, "mov"))
     {
@@ -352,9 +409,10 @@ static int sequence(Parser *parser, Program *program, int depth)
 }
 int parse_program(Parser *parser, Program *program)
 {
-    program->statements = NULL;
-    program->count = 0;
-    program->capacity = 0;
+    // program->statements = NULL;
+    // program->count = 0;
+    // program->capacity = 0;
+    *program = (Program){0};
     if (!sequence(parser, program, 0))
         return 0;
     if (parser->lexer.token.kind != TK_END)

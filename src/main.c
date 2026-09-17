@@ -51,8 +51,8 @@ int main(int argc, char **argv)
             target.mode = MODE_64;
         else
         {
-           fprintf(stderr, "Invalid target mode: %s\n", argv[2]);
-           return 1;
+            fprintf(stderr, "Invalid target mode: %s\n", argv[2]);
+            return 1;
         }
     }
     else
@@ -69,12 +69,15 @@ int main(int argc, char **argv)
     parser_start(&parser, &source);
     if (!parse_program(&parser, &program))
     {
+        free(program.data);
+        free(program.statements);
         free(parser.nodes);
         source_free(&source);
         return 1;
     }
     if (!check_program(&parser, &program, &target))
     {
+        free(program.data);
         free(parser.nodes);
         free(program.statements);
         source_free(&source);
@@ -83,6 +86,7 @@ int main(int argc, char **argv)
     if (!layout(&source, &program, &target))
     {
         free(parser.nodes);
+        free(program.data);
         free(program.statements);
         source_free(&source);
         return 1;
@@ -93,6 +97,7 @@ int main(int argc, char **argv)
     {
         free(bytes.data);
         free(parser.nodes);
+        free(program.data);
         free(program.statements);
         source_free(&source);
         return 1;
@@ -104,6 +109,7 @@ int main(int argc, char **argv)
     {
         free(bytes.data);
         free(parser.nodes);
+        free(program.data);
         free(program.statements);
         source_free(&source);
         return 1;
@@ -112,22 +118,33 @@ int main(int argc, char **argv)
     {
         free(bytes.data);
         free(parser.nodes);
+        free(program.data);
         free(program.statements);
         source_free(&source);
         return 1;
     }
-    if (!decode(&bytes))
+    if (program.data_count != 0)
     {
-        free(bytes.data);
-        free(parser.nodes);
-        free(program.statements);
-        source_free(&source);
-        return 1;
+        puts("Data emitted; instruction-only decoding skipped.");
     }
-    puts("Decoding successful.");
+    else
+    {
+        if (!decode(&bytes))
+        {
+            free(bytes.data);
+            free(parser.nodes);
+            free(program.data);
+            free(program.statements);
+            source_free(&source);
+            return 1;
+        }
+        puts("Decoding successful.");
+    }
     free(bytes.data);
     free(parser.nodes);
+    free(program.data);
     free(program.statements);
+
     source_free(&source);
 
     return 0;

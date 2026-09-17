@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < program.count; i++)
             printf("value = %lld\n", program.statements[i].value);
     }
+    free(program.data);
     free(program.statements);
     free(parser.nodes);
     source_free(&source);
