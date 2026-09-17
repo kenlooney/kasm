@@ -33,15 +33,15 @@ int main(int argc, char **argv)
     if (!relocate(demonstration, sizeof demonstration, &patch, 1))
         return 1;
 
-    if (argc != 4)
-    {
-        fprintf(stderr, "Usage: %s --bits <target-mode> <source-file> \n", argv[0]);
-        return 1;
-    }
     Source source;
-    // Parse target mode from command line argument
     Target target;
-    if (strcmp(argv[1], "--bits") == 0)
+    const char *source_path;
+    if (argc == 2)
+    {
+        target.mode = MODE_64;
+        source_path = argv[1];
+    }
+    else if (argc == 4 && strcmp(argv[1], "--bits") == 0)
     {
         if (strcmp(argv[2], "16") == 0)
             target.mode = MODE_16;
@@ -54,14 +54,15 @@ int main(int argc, char **argv)
             fprintf(stderr, "Invalid target mode: %s\n", argv[2]);
             return 1;
         }
+        source_path = argv[3];
     }
     else
     {
-        printf("Defaulting to 64-bit mode\n");
-        target.mode = MODE_64;
+        fprintf(stderr, "Usage: %s [--bits <target-mode>] <source-file>\n", argv[0]);
+        return 1;
     }
 
-    if (!source_load(&source, argv[3]))
+    if (!source_load(&source, source_path))
         return 1;
 
     Parser parser;

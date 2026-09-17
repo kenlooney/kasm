@@ -2,14 +2,13 @@
 #define GENERATED_H
 #include <stddef.h>
 static const unsigned char code[] = {
-0x35,
+0xB8,
 0x2A,
 0x00,
 0x00,
 0x00,
-0xC3,
 };
-static const size_t code_size = 6;
+static const size_t code_size = 5;
 static const size_t patch_offsets[] = {
 0
 };
