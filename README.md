@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.20.0 (in development) loads assembly source, parses statements, label
+Kasm 0.22.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -18,7 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.20.0 (in development)**.
+The current source version is **0.22.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -43,6 +43,7 @@ The current source version is **0.20.0 (in development)**.
 | 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
 | 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
 | 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
+| 0.22.0 (in development) | Make CPU mode explicit with `--bits 16`, `--bits 32`, or `--bits 64`; reject the currently unsupported 16-bit and 32-bit modes before encoding. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -56,7 +57,8 @@ Version 0.19.1 replaces the fixed source buffer with dynamically growing
 storage, allowing larger source files without changing the NUL-free ASCII rule.
 Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwise
 instruction set, and keeps the decoder and release notes aligned with the current
-assembler behavior.
+assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
+rejects unsupported 16-bit and 32-bit targets before encoding.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -108,10 +110,12 @@ From the extracted package directory, create `example.asm` containing
 
 ```powershell
 .\bin\kasm.exe example.asm
+.\bin\kasm.exe --bits 64 example.asm
 ```
 
 ```bash
 ./bin/kasm example.asm
+./bin/kasm --bits 64 example.asm
 ```
 
 Expected output with the current source build:
@@ -122,9 +126,11 @@ B8 2A 00 00 00
 Decoding successful.
 ```
 
-The CLI accepts exactly one source-file path. The current source build prints
-one line of uppercase hexadecimal bytes, with a space after each byte, followed
-by a decoded listing and `Decoding successful.` when decoding succeeds.
+The CLI accepts either one source-file path, which defaults to 64-bit mode, or
+`--bits 16|32|64` followed by one source-file path. The current implementation
+rejects 16-bit and 32-bit modes before encoding; 64-bit mode is supported. It
+prints one line of uppercase hexadecimal bytes, with a space after each byte,
+followed by a decoded listing and `Decoding successful.` when decoding succeeds.
 Older releases may print only the hexadecimal line. The CLI writes `program.bin` (raw bytes) and
 `generated.h` (C declarations) in the **current working directory**, replacing
 previous files with those names before decoding. Redirecting stdout saves text,

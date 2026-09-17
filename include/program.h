@@ -19,6 +19,7 @@
 
 
 #include "expr.h"
+#include "target.h"
 typedef enum { 
     ST_MOV, 
     ST_RET, 
@@ -59,6 +60,6 @@ typedef struct {
 } Program;
 // Initializes a fresh Program. Caller frees statements even if parsing fails.
 int parse_program(Parser *parser, Program *program);
-int check_program(Parser *parser, Program *program);
+int check_program(Parser *parser, Program *program, const Target *target);
 
 #endif // KASM_PROGRAM_H

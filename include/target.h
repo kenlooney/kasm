@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KASM_SEMANTIC_H
-#define KASM_SEMANTIC_H
 
-#include "program.h"
-#include "target.h"
+#ifndef KASM_TARGET_H
+#define KASM_TARGET_H
 
-int check_program(Parser *parser, Program *program, const Target *target);
-#endif // KASM_SEMANTIC_H
+typedef enum {
+    MODE_16,
+    MODE_32,
+    MODE_64
+} MachineMode;
+
+typedef struct {
+    MachineMode mode;
+} Target;
+#endif // KASM_TARGET_H

@@ -17,6 +17,7 @@
 #define KASM_EMIT_H
 
 #include "program.h"
+#include "target.h"
 
 typedef struct {
     unsigned char *data;
@@ -27,6 +28,6 @@ typedef struct {
 } Bytes;
 
 int byte_push(Bytes *bytes, unsigned char value);
-int encode(const Source *source, Program *program, Bytes *bytes);
+int encode(const Source *source, Program *program, Bytes *bytes, const Target *target);
 int write_binary(const Bytes *bytes, const char *path);
 #endif // KASM_EMIT_H

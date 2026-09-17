@@ -14,8 +14,22 @@
 
 #include "semantic.h"
 
-int check_program(Parser *parser, Program *program)
+int check_program(Parser *parser, Program *program, const Target *target)
 {
+    if(target->mode == MODE_16)
+    {
+        const Source *source = parser->lexer.cursor.source;
+        Span span = {0};
+        diagnostic(source, span, "16-bit mode is not supported");
+        return 0;
+    }
+    if(target->mode == MODE_32)
+    {
+        const Source *source = parser->lexer.cursor.source;
+        Span span = {0};
+        diagnostic(source, span, "32-bit mode is not supported");
+        return 0;
+    }
     const Source *source = parser->lexer.cursor.source;
     for (int i = 0; i < parser->count; i++)
     {

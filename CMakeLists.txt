@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.21.0 LANGUAGES C)
+project(kasm VERSION 0.22.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -57,6 +57,20 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=BA 2A 00 00 00 81 C2 07 00 00 00 81 EA 03 00 00 00 C3"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/edx_registers_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME semantic.reject_mode_16 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mov_42.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/reject_mode_16"
+        "-DEXPECTED_ERROR=16-bit mode is not supported"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_mode.cmake")
+    add_test(NAME semantic.reject_mode_32 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mov_42.asm"
+        "-DBITS=32"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/reject_mode_32"
+        "-DEXPECTED_ERROR=32-bit mode is not supported"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_mode.cmake")
     add_test(NAME encode.xor COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/xor.asm"

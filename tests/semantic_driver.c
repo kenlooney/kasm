@@ -4,16 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "semantic.h"
+#include "target.h"
 
 // Keep evaluated-value checks independent of the byte-output CLI.
 int main(int argc, char **argv) {
     Source source;
+    Target target = {MODE_64};
     if (argc != 2 || !source_load(&source, argv[1]))
         return 1;
     Parser parser;
     Program program;
     parser_start(&parser, &source);
-    int ok = parse_program(&parser, &program) && check_program(&parser, &program);
+
+    int ok = parse_program(&parser, &program) && check_program(&parser, &program, &target);
     if (ok) {
         printf("statements = %d\n", program.count);
         for (int i = 0; i < program.count; i++)

@@ -16,6 +16,7 @@
 #define KASM_DECODE_H
 
 #include "emit.h"
+#include "target.h"
 
 int decode(const Bytes *bytes);
 
