@@ -117,39 +117,7 @@ static int statement(Parser *parser, Program *program)
         s.operand = name;
         lexer_next(&parser->lexer);
     }
-    // Data directives share one expression-list parser.
-    // else if (token_is(source, name, "db") || token_is(source, name, "byte") ||
-    //          token_is(source, name, "dw") || token_is(source, name, "word") ||
-    //          token_is(source, name, "dd") || token_is(source, name, "dword") ||
-    //          token_is(source, name, "dq") || token_is(source, name, "qword") )
-    // {
-    //     int is_byte = token_is(source, name, "db") ||
-    //                   token_is(source, name, "byte");
-    //     int is_word = token_is(source, name, "dw") ||
-    //                   token_is(source, name, "word");
-    //     int is_dword = token_is(source, name, "dd") ||
-    //                    token_is(source, name, "dword");
-    //     int is_qword = token_is(source, name, "dq") ||
-    //                    token_is(source, name, "qword");
-    //     s.kind = is_byte ? ST_DB : is_word ? ST_DW : is_dword ? ST_DD : ST_DQ;
-    //     s.data_width = is_byte ? 1 : is_word ? 2 : is_dword ? 4 : 8;
-    //     s.data_start = program->data_count;
-    //     for (;;)
-    //     {
-    //         int expr = parse_expression(parser);
-    //         if (expr < 0)
-    //             return 0;
-    //         if (!append_data(parser, program, expr))
-    //             return 0;
-    //         s.data_count++;
-    //         if (parser->lexer.token.kind != TK_COMMA)
-    //             break;
-    //         if (!take(parser, TK_COMMA, "expected comma"))
-    //             return 0;
-    //     }
-    //     if (!take(parser, TK_SEMI, "expected semicolon"))
-    //         return 0;
-    // }
+
     else if (token_is(source, name, "times") || token_is(source, name, "fill"))
     {
         s.repeat_expression = parse_expression(parser);
@@ -183,12 +151,32 @@ static int statement(Parser *parser, Program *program)
             return 0;
         if (!take(parser, TK_COMMA, "expected comma"))
             return 0;
-        s.expression = parse_expression(parser);
-        if (s.expression < 0)
-            return 0;
+
+        if (parser->lexer.token.kind == TK_LBRACKET)
+        {
+            lexer_next(&parser->lexer);
+            if (parser->lexer.token.kind != TK_IDENT)
+            {
+                parser_error(parser, "expected base register inside [ ]");
+                return 0;
+            }
+            s.is_memory_operand = 1;
+            s.base_operand = parser->lexer.token;
+            lexer_next(&parser->lexer);
+            if (!take(parser, TK_RBRACKET, "expected closing bracket"))
+                return 0;
+        }
+        else
+        {
+            s.expression = parse_expression(parser);
+            if (s.expression < 0)
+                return 0;
+        }
+
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+
     else if (token_is(source, name, "ret"))
     {
         s.kind = ST_RET;

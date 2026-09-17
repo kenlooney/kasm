@@ -28,7 +28,17 @@ int decode(const Bytes *bytes, const Target *target)
         const char *registers16[] = {"ax", "cx", "dx", "bx"};
         const char *registers32[] = {"eax", "ecx", "edx", "ebx"};
         const char **registers = target->mode == MODE_16 ? registers16 : registers32;
-        if (p[0] >= 0xB8 && p[0] <= 0xBA && left >= (size_t)(1 + immediate_width))
+        
+        if (p[0] == 0x8B && left >= 2 && (p[1] & 0xC7) == 0x07)
+        {
+            unsigned reg = (p[1] >> 3) & 0x07;
+            const char *name = reg == 0 ? "ax" : reg == 1 ? "cx" : reg == 2 ? "dx" : NULL;
+            if (name == NULL)
+                return 0;
+            printf("mov %s, [bx]\n", name);
+            width = 2;
+        }
+        else if (p[0] >= 0xB8 && p[0] <= 0xBA && left >= (size_t)(1 + immediate_width))
         {
             printf("mov %s, %llu\n", registers[p[0] - 0xB8],
                    (unsigned long long)read_le(p + 1, immediate_width));

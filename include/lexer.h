@@ -34,6 +34,8 @@ typedef enum {
     TK_NUMBER,
     TK_NEWLINE,
     TK_DOLLAR,
+    TK_LBRACKET,
+    TK_RBRACKET,
 } TokenKind;
 
 typedef struct {

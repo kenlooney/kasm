@@ -77,6 +77,8 @@ typedef struct {
     unsigned data_width; /* bytes per data element */
     int repeat_expression; /* expression-node index, or -1 for plain data */
     size_t repeat_count; /* number of times to repeat the data element */
+    int is_memory_operand; /* 1 if the operand is a memory reference, 0 otherwise */
+    Token base_operand;
 } Statement;
 
 
