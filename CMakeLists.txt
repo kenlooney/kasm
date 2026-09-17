@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.25.1 LANGUAGES C)
+project(kasm VERSION 0.27.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -43,6 +43,14 @@ if(BUILD_TESTING)
     add_example_test(mov_42 examples/mov_42.asm "B8 2A 00 00 00")
     add_example_test(ret examples/ret.asm "C3")
     add_example_test(program examples/program.asm "B8 2A 00 00 00 C3")
+    add_test(NAME encode.mode16_mov COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mode16_mov.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_mov"
+        "-DEXPECTED_HEX=B8 2A 00 B9 07 00 BA 03 00"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_mov_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     foreach(data_case data_bytes data_jump data_words data_words_jump data_dwords data_qwords data_all_jump)
         if(data_case STREQUAL "data_bytes")
             set(data_hex "41 42 00 AA 55")
@@ -91,12 +99,12 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=BA 2A 00 00 00 81 C2 07 00 00 00 81 EA 03 00 00 00 C3"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/edx_registers_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
-    add_test(NAME semantic.reject_mode_16 COMMAND "${CMAKE_COMMAND}"
+    add_test(NAME semantic.reject_eax_in_mode16 COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mov_42.asm"
         "-DBITS=16"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/reject_mode_16"
-        "-DEXPECTED_ERROR=16-bit mode is not supported"
+        "-DEXPECTED_ERROR=16-bit mode requires 16-bit registers: ax, cx, or dx"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_mode.cmake")
     add_test(NAME semantic.reject_mode_32 COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"

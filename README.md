@@ -1,20 +1,20 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.25.1 (in development) is a small C assembler for a deliberately limited
-x86-64 instruction set. It owns source text, lexes tokens, parses expressions
+Kasm 0.26.0 (in development) is a small C assembler with a deliberately limited
+x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
 images back into a listing.
 
 The project also emits raw data directives and assembly-time repetition. The
-current target is hosted x86-64 code; `MODE_16` and `MODE_32` are recognized by
-the CLI but remain rejected targets. A raw data image is not automatically a
+default target is hosted x86-64 code; `--bits 16` selects the developing 16-bit
+encoding path, while `--bits 32` remains rejected. A raw data image is not automatically a
 bootable program, and Kasm does not yet generate object files or standalone
 executables.
 
 ## Version history
 
-The current source version is **0.25.1 (in development)**.
+The current source version is **0.26.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -45,6 +45,8 @@ The current source version is **0.25.1 (in development)**.
 | 0.24.1 (in development) | Restore the default one-source-file CLI invocation as 64-bit mode, preserving compatibility with existing tests and installed-package smoke checks. |
 | 0.25.0 (in development) | Add `$` and `$$` location-aware expressions, resolve dynamic TIMES/FILL counts during layout, and add a 512-byte NASM-style padding regression for `times 510-($-$$) db 0;`. |
 | 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
+| 0.26.0 (in development) | Add initial 16-bit MOV/ADD/SUB encoding for AX/CX/DX, operand-width-aware layout, and target-aware decoding for these forms; add a 16-bit MOV fixture and verify the arithmetic example on Windows and WSL2. |
+| 0.27.0 (in development) | Add 16-bit indirect `mov` from `[bx]` into AX/CX/DX, with encoding, decoding, operand validation, and an end-to-end regression test. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -59,7 +61,7 @@ storage, allowing larger source files without changing the NUL-free ASCII rule.
 Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwise
 instruction set, and keeps the decoder and release notes aligned with the current
 assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
-rejects unsupported 16-bit and 32-bit targets before encoding.
+initially rejected unsupported 16-bit and 32-bit targets before encoding.
 Version 0.24.0 adds TIMES/FILL repetition for raw data declarations. Version
 0.24.1 restores the default 64-bit CLI invocation alongside explicit `--bits 64`
 selection. Version 0.25.0 adds location-aware repeat counts: `$` means the
@@ -75,6 +77,67 @@ layout and label lookup, and short and near jumps. The earlier development synta
 For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
+
+## Initial 16-bit support (0.26.0)
+
+Use `--bits 16` for the new MOV, ADD, and SUB forms on AX, CX, and DX.
+The default remains `--bits 64`, using EAX, ECX, and EDX for these operations.
+32-bit target mode is still unsupported. Operand width is stored on each
+statement so layout and emission agree on instruction length.
+
+| 16-bit form | Size | Example bytes |
+| --- | ---: | --- |
+| `mov ax,42;` | 3 | `B8 2A 00` |
+| `mov cx,7;` | 3 | `B9 07 00` |
+| `mov dx,3;` | 3 | `BA 03 00` |
+| `add ax,7;` | 3 | `05 07 00` |
+| `sub cx,3;` | 4 | `81 E9 03 00` |
+| `add dx,7;` | 4 | `81 C2 07 00` |
+
+The decoder now receives the target mode: the same MOV opcode has a two-byte
+immediate in these 16-bit forms and a four-byte immediate in the supported
+64-bit forms. ADD/SUB register forms also include a ModR/M byte where needed.
+
+After configuring and building, run the permanent MOV fixture:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "^encode.mode16_mov$" --output-on-failure
+```
+
+Run the arithmetic example with the reusable file test from the repository root:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/mode16_add_sub.asm" "-DBITS=16" "-DEXPECTED_HEX=05 07 00 81 E9 03 00 81 C2 07 00" -P tests/encode_file.cmake
+```
+
+For WSL2, use `-DKASM=build/GCC-debug/kasm` and the same source, mode, and
+expected bytes. Outputs go into the test's isolated directory under
+`build/example-tests`. Omitting `BITS` from the helper still selects 64-bit mode.
+
+These are encoding/decoding checks, not execution tests. The existing hosted
+runners execute x86-64 code and must not be used to execute these 16-bit images.
+This milestone does not establish general 16-bit instruction support, complete
+operand-range validation, or a bootable-program workflow; other instructions
+still need mode-specific review.
+
+Validation for this milestone: all 32 registered tests passed in WSL2 with GCC,
+and the 16-bit arithmetic example matched its expected bytes in both Windows
+and WSL2. The seven targeted Windows decoder/encoding regressions also passed.
+The obsolete blanket 16-bit rejection test now checks rejection of EAX in
+16-bit mode. The GCC build also caught and prompted a missing `<string.h>` fix.
+
+## 16-bit indirect MOV support (0.27.0)
+
+16-bit mode now supports loading AX, CX, or DX from the `[bx]` memory operand.
+For example, `mov ax, [bx];` emits `8B 07` and is decoded back to the same
+instruction. This feature is intentionally limited to `[bx]`; other memory
+addressing forms remain unsupported.
+
+Run the focused regression test from the repository root:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/mode16_mov_indirect.asm" "-DBITS=16" "-DEXPECTED_HEX=8B 07" -P tests/encode_file.cmake
+```
 
 ## Data directives and layout expressions (0.25.0)
 
@@ -130,6 +193,10 @@ but prints `Data emitted; instruction-only decoding skipped.` instead of trying
 to disassemble the image. Instruction-only images retain their decoded listing.
 TIMES/FILL repetition is supported for data directives. Strings, alignment, and
 symbol-valued data remain future work.
+
+Generated images are capped at **16 MiB (16,777,216 bytes)** by
+`KASM_IMAGE_LIMIT`. This output limit includes instructions and repeated data;
+it is separate from dynamically allocated source-file storage.
 
 ### Location-aware padding
 
@@ -224,7 +291,8 @@ Decoding successful.
 
 The CLI accepts either one source-file path, which defaults to 64-bit mode, or
 `--bits 16|32|64` followed by one source-file path. The current implementation
-rejects 16-bit and 32-bit modes before encoding; 64-bit mode is supported. It
+supports the initial 16-bit forms described above and the existing 64-bit path;
+32-bit mode is rejected. It
 prints one line of uppercase hexadecimal bytes, with a space after each byte,
 followed by a decoded listing and `Decoding successful.` when decoding succeeds.
 Older releases may print only the hexadecimal line. The CLI writes `program.bin` (raw bytes) and

@@ -1,0 +1,4 @@
+0000: mov ax, 42
+0003: mov cx, 7
+0006: mov dx, 3
+Decoding successful.

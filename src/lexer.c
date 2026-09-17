@@ -188,6 +188,14 @@ void lexer_next(Lexer *lexer) {
     case '$':
         token.kind = TK_DOLLAR;
         break;
+    case '[':
+        token.kind = TK_LBRACKET;
+       
+        break;
+    case ']':
+        token.kind = TK_RBRACKET;
+        
+        break;
     default:
 
     {

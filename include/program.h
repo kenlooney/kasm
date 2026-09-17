@@ -71,11 +71,14 @@ typedef struct {
     long long value;
     size_t offset;
     unsigned reg_code;
+    unsigned operand_bits; /* 16 for ax/cx/dx; 32 for eax/ecx/edx; 64 for rax/rcx/rdx */
     size_t data_start; /* index into program->data */
     size_t data_count; /* elements belonging to this statement */
     unsigned data_width; /* bytes per data element */
     int repeat_expression; /* expression-node index, or -1 for plain data */
     size_t repeat_count; /* number of times to repeat the data element */
+    int is_memory_operand; /* 1 if the operand is a memory reference, 0 otherwise */
+    Token base_operand;
 } Statement;
 
 
