@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.27.0 LANGUAGES C)
+project(kasm VERSION 0.28.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
     ${SOURCES})
 target_include_directories(kasm PUBLIC ${CMAKE_SOURCE_DIR}/include)
+add_executable(emulator16 tests/emulator16.c)
 
 # Keep Windows ZIPs runnable without a separate Visual C++ runtime install.
 if(MSVC)
@@ -147,10 +148,23 @@ if(BUILD_TESTING)
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/boot_pad.asm"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/boot_pad"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/boot_pad.cmake")
+    add_test(NAME boot_sector.contract COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/boot_sector.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/boot_sector"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/boot_sector.cmake")
+    add_test(NAME emulator.boot_sector COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DEMULATOR=$<TARGET_FILE:emulator16>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/boot_sector.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/boot_sector_emulator"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/boot_sector_emulator.cmake")
 
     add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_expression.cmake")
+
+    add_test(NAME emulator.mode16 COMMAND "$<TARGET_FILE:emulator16>")
 
     
     add_executable(program_blocks_test

@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.26.0 (in development) is a small C assembler with a deliberately limited
+Kasm 0.28.0 (in development) is a small C assembler with a deliberately limited
 x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -14,7 +14,7 @@ executables.
 
 ## Version history
 
-The current source version is **0.26.0 (in development)**.
+The current source version is **0.28.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -47,6 +47,7 @@ The current source version is **0.26.0 (in development)**.
 | 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
 | 0.26.0 (in development) | Add initial 16-bit MOV/ADD/SUB encoding for AX/CX/DX, operand-width-aware layout, and target-aware decoding for these forms; add a 16-bit MOV fixture and verify the arithmetic example on Windows and WSL2. |
 | 0.27.0 (in development) | Add 16-bit indirect `mov` from `[bx]` into AX/CX/DX, with encoding, decoding, operand validation, and an end-to-end regression test. |
+| 0.28.0 (in development) | Add a 512-byte 16-bit boot-sector fixture with binary-literal padding, boot-image contract validation, emulator execution at `0x7C00`, and QEMU-compatible raw-image output. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -139,6 +140,40 @@ Run the focused regression test from the repository root:
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/mode16_mov_indirect.asm" "-DBITS=16" "-DEXPECTED_HEX=8B 07" -P tests/encode_file.cmake
 ```
 
+Build and run the instruction-level MODE_16 emulator harness:
+
+```powershell
+cmake --build build/windows-debug --config Debug --target emulator16
+.\build\windows-debug\Debug\emulator16.exe
+```
+
+The harness executes the exact byte fixtures for `mode16_mov.asm`,
+`mode16_add_sub.asm`, and `mode16_mov_indirect.asm`, and rejects corrupted
+opcodes and ModR/M bytes. It is an instruction-level test harness, not a
+bootable real-mode environment.
+
+## Boot-sector image workflow (0.28.0)
+
+The boot-sector fixture combines 16-bit instructions with location-aware
+padding and the binary literal `0b00000010`:
+
+```asm
+mov ax, 42;
+add ax, 3;
+times (512-0b00000010)-($-$$) db 0;
+dw 0xAA55;
+```
+
+The boot-image contract requires exactly 512 bytes, zero-filled data through
+offset 509, and the `55 AA` signature at the end. The emulator loads the image
+at `0x7C00`, steps the two instructions, and verifies that AX becomes `45`.
+
+Run the contract and emulator tests with:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "^(boot_sector\.contract|emulator\.boot_sector)$" --output-on-failure
+```
+
 ## Data directives and layout expressions (0.25.0)
 
 Data directives emit values directly, without an instruction opcode:
@@ -216,7 +251,7 @@ little-endian signature bytes `55 AA`.
 
 This produces a 512-byte data image. It is a tested layout fixture, not yet a
 bootable sector: a signature alone does not define an entry convention, segment
-state, stack, BIOS services, or an emulator workflow. Negative padding is
+state, stack, BIOS services, or a bootable real-mode workflow. Negative padding is
 rejected before the repeat count is converted to `size_t`.
 
 Permanent tests cover all eight spellings, expression values, range boundaries,
