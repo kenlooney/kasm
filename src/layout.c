@@ -70,7 +70,7 @@ size_t instruction_size(const Statement *statement)
     }
     return 0;
 }
-int layout(const Source *source, Program *program)
+int layout(const Source *source, Program *program, const Target *target)
 {
     size_t offset = 0;
     for (int i = 0; i < program->count; i++)

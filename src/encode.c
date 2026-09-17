@@ -26,7 +26,7 @@ static int little_endian(Bytes *bytes, uint64_t value, int width) {
     }
     return 1;
 }
-int encode(const Source *source, Program *program, Bytes *bytes) {
+int encode(const Source *source, Program *program, Bytes *bytes, const Target *target) {
     (void)source;
     for (int i = 0; i < program->count; i++) {
         Statement *s = &program->statements[i];
