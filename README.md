@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.26.0 (in development) is a small C assembler with a deliberately limited
+Kasm 0.28.0 (in development) is a small C assembler with a limited
 x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -14,7 +14,7 @@ executables.
 
 ## Version history
 
-The current source version is **0.26.0 (in development)**.
+The current source version is **0.28.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -47,6 +47,7 @@ The current source version is **0.26.0 (in development)**.
 | 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
 | 0.26.0 (in development) | Add initial 16-bit MOV/ADD/SUB encoding for AX/CX/DX, operand-width-aware layout, and target-aware decoding for these forms; add a 16-bit MOV fixture and verify the arithmetic example on Windows and WSL2. |
 | 0.27.0 (in development) | Add 16-bit indirect `mov` from `[bx]` into AX/CX/DX, with encoding, decoding, operand validation, and an end-to-end regression test. |
+| 0.28.0 (in development) | Add a 512-byte 16-bit boot-sector fixture using location-aware padding, binary literals, and the `55 AA` boot signature. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -138,6 +139,23 @@ Run the focused regression test from the repository root:
 ```powershell
 cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/mode16_mov_indirect.asm" "-DBITS=16" "-DEXPECTED_HEX=8B 07" -P tests/encode_file.cmake
 ```
+
+## Boot-sector image fixture (0.28.0)
+
+The 16-bit boot-sector example combines instruction encoding, location-aware
+padding, and binary literal parsing:
+
+```asm
+mov ax, 42;
+add ax, 3;
+times (512-0b00000010)-($-$$) db 0;
+dw 0xAA55;
+```
+
+The resulting image is designed to be exactly 512 bytes, with zero-filled
+padding and the boot signature `55 AA` in its final two bytes. The image begins
+with the two 16-bit instructions and is suitable for loading at `0x7C00` in a
+firmware emulator or raw-image virtual machine.
 
 ## Data directives and layout expressions (0.25.0)
 
