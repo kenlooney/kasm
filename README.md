@@ -46,6 +46,7 @@ The current source version is **0.26.0 (in development)**.
 | 0.25.0 (in development) | Add `$` and `$$` location-aware expressions, resolve dynamic TIMES/FILL counts during layout, and add a 512-byte NASM-style padding regression for `times 510-($-$$) db 0;`. |
 | 0.25.1 (in development) | Fix the boot-padding regression test to measure binary output through its HEX representation, keeping CI behavior consistent across Windows and Linux. |
 | 0.26.0 (in development) | Add initial 16-bit MOV/ADD/SUB encoding for AX/CX/DX, operand-width-aware layout, and target-aware decoding for these forms; add a 16-bit MOV fixture and verify the arithmetic example on Windows and WSL2. |
+| 0.27.0 (in development) | Add 16-bit indirect `mov` from `[bx]` into AX/CX/DX, with encoding, decoding, operand validation, and an end-to-end regression test. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -124,6 +125,19 @@ and the 16-bit arithmetic example matched its expected bytes in both Windows
 and WSL2. The seven targeted Windows decoder/encoding regressions also passed.
 The obsolete blanket 16-bit rejection test now checks rejection of EAX in
 16-bit mode. The GCC build also caught and prompted a missing `<string.h>` fix.
+
+## 16-bit indirect MOV support (0.27.0)
+
+16-bit mode now supports loading AX, CX, or DX from the `[bx]` memory operand.
+For example, `mov ax, [bx];` emits `8B 07` and is decoded back to the same
+instruction. This feature is intentionally limited to `[bx]`; other memory
+addressing forms remain unsupported.
+
+Run the focused regression test from the repository root:
+
+```powershell
+cmake "-DKASM=build/windows-debug/Debug/kasm.exe" "-DSOURCE=examples/mode16_mov_indirect.asm" "-DBITS=16" "-DEXPECTED_HEX=8B 07" -P tests/encode_file.cmake
+```
 
 ## Data directives and layout expressions (0.25.0)
 

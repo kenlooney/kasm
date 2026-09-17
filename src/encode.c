@@ -38,23 +38,32 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         // mov
         if (s->kind == ST_MOV)
         {
-            int width = s->operand_bits == 16 ? 2 : 4;
-            switch (s->reg_code)
+            if (s->is_memory_operand)
             {
-            case 0:
-                if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, width))
+                unsigned char modrm = (unsigned char)(0x07 | (s->reg_code << 3));
+                if (!byte_push(bytes, 0x8B) || !byte_push(bytes, modrm))
                     return 0;
-                break;
-            case 1:
-                if (!byte_push(bytes, 0xB9) || !little_endian(bytes, (uint64_t)s->value, width))
+            }
+            else
+            {
+                int width = s->operand_bits == 16 ? 2 : 4;
+                switch (s->reg_code)
+                {
+                case 0:
+                    if (!byte_push(bytes, 0xB8) || !little_endian(bytes, (uint64_t)s->value, width))
+                        return 0;
+                    break;
+                case 1:
+                    if (!byte_push(bytes, 0xB9) || !little_endian(bytes, (uint64_t)s->value, width))
+                        return 0;
+                    break;
+                case 2:
+                    if (!byte_push(bytes, 0xBA) || !little_endian(bytes, (uint64_t)s->value, width))
+                        return 0;
+                    break;
+                default:
                     return 0;
-                break;
-            case 2:
-                if (!byte_push(bytes, 0xBA) || !little_endian(bytes, (uint64_t)s->value, width))
-                    return 0;
-                break;
-            default:
-                return 0;
+                }
             }
         }
 

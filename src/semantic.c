@@ -155,6 +155,21 @@ int check_program(Parser *parser, Program *program, const Target *target)
 
         if (s->kind == ST_MOV)
         {
+            if (s->is_memory_operand)
+            {
+                if (target->mode != MODE_16)
+                {
+                    diagnostic(source, s->operand.span,
+                               "memory operands are only supported in MODE_16");
+                    return 0;
+                }
+                if (!token_is(source, s->base_operand, "bx"))
+                {
+                    diagnostic(source, s->base_operand.span,
+                               "only [bx] is supported in this chapter");
+                    return 0;
+                }
+            }
 
             if (token_is(source, s->operand, "eax"))
             {
@@ -206,7 +221,8 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 return 0;
             }
         }
-        if (s->kind == ST_MOV && s->operand_bits == 16 && s->value > 65535)
+        if (s->kind == ST_MOV && !s->is_memory_operand &&
+            s->operand_bits == 16 && s->value > 65535)
         {
             diagnostic(source, parser->nodes[s->expression].span,
                        "mov ax/cx/dx immediate must fit in 16 bits");
@@ -283,7 +299,11 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
+        if ((s->kind == ST_MOV && !s->is_memory_operand) ||
+            s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
+            s->kind == ST_OR || s->kind == ST_ADC ||
+            s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM ||
+            s->kind == ST_AND || s->kind == ST_XOR)
         {
             s->value = parser->nodes[s->expression].value;
             if (s->kind == ST_INT_IMM8 && (s->value < 0 || s->value > 255))
