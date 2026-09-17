@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
         memset(source.text, '{', depth);
         strcpy(source.text + depth, instruction);
         memset(source.text + depth + strlen(instruction), '}', depth);
+        source.text[2 * depth + strlen(instruction)] = '\0';
         expected_count = 1;
     } else {
         return 2;

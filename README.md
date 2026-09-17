@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.22.0 (in development) loads assembly source, parses statements, label
+Kasm 0.23.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
@@ -18,7 +18,7 @@ generate object files or standalone executables.
 
 ## Version history
 
-The current source version is **0.22.0 (in development)**.
+The current source version is **0.23.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -44,6 +44,7 @@ The current source version is **0.22.0 (in development)**.
 | 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
 | 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
 | 0.22.0 (in development) | Make CPU mode explicit with `--bits 16`, `--bits 32`, or `--bits 64`; reject the currently unsupported 16-bit and 32-bit modes before encoding. |
+| 0.23.0 (in development) | Add DB/byte and DW/word data directives, expression lists, range checks, little-endian emission, and label offsets across embedded data; skip instruction-only decoding for images containing data. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -67,6 +68,47 @@ layout and label lookup, and short and near jumps. The earlier development synta
 For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
+
+## Data directives (0.23.0)
+
+Data directives emit values directly, without an instruction opcode:
+
+| Spelling | Bytes per value | Accepted result |
+| --- | ---: | --- |
+| `db` or `byte` | 1 | 0 through 255 |
+| `dw` or `word` | 2 | 0 through 65535 |
+
+Both accept comma-separated expressions terminated by a semicolon. Words use
+little-endian byte order, with no automatic alignment or padding.
+
+```asm
+db 60+5,66,0;       // 41 42 00
+byte 0xAA,0x55;    // AA 55
+dw 4660;           // 34 12
+word 0x55AA;       // AA 55
+```
+
+Each word list element occupies two bytes: `word 0xAA,0x55;` emits
+`AA 00 55 00`. Empty lists, trailing commas, missing commas, negative results,
+and results above the directive's range are rejected. The existing signed
+32-bit expression rules still apply to intermediate calculations.
+
+Labels include the size of preceding data. Executable examples must jump over
+embedded data, as in `examples/data_words_jump.asm`. Data-only examples are
+encoding fixtures, not functions to execute.
+
+The CLI still writes `program.bin` and `generated.h` for images containing data,
+but prints `Data emitted; instruction-only decoding skipped.` instead of trying
+to disassemble the image. Instruction-only images retain their decoded listing.
+DD/DQ, strings, repetition, alignment, and symbol-valued data remain future work.
+
+Permanent tests cover both aliases, expression values, word boundaries, exact
+bytes, mixed byte/word layout, jump targets, and invalid lists and ranges.
+After configuring and building, run them with:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|semantic.data_invalid)" --output-on-failure
+```
 
 ## Opcode lookup guide
 
@@ -604,7 +646,7 @@ The current language supports MOV, ADD, SUB, OR, AND, ADC, CMP, INC, and DEC on 
 PUSH/POP on `rax`, INT with an immediate vector, operand-free RET,
 short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a label.
 Far jumps, short conditional jumps, other condition codes, other instructions and registers,
-labels in expressions, memory operands, directives, and object
+labels in expressions, memory operands, directives beyond DB/byte and DW/word, and object
 or executable file formats are not implemented. MOV immediates must be in
 `0..2147483647`; ADD/SUB/OR/ADC accept signed 32-bit expression results, subject to the
 expression restrictions below. INT requires a final value in `0..255`.

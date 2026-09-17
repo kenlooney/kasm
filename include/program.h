@@ -20,6 +20,9 @@
 
 #include "expr.h"
 #include "target.h"
+#include <stdint.h>
+#include <stddef.h>
+
 typedef enum { 
     ST_MOV, 
     ST_RET, 
@@ -43,8 +46,16 @@ typedef enum {
     ST_ADC,
     ST_INT_IMM8,
     ST_CMP_RIM,
+    ST_DB,
+    ST_DW,
 
 } StatementKind;
+
+typedef struct {
+    int expression; /* index into parser->nodes*/
+    uint64_t value; /* filled by semantic checker */
+} DataElement;
+
 typedef struct {
     StatementKind kind;
     Span span;
@@ -53,10 +64,18 @@ typedef struct {
     long long value;
     size_t offset;
     unsigned reg_code;
+    size_t data_start; /* index into program->data */
+    size_t data_count; /* elements belonging to this statement */
+    unsigned data_width; /* bytes per data element */
 } Statement;
+
+
 typedef struct {
     Statement *statements;
     int count, capacity;
+    DataElement *data;
+    size_t data_count; /* elements across all data statements */
+    size_t data_capacity; /* allocated capacity for data array */
 } Program;
 // Initializes a fresh Program. Caller frees statements even if parsing fails.
 int parse_program(Parser *parser, Program *program);
