@@ -43,6 +43,8 @@ size_t instruction_size(const Statement *statement)
             return statement->reg_code == 0 ? 3 : 4;
         
         return statement->reg_code == 0 ? 5 : 6;
+    case ST_SBB:
+        return statement->operand_bits == 16 ? 4 : 6;
     case ST_RET:
         return 1;
     case ST_LABEL:
@@ -81,6 +83,10 @@ size_t instruction_size(const Statement *statement)
         return 2;
     case ST_CMP_RIM:
         return 5;
+    case ST_HALT:
+        return 1;
+    case ST_PAUSE:
+        return 2;
     }
     return 0;
 }

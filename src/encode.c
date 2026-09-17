@@ -66,6 +66,18 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
                 }
             }
         }
+        // halt
+        else if (s->kind == ST_HALT)
+        {
+            if (!byte_push(bytes, 0xF4))
+                return 0;
+        }
+        // pause
+        else if (s->kind == ST_PAUSE)
+        {
+            if (!byte_push(bytes, 0xF3) || !byte_push(bytes, 0x90))
+                return 0;
+        }
 
         // Data Directives (e.g., DB)
         else if (is_data_kind(s->kind))
@@ -121,6 +133,15 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         else if (s->kind == ST_ADC)
         {
             if (!byte_push(bytes, 0x15) || !little_endian(bytes, (uint64_t)s->value, 4))
+                return 0;
+        }
+        // sbb rim
+        else if (s->kind == ST_SBB)
+        {
+            int width = s->operand_bits == 16 ? 2 : 4;
+            unsigned char modrm = (unsigned char)(0xD8 | s->reg_code);
+            if (!byte_push(bytes, 0x81) || !byte_push(bytes, modrm) ||
+                !little_endian(bytes, (uint64_t)s->value, width))
                 return 0;
         }
         // int imm8

@@ -38,6 +38,18 @@ int decode(const Bytes *bytes, const Target *target)
             printf("mov %s, [bx]\n", name);
             width = 2;
         }
+        // halt
+        else if (p[0] == 0xF4)
+        {
+            puts("halt");
+            width = 1;
+        }
+        // pause
+        else if (p[0] == 0xF3 && left >= 2 && p[1] == 0x90)
+        {
+            puts("pause");
+            width = 2;
+        }
         else if (p[0] >= 0xB8 && p[0] <= 0xBA && left >= (size_t)(1 + immediate_width))
         {
             printf("mov %s, %llu\n", registers[p[0] - 0xB8],
@@ -57,6 +69,14 @@ int decode(const Bytes *bytes, const Target *target)
         {
             printf("%s %s, %lld\n", p[1] < 0xE0 ? "add" : "sub", registers[p[1] & 7],
                    signed_displacement(read_le(p + 2, immediate_width), immediate_width * 8));
+            width = 2 + immediate_width;
+        }
+        else if (p[0] == 0x81 && left >= (size_t)(2 + immediate_width) &&
+                 p[1] >= 0xD8 && p[1] <= 0xDB)
+        {
+            printf("sbb %s, %lld\n", registers[p[1] & 7],
+                   signed_displacement(read_le(p + 2, immediate_width),
+                                       immediate_width * 8));
             width = 2 + immediate_width;
         }
         else if (p[0] == 0xC3)

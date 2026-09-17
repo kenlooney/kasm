@@ -43,13 +43,16 @@ typedef enum {
     ST_OR,
     ST_AND,
     ST_XOR,
-    ST_ADC,
+    ST_ADC, // Add with carry
+    ST_SBB, // Subtract with borrow
     ST_INT_IMM8,
     ST_CMP_RIM,
     ST_DB,
     ST_DW,
     ST_DD,
     ST_DQ,
+    ST_HALT,
+    ST_PAUSE,
 
 } StatementKind;
 

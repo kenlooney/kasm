@@ -51,6 +51,14 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=B8 2A 00 B9 07 00 BA 03 00"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_mov_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.mode16_sbb COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mode16_sbb.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_sbb"
+        "-DEXPECTED_HEX=81 D8 01 00 81 D9 02 00 81 DA 03 00"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_sbb_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     foreach(data_case data_bytes data_jump data_words data_words_jump data_dwords data_qwords data_all_jump)
         if(data_case STREQUAL "data_bytes")
             set(data_hex "41 42 00 AA 55")

@@ -176,7 +176,20 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
-
+    // halt
+    else if (token_is(source, name, "halt"))
+    {
+        s.kind = ST_HALT;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // pause
+    else if (token_is(source, name, "pause"))
+    {
+        s.kind = ST_PAUSE;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     else if (token_is(source, name, "ret"))
     {
         s.kind = ST_RET;
@@ -241,6 +254,22 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_COMMA, "expected comma"))
             return 0;
         // Like MOV, ADC stores a register token and an expression root.
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
+    // sbb rim instruction
+    else if (token_is(source, name, "sbb"))
+    {
+        s.kind = ST_SBB;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected register"))
+            return 0;
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+        // Like MOV, SBB stores a register token and an expression root.
         s.expression = parse_expression(parser);
         if (s.expression < 0)
             return 0;

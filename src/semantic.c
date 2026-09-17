@@ -170,7 +170,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
                     return 0;
                 }
             }
-
+            
             if (token_is(source, s->operand, "eax"))
             {
                 s->reg_code = 0;      // Assuming 0 corresponds to eax
@@ -229,7 +229,8 @@ int check_program(Parser *parser, Program *program, const Target *target)
             return 0;
         }
 
-        else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
+             s->kind == ST_SBB)
         {
             if (token_is(source, s->operand, "eax"))
             {
@@ -285,7 +286,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
         else if (s->kind == ST_DEC ||
                  s->kind == ST_INC ||
                  s->kind == ST_OR ||
-                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
+                 s->kind == ST_ADC || s->kind == ST_SBB || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
             if (token_is(source, s->operand, "eax"))
                 s->reg_code = 0; // Assuming 0 corresponds to eax
@@ -301,7 +302,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
         }
         if ((s->kind == ST_MOV && !s->is_memory_operand) ||
             s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
-            s->kind == ST_OR || s->kind == ST_ADC ||
+            s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_SBB ||
             s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM ||
             s->kind == ST_AND || s->kind == ST_XOR)
         {
