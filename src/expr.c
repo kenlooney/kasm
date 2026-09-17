@@ -15,7 +15,8 @@
 #include "expr.h"
 #include <stdlib.h>
 
-void parser_start(Parser *parser, const Source *source) {
+void parser_start(Parser *parser, const Source *source)
+{
     parser->nodes = NULL;
     parser->count = 0;
     parser->depth = 0;
@@ -23,16 +24,20 @@ void parser_start(Parser *parser, const Source *source) {
     lexer_start(&parser->lexer, source);
 }
 
-void parser_error(Parser *parser, const char *message) {
-   if (!parser->failed && !parser->lexer.failed) {
+void parser_error(Parser *parser, const char *message)
+{
+    if (!parser->failed && !parser->lexer.failed)
+    {
         diagnostic(parser->lexer.cursor.source, parser->lexer.token.span, message);
         parser->failed = 1;
-   }
+    }
 }
 
-static int node(Parser *parser, Expr expression) {
+static int node(Parser *parser, Expr expression)
+{
     Expr *nodes = realloc(parser->nodes, sizeof(Expr) * (parser->count + 1));
-    if (nodes == NULL) {
+    if (nodes == NULL)
+    {
         parser_error(parser, "out of memory");
         return -1;
     }
@@ -41,10 +46,12 @@ static int node(Parser *parser, Expr expression) {
     return parser->count++;
 }
 static int binary(Parser *parser, ExprKind kind, int left, int right);
-static int primary(Parser *parser) {
+static int primary(Parser *parser)
+{
     Token token = parser->lexer.token;
 
-    if (token.kind == TK_MINUS) {
+    if (token.kind == TK_MINUS)
+    {
         Expr zero = {EX_INT, token.span, 0, -1, -1};
         int left = node(parser, zero);
         if (left < 0)
@@ -54,8 +61,26 @@ static int primary(Parser *parser) {
         return binary(parser, EX_SUB, left, right);
     }
 
-     if (token.kind == TK_LPAREN) {
-        if (parser->depth == 32) {
+    if (token.kind == TK_DOLLAR)
+    {
+        Span span = token.span;
+        lexer_next(&parser->lexer);
+        if (parser->lexer.token.kind == TK_DOLLAR)
+        {
+            span.end = parser->lexer.token.span.end;
+            lexer_next(&parser->lexer);
+            Expr section_start = {EX_SECTION_START, span, 0, -1, -1};
+            return node(parser, section_start);
+        }
+
+        Expr current_offset = {EX_CURRENT_OFFSET, span, 0, -1, -1};
+        return node(parser, current_offset);
+    }
+
+    if (token.kind == TK_LPAREN)
+    {
+        if (parser->depth == 32)
+        {
             parser_error(parser, "parentheses nested too deeply");
             return -1;
         }
@@ -65,7 +90,8 @@ static int primary(Parser *parser) {
         parser->depth--;
         if (root < 0)
             return -1;
-        if (parser->lexer.token.kind != TK_RPAREN) {
+        if (parser->lexer.token.kind != TK_RPAREN)
+        {
             parser_error(parser, "expected closing parenthesis");
             return -1;
         }
@@ -74,12 +100,13 @@ static int primary(Parser *parser) {
         lexer_next(&parser->lexer);
         return root;
     }
-    
-    if (token.kind != TK_NUMBER || parser->lexer.failed) {
+
+    if (token.kind != TK_NUMBER || parser->lexer.failed)
+    {
         parser_error(parser, "expected integer literal");
         return -1;
     }
-    
+
     Expr expression;
     expression.kind = EX_INT;
     expression.span = parser->lexer.token.span;
@@ -91,18 +118,21 @@ static int primary(Parser *parser) {
         lexer_next(&parser->lexer);
     return result;
 }
-static int binary(Parser *parser, ExprKind kind, int left, int right) {
+static int binary(Parser *parser, ExprKind kind, int left, int right)
+{
     if (left < 0 || right < 0)
         return -1;
     Span span = {parser->nodes[left].span.start, parser->nodes[right].span.end};
     Expr expression = {kind, span, 0, left, right};
     return node(parser, expression);
 }
-static int product(Parser *parser) {
+static int product(Parser *parser)
+{
     int left = primary(parser);
 
     while (left >= 0 &&
-           (parser->lexer.token.kind == TK_STAR)) {
+           (parser->lexer.token.kind == TK_STAR))
+    {
         TokenKind op = parser->lexer.token.kind;
         lexer_next(&parser->lexer);
         int right = primary(parser);
@@ -111,11 +141,13 @@ static int product(Parser *parser) {
     }
     return left;
 }
-int parse_expression(Parser *parser) {
+int parse_expression(Parser *parser)
+{
     int left = product(parser);
 
     while (left >= 0 &&
-           (parser->lexer.token.kind == TK_PLUS || parser->lexer.token.kind == TK_MINUS)) {
+           (parser->lexer.token.kind == TK_PLUS || parser->lexer.token.kind == TK_MINUS))
+    {
         TokenKind op = parser->lexer.token.kind;
         lexer_next(&parser->lexer);
         int right = product(parser);

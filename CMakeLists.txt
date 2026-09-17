@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.24.1 LANGUAGES C)
+project(kasm VERSION 0.25.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -133,6 +133,12 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=B8 29 00 00 00 FF C0 0F 84 01 00 00 00 C3 C3"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/decode_inc_jz_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+
+    add_test(NAME encode.boot_pad COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/boot_pad.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/boot_pad"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/boot_pad.cmake")
 
     add_test(NAME semantic.expression COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:semantic_test_driver>"

@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         source_free(&source);
         return 1;
     }
-    if (!layout(&source, &program, &target))
+    if (!layout(&source, &parser, &program, &target))
     {
         free(parser.nodes);
         free(program.data);

@@ -18,5 +18,6 @@
 #include "program.h"
 #include "target.h"
 
+int expression_uses_location(const Parser *parser, int expression);
 int check_program(Parser *parser, Program *program, const Target *target);
 #endif // KASM_SEMANTIC_H

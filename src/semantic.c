@@ -14,6 +14,17 @@
 
 #include "semantic.h"
 
+int expression_uses_location(const Parser *parser, int expression)
+{
+    const Expr *e = &parser->nodes[expression];
+    if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
+        return 1;
+    if (e->kind == EX_INT)
+        return 0;
+    return expression_uses_location(parser, e->left) ||
+           expression_uses_location(parser, e->right);
+}
+
 int check_program(Parser *parser, Program *program, const Target *target)
 {
     if (target->mode == MODE_16)
@@ -34,6 +45,10 @@ int check_program(Parser *parser, Program *program, const Target *target)
     for (int i = 0; i < parser->count; i++)
     {
         Expr *e = &parser->nodes[i];
+
+        if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
+            continue;
+
         if (e->kind != EX_INT)
         {
             long long left = parser->nodes[e->left].value;
@@ -54,17 +69,24 @@ int check_program(Parser *parser, Program *program, const Target *target)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
-        
+
         if (is_data_kind(s->kind) && s->repeat_expression >= 0)
         {
-            Expr *count = &parser->nodes[s->repeat_expression];
-            if (count->value < 0 || (uint64_t)count->value > SIZE_MAX)
+            if (expression_uses_location(parser, s->repeat_expression))
             {
-                diagnostic(source, count->span,
-                           "TIMES/FILL count must be nonnegative and fit size_t");
-                return 0;
+                /* resolved later in layout() */
             }
-            s->repeat_count = (size_t)count->value;
+            else
+            {
+                Expr *count = &parser->nodes[s->repeat_expression];
+                if (count->value < 0 || (uint64_t)count->value > SIZE_MAX)
+                {
+                    diagnostic(source, count->span,
+                               "TIMES/FILL count must be nonnegative and fit size_t");
+                    return 0;
+                }
+                s->repeat_count = (size_t)count->value;
+            }
         }
 
         if (s->kind == ST_DB)

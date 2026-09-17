@@ -79,7 +79,48 @@ size_t instruction_size(const Statement *statement)
     }
     return 0;
 }
-int layout(const Source *source, Program *program, const Target *target)
+static int expression_uses_location(const Parser *parser, int expression)
+{
+    const Expr *e = &parser->nodes[expression];
+    if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
+        return 1;
+    if (e->kind == EX_INT)
+        return 0;
+    return expression_uses_location(parser, e->left) ||
+           expression_uses_location(parser, e->right);
+}
+
+static int evaluate_layout_expression(const Parser *parser, int expression,
+                                      size_t current_offset,
+                                      size_t section_start,
+                                      long long *out)
+{
+    const Expr *e = &parser->nodes[expression];
+    if (e->kind == EX_CURRENT_OFFSET)
+    {
+        *out = (long long)current_offset;
+        return 1;
+    }
+    if (e->kind == EX_SECTION_START)
+    {
+        *out = (long long)section_start;
+        return 1;
+    }
+    if (e->kind == EX_INT)
+    {
+        *out = e->value;
+        return 1;
+    }
+    long long left, right;
+    if (!evaluate_layout_expression(parser, e->left, current_offset, section_start, &left) ||
+        !evaluate_layout_expression(parser, e->right, current_offset, section_start, &right))
+        return 0;
+    *out = e->kind == EX_ADD ? left + right :
+           e->kind == EX_SUB ? left - right : left * right;
+    return 1;
+}
+
+int layout(const Source *source, const Parser *parser, Program *program, const Target *target)
 {
     size_t offset = 0;
     for (int i = 0; i < program->count; i++)
@@ -95,6 +136,25 @@ int layout(const Source *source, Program *program, const Target *target)
         size_t size;
         if (is_data_kind(s->kind))
         {
+            if (s->repeat_expression >= 0 &&
+                expression_uses_location(parser, s->repeat_expression))
+            {
+                long long count;
+                if (!evaluate_layout_expression(parser, s->repeat_expression,
+                                                offset, 0, &count))
+                {
+                    diagnostic(source, s->span, "invalid padding expression");
+                    return 0;
+                }
+                if (count < 0 || (uint64_t)count > SIZE_MAX)
+                {
+                    diagnostic(source, s->span,
+                               "padding count must be nonnegative and fit size_t");
+                    return 0;
+                }
+                s->repeat_count = (size_t)count;
+            }
+
             if (s->data_width != 1 && s->data_width != 2 &&
                 s->data_width != 4 && s->data_width != 8)
             {
@@ -114,6 +174,7 @@ int layout(const Source *source, Program *program, const Target *target)
             }
             size = unit_size * s->repeat_count;
         }
+
         else
         {
             size = instruction_size(s);
