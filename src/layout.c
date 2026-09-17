@@ -24,11 +24,20 @@ size_t instruction_size(const Statement *statement)
 {
     switch (statement->kind)
     {
+    case ST_DB:
+        return statement->data_count;
+    case ST_DW:
+        return statement->data_count * 2;
+    case ST_DD:
+        return statement->data_count * 4;
+    case ST_DQ:
+        return statement->data_count * 8;
+
     case ST_MOV:
+        return 5;
     case ST_ADD_RIM:
-        return 5;
     case ST_SUB_RIM:
-        return 5;
+        return statement->reg_code == 0 ? 5 : 6;
     case ST_RET:
         return 1;
     case ST_LABEL:
@@ -57,6 +66,8 @@ size_t instruction_size(const Statement *statement)
         return 1;
     case ST_OR:
         return 5;
+    case ST_XOR:
+        return 5;
     case ST_AND:
         return 5;
     case ST_ADC:
@@ -68,14 +79,51 @@ size_t instruction_size(const Statement *statement)
     }
     return 0;
 }
-int layout(const Source *source, Program *program)
+int layout(const Source *source, Program *program, const Target *target)
 {
     size_t offset = 0;
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
         s->offset = offset;
-        offset += instruction_size(s);
+        if (offset > KASM_IMAGE_LIMIT)
+        {
+            diagnostic(source, s->span, "image exceeds image limit");
+            return 0;
+        }
+        size_t remaining = KASM_IMAGE_LIMIT - offset;
+        size_t size;
+        if (is_data_kind(s->kind))
+        {
+            if (s->data_width != 1 && s->data_width != 2 &&
+                s->data_width != 4 && s->data_width != 8)
+            {
+                diagnostic(source, s->span, "invalid data width");
+                return 0;
+            }
+            if (s->data_count > SIZE_MAX / s->data_width)
+            {
+                diagnostic(source, s->span, "data size overflow");
+                return 0;
+            }
+            size_t unit_size = s->data_count * s->data_width;
+            if (unit_size != 0 && s->repeat_count > remaining / unit_size)
+            {
+                diagnostic(source, s->span, "repeated data exceeds image limit");
+                return 0;
+            }
+            size = unit_size * s->repeat_count;
+        }
+        else
+        {
+            size = instruction_size(s);
+            if (size > remaining)
+            {
+                diagnostic(source, s->span, "image exceeds image limit");
+                return 0;
+            }
+        }
+        offset += size;
         if (s->kind != ST_LABEL)
             continue;
         for (int j = 0; j < i; j++)

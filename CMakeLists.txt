@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.19.0 LANGUAGES C)
+project(kasm VERSION 0.24.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -43,6 +43,75 @@ if(BUILD_TESTING)
     add_example_test(mov_42 examples/mov_42.asm "B8 2A 00 00 00")
     add_example_test(ret examples/ret.asm "C3")
     add_example_test(program examples/program.asm "B8 2A 00 00 00 C3")
+    foreach(data_case data_bytes data_jump data_words data_words_jump data_dwords data_qwords data_all_jump)
+        if(data_case STREQUAL "data_bytes")
+            set(data_hex "41 42 00 AA 55")
+        elseif(data_case STREQUAL "data_jump")
+            set(data_hex "E9 05 00 00 00 41 42 00 AA 55 B8 2A 00 00 00 C3")
+        elseif(data_case STREQUAL "data_words")
+            set(data_hex "34 12 00 00 FF FF AA 55 41 00")
+        elseif(data_case STREQUAL "data_words_jump")
+            set(data_hex "E9 06 00 00 00 41 34 12 00 FF FF B8 2A 00 00 00 C3")
+        elseif(data_case STREQUAL "data_dwords")
+            set(data_hex "00 00 00 00 FF FF FF 7F 78 56 34 12 2A 00 00 00")
+        elseif(data_case STREQUAL "data_qwords")
+            set(data_hex "00 00 00 00 00 00 00 00 FF FF FF 7F 00 00 00 00 78 56 34 12 00 00 00 00 2A 00 00 00 00 00 00 00")
+        else()
+            set(data_hex "E9 0F 00 00 00 41 34 12 2A 00 00 00 2A 00 00 00 00 00 00 00 B8 2A 00 00 00 C3")
+        endif()
+        add_test(NAME encode.${data_case} COMMAND "${CMAKE_COMMAND}"
+            "-DKASM=$<TARGET_FILE:kasm>"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/${data_case}.asm"
+            "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/${data_case}"
+            "-DEXPECTED_HEX=${data_hex}"
+            "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/data_expected.txt"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    endforeach()
+    add_test(NAME semantic.data_invalid COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/data_invalid"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/data_invalid.cmake")
+    add_test(NAME encode.times_fill COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/times_fill.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/times_fill"
+        "-DEXPECTED_HEX=AA AA AA 34 12 00 00 34 12 00 00 2A 00 00 00 2A 00 00 00 2A 00 00 00 00 00 00 00 2A 00 00 00 00 00 00 00"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.ecx_registers COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ecx_registers.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/ecx_registers"
+        "-DEXPECTED_HEX=B9 2A 00 00 00 81 C1 07 00 00 00 81 E9 03 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/ecx_registers_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.edx_registers COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/edx_registers.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/edx_registers"
+        "-DEXPECTED_HEX=BA 2A 00 00 00 81 C2 07 00 00 00 81 EA 03 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/edx_registers_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME semantic.reject_mode_16 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mov_42.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/reject_mode_16"
+        "-DEXPECTED_ERROR=16-bit mode is not supported"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_mode.cmake")
+    add_test(NAME semantic.reject_mode_32 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mov_42.asm"
+        "-DBITS=32"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/reject_mode_32"
+        "-DEXPECTED_ERROR=32-bit mode is not supported"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_mode.cmake")
+    add_test(NAME encode.xor COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/xor.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/xor"
+        "-DEXPECTED_HEX=35 2A 00 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/xor_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME encode.add COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/add.asm"

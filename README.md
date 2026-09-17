@@ -1,30 +1,25 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.19.0 (in development) loads assembly source, parses statements, label
+Kasm 0.24.0 (in development) loads assembly source, parses statements, label
 definitions, and nested blocks, validates
 operands, evaluates expressions, and assigns byte offsets before encoding.
 It encodes `mov eax, <expression>;`, `ret;`, `jmp near <label>;`,
 `jmp short <label>;`, `jmp abs <label>;`, `inc eax;`, `dec eax;`,
 `jz <label>;`, `jnz <label>;`, `jb <label>;`, `jl <label>;`,
 `add eax, <expression>;`, `sub eax, <expression>;`,
-`or eax, <expression>;`, `and eax, <expression>;`,
+`or eax, <expression>;`, `xor eax, <expression>;`, `and eax, <expression>;`,
 `adc eax, <expression>;`, `cmp eax, <expression>;`,
 `push rax;`, `pop rax;`,
 and `int <expression>;`
 as x86 machine-code bytes, prints hexadecimal output, and writes both a
 raw binary and a C header. A separate Linux and Windows x86-64 example can execute a small
 generated function. The instruction set is deliberately small; Kasm does not
-generate object files or standalone executables.
+generate object files or standalone executables. Data directives `db`/`byte`,
+`dw`/`word`, `dd`/`dword`, and `dq`/`qword` emit raw values alongside instructions.
 
 ## Version history
 
-The current source version is **0.19.0 (in development)**. Versions **0.6.0
-through 0.9.0** record development milestones grouped into 0.10.0 rather than
-separate releases. The descriptions below preserve that feature history.
-
-The 0.1.0 development series established loading, lexing, parsing, expression
-evaluation, and MOV encoding with hexadecimal output. The following milestones
-extend that foundation:
+The current source version is **0.24.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -47,6 +42,11 @@ extend that foundation:
 | 0.18.0 (in development) | Add INT with an unsigned 8-bit vector, expression parsing, range validation, encoding, and decoding. |
 | 0.18.1 (in development) | Fix decoding for INC EAX and JZ, and add an end-to-end regression test for their byte output and decoded listing. |
 | 0.19.0 (in development) | Add CMP and AND EAX immediate expressions, five-byte encoding, flag-setting semantics, decoder support, and JB/JL conditional branches. |
+| 0.19.1 (in development) | Replace the fixed 4096-byte source buffer with dynamically growing storage, allowing larger source files while retaining NUL-free ASCII validation. |
+| 0.20.0 (in development) | Add XOR EAX immediate expressions, five-byte encoding, decoder support, and the final release documentation update for the 0.20.0 development milestone. |
+| 0.22.0 (in development) | Make CPU mode explicit with `--bits 16`, `--bits 32`, or `--bits 64`; reject the currently unsupported 16-bit and 32-bit modes before encoding. |
+| 0.23.0 (in development) | Add DB/byte, DW/word, DD/dword, and DQ/qword data directives, expression lists, range checks, little-endian emission, and label offsets across embedded data; skip instruction-only decoding for images containing data. |
+| 0.24.0 (in development) | Add TIMES/FILL repetition for data directives, including repeated expression lists, count validation, overflow-safe layout, and byte-level regression tests. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -56,6 +56,13 @@ coverage for INC and JZ, so those instructions now complete the CLI's decoded
 listing successfully. Version 0.19.0 adds CMP EAX immediate expressions for
 comparison and flag-setting workflows, AND bitwise operations, plus unsigned-
 below and signed-less-than conditional branches.
+Version 0.19.1 replaces the fixed source buffer with dynamically growing
+storage, allowing larger source files without changing the NUL-free ASCII rule.
+Version 0.20.0 adds XOR EAX immediate expressions, broadens the arithmetic/bitwise
+instruction set, and keeps the decoder and release notes aligned with the current
+assembler behavior. Version 0.22.0 makes CPU mode explicit through the CLI and
+rejects unsupported 16-bit and 32-bit targets before encoding.
+Version 0.24.0 adds TIMES/FILL repetition for raw data declarations.
 
 Compared with 0.5.0, the 0.10.0 source adds Windows execution, label definitions,
 layout and label lookup, and short and near jumps. The earlier development syntax
@@ -64,6 +71,102 @@ layout and label lookup, and short and near jumps. The earlier development synta
 For `mov eax, 40+2; ret;`, this takes the project from displaying bytes to
 compiling those bytes as C data and executing a function that returns `42`.
 Execution belongs to the example runner; the assembler itself writes the data.
+
+## Data directives (0.24.0)
+
+Data directives emit values directly, without an instruction opcode:
+
+| Spelling | Bytes per value | Accepted result |
+| --- | ---: | --- |
+| `db` or `byte` | 1 | 0 through 255 |
+| `dw` or `word` | 2 | 0 through 65535 |
+| `dd` or `dword` | 4 | 0 through 2147483647 (current expression limit) |
+| `dq` or `qword` | 8 | 0 through 2147483647 (current expression limit) |
+
+All four accept comma-separated expressions terminated by a semicolon. Multi-byte values use
+little-endian byte order, with no automatic alignment or padding.
+
+```asm
+db 60+5,66,0;       // 41 42 00
+byte 0xAA,0x55;    // AA 55
+dw 4660;           // 34 12
+word 0x55AA;       // AA 55
+dd 0x12345678;     // 78 56 34 12
+dword 40+2;        // 2A 00 00 00
+dq 42;            // 2A 00 00 00 00 00 00 00
+qword 0;          // 00 00 00 00 00 00 00 00
+```
+
+Each word list element occupies two bytes: `word 0xAA,0x55;` emits
+`AA 00 55 00`. Empty lists, trailing commas, missing commas, negative results,
+and results above the directive's range are rejected. The existing signed
+32-bit expression rules still apply to intermediate calculations.
+DD and DQ store four and eight bytes respectively, but full unsigned 32-bit
+and 64-bit expression values are not yet supported. Even though their current
+range diagnostics name wider storage limits, the expression evaluator rejects
+results above 2147483647 first.
+
+Prefix a data directive with `times <count>` or `fill <count>` to repeat its
+complete comma-separated list. The count is an expression, must be nonnegative,
+and must fit `size_t`.
+
+```asm
+times 3 db 170;          // AA AA AA
+fill 2 dw 4660,0;        // 34 12 00 00 34 12 00 00
+times 2 dd 42;           // 2A 00 00 00 2A 00 00 00
+```
+
+Labels include the size of preceding data. Executable examples must jump over
+embedded data, as in `examples/data_all_jump.asm`, which mixes all four widths.
+Data-only examples are
+encoding fixtures, not functions to execute.
+
+The CLI still writes `program.bin` and `generated.h` for images containing data,
+but prints `Data emitted; instruction-only decoding skipped.` instead of trying
+to disassemble the image. Instruction-only images retain their decoded listing.
+TIMES/FILL repetition is supported for data directives; strings, alignment, and
+symbol-valued data remain future work.
+
+Permanent tests cover all eight spellings, expression values, range boundaries,
+exact bytes, mixed-width layout, jump targets, TIMES/FILL repetition, and invalid
+lists and ranges.
+The Windows Debug build validates the data-directive suite, including
+`encode.times_fill` and invalid-input cases within `semantic.data_invalid`.
+After configuring and building, run them with:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "(encode.data_|encode.times_fill|semantic.data_invalid)" --output-on-failure
+```
+
+## Opcode lookup guide
+
+This quick reference is useful when you are extending the encoder and decoder for
+another register form. The general pattern is: parse the register, store a small
+numeric register code, then switch on that code during encoding and match the byte
+patterns during decoding.
+
+| Source form | Encoded bytes | Meaning |
+| --- | --- | --- |
+| `mov eax, imm32;` | `B8 imm32` | Move a 32-bit immediate into `eax`. |
+| `mov ecx, imm32;` | `B9 imm32` | Move a 32-bit immediate into `ecx`. |
+| `add eax, imm32;` | `05 imm32` | Add a signed 32-bit immediate to `eax`. |
+| `add ecx, imm32;` | `81 C1 imm32` | Add a signed 32-bit immediate to `ecx`. |
+| `sub eax, imm32;` | `2D imm32` | Subtract a signed 32-bit immediate from `eax`. |
+| `sub ecx, imm32;` | `81 E9 imm32` | Subtract a signed 32-bit immediate from `ecx`. |
+| `or eax, imm32;` | `0D imm32` | Bitwise OR with `eax`. |
+| `xor eax, imm32;` | `35 imm32` | Bitwise XOR with `eax`. |
+| `and eax, imm32;` | `25 imm32` | Bitwise AND with `eax`. |
+| `cmp eax, imm32;` | `3D imm32` | Compare `eax` against the immediate. |
+| `adc eax, imm32;` | `15 imm32` | Add with carry into `eax`. |
+
+The second byte in the `0x81` family decides the exact operation and register:
+
+- `81 C1` = `add ecx, imm32`
+- `81 E9` = `sub ecx, imm32`
+
+This is the same idea as the decoder: match the emitted bytes in reverse, then print
+back the matching source instruction. In other words, the decoder is the mirror image
+of the encoder for these register-aware instruction forms.
 
 ## Using a release
 
@@ -77,10 +180,12 @@ From the extracted package directory, create `example.asm` containing
 
 ```powershell
 .\bin\kasm.exe example.asm
+.\bin\kasm.exe --bits 64 example.asm
 ```
 
 ```bash
 ./bin/kasm example.asm
+./bin/kasm --bits 64 example.asm
 ```
 
 Expected output with the current source build:
@@ -91,9 +196,11 @@ B8 2A 00 00 00
 Decoding successful.
 ```
 
-The CLI accepts exactly one source-file path. The current source build prints
-one line of uppercase hexadecimal bytes, with a space after each byte, followed
-by a decoded listing and `Decoding successful.` when decoding succeeds.
+The CLI accepts either one source-file path, which defaults to 64-bit mode, or
+`--bits 16|32|64` followed by one source-file path. The current implementation
+rejects 16-bit and 32-bit modes before encoding; 64-bit mode is supported. It
+prints one line of uppercase hexadecimal bytes, with a space after each byte,
+followed by a decoded listing and `Decoding successful.` when decoding succeeds.
 Older releases may print only the hexadecimal line. The CLI writes `program.bin` (raw bytes) and
 `generated.h` (C declarations) in the **current working directory**, replacing
 previous files with those names before decoding. Redirecting stdout saves text,
@@ -109,8 +216,8 @@ drivers are not included in the binary ZIPs.
 
 The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `add <identifier>, <expression>;`, `sub <identifier>, <expression>;`,
-`or <identifier>, <expression>;`, `and <identifier>, <expression>;`,
-`adc <identifier>, <expression>;`,
+`or <identifier>, <expression>;`, `xor <identifier>, <expression>;`,
+`and <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
 `cmp <identifier>, <expression>;`,
 `int <expression>;`,
 `push <identifier>;`, `pop <identifier>;`,
@@ -160,7 +267,7 @@ This example prints the same encoded bytes shown above. The semicolons terminate
 instructions; `//` and `/* ... */` introduce comments. Block comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`, `inc`,
-`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `and`, `adc`, `cmp`, `push`, `pop`,
+`dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `xor`, `and`, `adc`, `cmp`, `push`, `pop`,
 and `int`.
 The parser accepts an identifier as the destination; semantic validation then
 requires lowercase `eax` for arithmetic and MOV, or `rax` for PUSH/POP.
@@ -513,8 +620,8 @@ symbols, division, and other expression operators are not supported yet.
 
 Each MOV, ADD, SUB, OR, AND, ADC, CMP, or INT statement references its expression's root in the parser's node array.
 Statement storage grows dynamically, starting at 16 entries and doubling as
-needed; there is no fixed 256-statement limit. The source loader's 4096-byte
-file limit still applies.
+needed; there is no fixed 256-statement limit. Source files are stored in a
+dynamically growing buffer.
 
 The CLI exits with status 0 after successful encoding and file output,
 and 1 on a loading, lexing, parsing, semantic, allocation, or file-output error, or incorrect command-line
@@ -567,7 +674,7 @@ The current language supports MOV, ADD, SUB, OR, AND, ADC, CMP, INC, and DEC on 
 PUSH/POP on `rax`, INT with an immediate vector, operand-free RET,
 short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a label.
 Far jumps, short conditional jumps, other condition codes, other instructions and registers,
-labels in expressions, memory operands, directives, and object
+labels in expressions, memory operands, directives beyond DB/DW/DD/DQ and their aliases, and object
 or executable file formats are not implemented. MOV immediates must be in
 `0..2147483647`; ADD/SUB/OR/ADC accept signed 32-bit expression results, subject to the
 expression restrictions below. INT requires a final value in `0..255`.
@@ -1025,9 +1132,11 @@ through EOF. Adjacent comments are skipped iteratively, without recursive calls.
 
 ### Source limits, token spans, and errors
 
-The [source loader](src/source.c) accepts at most 4096 non-NUL ASCII bytes per
-file. It rejects embedded NUL bytes and non-ASCII input, including a UTF-8 BOM.
-Files are read in binary mode, preserving their original byte offsets.
+The [source loader](src/source.c) stores input in a dynamically growing buffer.
+There is no project-defined source-byte limit; practical limits are available
+memory and the platform's allocation limits. It rejects embedded NUL bytes and
+non-ASCII input, including a UTF-8 BOM. Files are read in binary mode,
+preserving their original byte offsets.
 
 Each `Token` contains its kind, a zero-based half-open byte span `[start, end)`,
 and a numeric value. The span selects the original spelling in `Source.text`;

@@ -14,8 +14,22 @@
 
 #include "semantic.h"
 
-int check_program(Parser *parser, Program *program)
+int check_program(Parser *parser, Program *program, const Target *target)
 {
+    if (target->mode == MODE_16)
+    {
+        const Source *source = parser->lexer.cursor.source;
+        Span span = {0};
+        diagnostic(source, span, "16-bit mode is not supported");
+        return 0;
+    }
+    if (target->mode == MODE_32)
+    {
+        const Source *source = parser->lexer.cursor.source;
+        Span span = {0};
+        diagnostic(source, span, "32-bit mode is not supported");
+        return 0;
+    }
     const Source *source = parser->lexer.cursor.source;
     for (int i = 0; i < parser->count; i++)
     {
@@ -40,6 +54,79 @@ int check_program(Parser *parser, Program *program)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
+        
+        if (is_data_kind(s->kind) && s->repeat_expression >= 0)
+        {
+            Expr *count = &parser->nodes[s->repeat_expression];
+            if (count->value < 0 || (uint64_t)count->value > SIZE_MAX)
+            {
+                diagnostic(source, count->span,
+                           "TIMES/FILL count must be nonnegative and fit size_t");
+                return 0;
+            }
+            s->repeat_count = (size_t)count->value;
+        }
+
+        if (s->kind == ST_DB)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if (expression->value < 0 || expression->value > 255)
+                {
+                    diagnostic(source, expression->span, "declare byte element must be in range 0..255");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
+        if (s->kind == ST_DW)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if (expression->value < 0 || expression->value > 65535)
+                {
+                    diagnostic(source, expression->span, "declare word element must be in range 0..65535");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
+        if (s->kind == ST_DD)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if (expression->value < 0 || expression->value > 4294967295)
+                {
+                    diagnostic(source, expression->span, "declare double word element must be in range 0..4294967295");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
+        if (s->kind == ST_DQ)
+        {
+            for (size_t j = 0; j < s->data_count; j++)
+            {
+                DataElement *element = &program->data[s->data_start + j];
+                Expr *expression = &parser->nodes[element->expression];
+                if (expression->value < 0 || expression->value > 18446744073709551615ULL)
+                {
+                    diagnostic(source, expression->span, "declare quad word element must be in range 0..18446744073709551615");
+                    return 0;
+                }
+                element->value = (uint64_t)expression->value;
+            }
+            continue;
+        }
         if (s->kind == ST_PUSH || s->kind == ST_POP)
         {
             if (!token_is(source, s->operand, "rax"))
@@ -52,16 +139,21 @@ int check_program(Parser *parser, Program *program)
         else if (s->kind == ST_MOV || s->kind == ST_DEC ||
                  s->kind == ST_INC || s->kind == ST_ADD_RIM ||
                  s->kind == ST_SUB_RIM || s->kind == ST_OR ||
-                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND )
+                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
-            if (!token_is(source, s->operand, "eax"))
+            if (token_is(source, s->operand, "eax"))
+                s->reg_code = 0; // Assuming 0 corresponds to eax
+            else if (token_is(source, s->operand, "ecx"))
+                s->reg_code = 1;
+            else if (token_is(source, s->operand, "edx"))
+                s->reg_code = 2;
+            else
             {
-                diagnostic(source, s->operand.span,
-                           "only register eax is supported");
+                diagnostic(source, s->operand.span, "expected eax, ecx, or edx");
                 return 0;
             }
         }
-        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM || s->kind == ST_AND )
+        if (s->kind == ST_MOV || s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM || s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
             s->value = parser->nodes[s->expression].value;
             if (s->kind == ST_INT_IMM8 && (s->value < 0 || s->value > 255))

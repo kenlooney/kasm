@@ -15,17 +15,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int byte_push(Bytes *bytes, unsigned char value) {
+int byte_push(Bytes *bytes, unsigned char value)
+{
+    if (bytes->count >= KASM_IMAGE_LIMIT) {
+        fprintf(stderr, "image exceeds image limit\n");
+        return 0;
+    }
     if (bytes->count == bytes->capacity) {
-        int new_capacity = bytes->capacity == 0 ? 16 : bytes->capacity * 2;
-        unsigned char *new_data = realloc(bytes->data, new_capacity);
-        if (!new_data) {
+        size_t capacity = bytes->capacity == 0 ? 16 :
+            bytes->capacity > KASM_IMAGE_LIMIT / 2 ? KASM_IMAGE_LIMIT :
+            bytes->capacity * 2;
+        unsigned char *data = realloc(bytes->data, capacity);
+        if (data == NULL) {
             fprintf(stderr, "failed to allocate memory for machine code\n");
             return 0;
         }
-        bytes->data = new_data;
-        bytes->capacity = new_capacity;
+        bytes->data = data;
+        bytes->capacity = capacity;
     }
     bytes->data[bytes->count++] = value;
     return 1;
 }
+

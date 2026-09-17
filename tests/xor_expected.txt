@@ -1,0 +1,3 @@
+0000: xor eax, 42
+0005: ret
+Decoding successful.
