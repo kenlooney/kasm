@@ -1,0 +1,3 @@
+0000: halt
+0001: pause
+Decoding successful.

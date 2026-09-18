@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.29.0 LANGUAGES C)
+project(kasm VERSION 0.31.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -58,6 +58,13 @@ if(BUILD_TESTING)
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_sbb"
         "-DEXPECTED_HEX=81 D8 01 00 81 D9 02 00 81 DA 03 00"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_sbb_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.control COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/control.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/control"
+        "-DEXPECTED_HEX=F4 F3 90"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/control_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME encode.mode16_segment COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
