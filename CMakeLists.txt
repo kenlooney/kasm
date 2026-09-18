@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.28.0 LANGUAGES C)
+project(kasm VERSION 0.29.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -50,6 +50,22 @@ if(BUILD_TESTING)
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_mov"
         "-DEXPECTED_HEX=B8 2A 00 B9 07 00 BA 03 00"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_mov_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.mode16_sbb COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mode16_sbb.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_sbb"
+        "-DEXPECTED_HEX=81 D8 01 00 81 D9 02 00 81 DA 03 00"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_sbb_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.mode16_segment COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mode16_segment.asm"
+        "-DBITS=16"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/mode16_segment"
+        "-DEXPECTED_HEX=1E 1F 0F A0 0F A1 0F A8 0F A9"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/mode16_segment_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     foreach(data_case data_bytes data_jump data_words data_words_jump data_dwords data_qwords data_all_jump)
         if(data_case STREQUAL "data_bytes")

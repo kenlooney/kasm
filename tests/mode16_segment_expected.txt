@@ -1,0 +1,7 @@
+0000: push ds
+0001: pop ds
+0002: push fs
+0004: pop fs
+0006: push gs
+0008: pop gs
+Decoding successful.

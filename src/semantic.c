@@ -152,6 +152,66 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 return 0;
             }
         }
+        // push/pop cs
+        if (s->kind == ST_PUSH_CS || s->kind == ST_POP_CS)
+        {
+            if (!token_is(source, s->operand, "cs"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register cs");
+                return 0;
+            }
+        }
+        // push/pop gs
+        if (s->kind == ST_PUSH_GS || s->kind == ST_POP_GS)
+        {
+            if (!token_is(source, s->operand, "gs"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register gs");
+                return 0;
+            }
+        }
+        // push/pop fs
+        if (s->kind == ST_PUSH_FS || s->kind == ST_POP_FS)
+        {
+            if (!token_is(source, s->operand, "fs"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register fs");
+                return 0;
+            }
+        }
+        // push/pop ss
+        if (s->kind == ST_PUSH_SS || s->kind == ST_POP_SS)
+        {
+            if (!token_is(source, s->operand, "ss"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register ss");
+                return 0;
+            }
+        }
+        // push/pop es
+        if (s->kind == ST_PUSH_ES || s->kind == ST_POP_ES)
+        {
+            if (!token_is(source, s->operand, "es"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register es");
+                return 0;
+            }
+        }
+        // push/pop ds
+        if (s->kind == ST_PUSH_DS || s->kind == ST_POP_DS)
+        {
+            if (!token_is(source, s->operand, "ds"))
+            {
+                diagnostic(source, s->operand.span,
+                           "push/pop require segment register ds");
+                return 0;
+            }
+        }
 
         if (s->kind == ST_MOV)
         {
@@ -170,7 +230,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
                     return 0;
                 }
             }
-
+            
             if (token_is(source, s->operand, "eax"))
             {
                 s->reg_code = 0;      // Assuming 0 corresponds to eax
@@ -229,7 +289,8 @@ int check_program(Parser *parser, Program *program, const Target *target)
             return 0;
         }
 
-        else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM)
+        else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
+             s->kind == ST_SBB)
         {
             if (token_is(source, s->operand, "eax"))
             {
@@ -285,7 +346,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
         else if (s->kind == ST_DEC ||
                  s->kind == ST_INC ||
                  s->kind == ST_OR ||
-                 s->kind == ST_ADC || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
+                 s->kind == ST_ADC || s->kind == ST_SBB || s->kind == ST_CMP_RIM || s->kind == ST_AND || s->kind == ST_XOR)
         {
             if (token_is(source, s->operand, "eax"))
                 s->reg_code = 0; // Assuming 0 corresponds to eax
@@ -301,7 +362,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
         }
         if ((s->kind == ST_MOV && !s->is_memory_operand) ||
             s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
-            s->kind == ST_OR || s->kind == ST_ADC ||
+            s->kind == ST_OR || s->kind == ST_ADC || s->kind == ST_SBB ||
             s->kind == ST_INT_IMM8 || s->kind == ST_CMP_RIM ||
             s->kind == ST_AND || s->kind == ST_XOR)
         {
