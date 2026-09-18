@@ -8,8 +8,9 @@ endforeach()
 get_filename_component(KASM "${KASM}" ABSOLUTE)
 get_filename_component(SOURCE "${SOURCE}" ABSOLUTE)
 get_filename_component(OUTPUT_DIR "${OUTPUT_DIR}" ABSOLUTE)
+get_filename_component(source_name "${SOURCE}" NAME_WLE)
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
-file(REMOVE "${OUTPUT_DIR}/program.bin")
+file(REMOVE "${OUTPUT_DIR}/${source_name}.bin")
 
 execute_process(
     COMMAND "${KASM}" "--bits" "64" "${SOURCE}"
@@ -23,11 +24,11 @@ if(NOT "${status}" STREQUAL "0" OR NOT "${error}" STREQUAL "")
     message(FATAL_ERROR "Encoding ${SOURCE} failed: exit ${status}: ${error}")
 endif()
 
-if(NOT EXISTS "${OUTPUT_DIR}/program.bin")
-    message(FATAL_ERROR "Assembler did not create program.bin")
+if(NOT EXISTS "${OUTPUT_DIR}/${source_name}.bin")
+    message(FATAL_ERROR "Assembler did not create ${source_name}.bin")
 endif()
 
-file(READ "${OUTPUT_DIR}/program.bin" actual_hex HEX)
+file(READ "${OUTPUT_DIR}/${source_name}.bin" actual_hex HEX)
 string(TOUPPER "${actual_hex}" actual_hex)
 string(LENGTH "${actual_hex}" hex_length)
 math(EXPR actual_len "${hex_length} / 2")

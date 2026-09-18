@@ -14,6 +14,8 @@
 
 #include "layout.h"
 #include <string.h>
+#include "checked_arithmetic.h"
+#include "semantic.h"
 static int same_name(const Source *source, Token a, Token b)
 {
     size_t n = a.span.end - a.span.start;
@@ -115,17 +117,6 @@ size_t instruction_size(const Statement *statement)
     }
     return 0;
 }
-static int expression_uses_location(const Parser *parser, int expression)
-{
-    const Expr *e = &parser->nodes[expression];
-    if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
-        return 1;
-    if (e->kind == EX_INT)
-        return 0;
-    return expression_uses_location(parser, e->left) ||
-           expression_uses_location(parser, e->right);
-}
-
 static int evaluate_layout_expression(const Parser *parser, int expression,
                                       size_t current_offset,
                                       size_t section_start,
@@ -249,3 +240,76 @@ int label_offset(const Source *source, const Program *program, Token name, size_
     diagnostic(source, name.span, "undefined label");
     return 0;
 }
+
+static int data_expression(const Source *source, const Parser *parser,
+                           const Program *program, int root, long long *out)
+{
+    const Expr *e = &parser->nodes[root];
+    if (e->kind == EX_INT)
+    {
+        *out = e->value;
+        return 1;
+    }
+    if (e->kind == EX_SYMBOL)
+    {
+        Token name = {TK_IDENT, e->span, 0};
+        size_t offset;
+        if (!label_offset(source, program, name, &offset))
+            return 0;
+        /* Layout limits raw-image offsets to KASM_IMAGE_LIMIT. */
+        *out = (long long)offset;
+        return 1;
+    }
+    if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
+        return 0;
+
+    long long left, right;
+    if (!data_expression(source, parser, program, e->left, &left) ||
+        !data_expression(source, parser, program, e->right, &right))
+        return 0;
+
+    int valid;
+    if (e->kind == EX_ADD)
+        valid = checked_add(left, right, out);
+    else if (e->kind == EX_SUB)
+        valid = checked_subtract(left, right, out);
+    else if (e->kind == EX_MUL)
+        valid = checked_multiply(left, right, out);
+    else
+        return 0;
+    return valid && *out >= -2147483648LL && *out <= 2147483647LL;
+}
+
+int resolve_data_values(const Source *source, const Parser *parser, Program *program)
+{
+    for (int i = 0; i < program->count; ++i)
+    {
+        Statement *s = &program->statements[i];
+        if (!is_data_kind(s->kind))
+            continue;
+        for (size_t j = 0; j < s->data_count; ++j)
+        {
+            DataElement *d = &program->data[s->data_start + j];
+            if (!expression_uses_symbol(parser, d->expression))
+                continue;
+            const Expr *e = &parser->nodes[d->expression];
+            long long value;
+            if (!data_expression(source, parser, program, d->expression, &value))
+            {
+                diagnostic(source, e->span, "cannot resolve data expression");
+                return 0;
+            }
+            uint64_t max = s->data_width == 1 ? 255 :
+                           s->data_width == 2 ? 65535 : 2147483647;
+            if (value < 0 || (uint64_t)value > max)
+            {
+                diagnostic(source, e->span, "resolved data value outside range");
+                return 0;
+            }
+            d->value = (uint64_t)value;
+        }
+    }
+    return 1;
+}
+
+

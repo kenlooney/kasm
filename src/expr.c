@@ -101,6 +101,15 @@ static int primary(Parser *parser)
         return root;
     }
 
+    if (token.kind == TK_IDENT)
+    {
+        Expr symbol = {EX_SYMBOL, token.span, 0, -1, -1};
+        int result = node(parser, symbol);
+        if (result >= 0) 
+            lexer_next(&parser->lexer);
+        return result;
+    }
+    
     if (token.kind != TK_NUMBER || parser->lexer.failed)
     {
         parser_error(parser, "expected integer literal");

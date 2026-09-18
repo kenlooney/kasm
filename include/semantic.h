@@ -20,4 +20,5 @@
 
 int expression_uses_location(const Parser *parser, int expression);
 int check_program(Parser *parser, Program *program, const Target *target);
+int expression_uses_symbol(const Parser *p, int root);
 #endif // KASM_SEMANTIC_H

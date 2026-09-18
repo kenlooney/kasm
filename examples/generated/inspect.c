@@ -1,5 +1,8 @@
 #include <stdio.h>
-#include "generated.h"
+#ifndef KASM_GENERATED_HEADER
+#define KASM_GENERATED_HEADER "program.h"
+#endif
+#include KASM_GENERATED_HEADER
 
 int main(void) {
     printf("Size: %zu\n", code_size);

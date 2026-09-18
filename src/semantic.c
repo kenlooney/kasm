@@ -14,61 +14,31 @@
 
 #include "semantic.h"
 #include <limits.h>
-
-static int checked_add(long long left, long long right, long long *result)
+#include "checked_arithmetic.h"
+int expression_uses_symbol(const Parser *p, int root)
 {
-    if ((right > 0 && left > LLONG_MAX - right) ||
-        (right < 0 && left < LLONG_MIN - right))
-        return 0;
-    *result = left + right;
-    return 1;
-}
-
-static int checked_subtract(long long left, long long right, long long *result)
-{
-    if ((right < 0 && left > LLONG_MAX + right) ||
-        (right > 0 && left < LLONG_MIN + right))
-        return 0;
-    *result = left - right;
-    return 1;
-}
-
-static int checked_multiply(long long left, long long right, long long *result)
-{
-    if (left == 0 || right == 0)
-    {
-        *result = 0;
+    const Expr *e = &p->nodes[root];
+    if (e->kind == EX_SYMBOL)
         return 1;
-    }
-    if ((left == -1 && right == LLONG_MIN) ||
-        (right == -1 && left == LLONG_MIN))
+    if (e->kind == EX_INT || e->kind == EX_CURRENT_OFFSET ||
+        e->kind == EX_SECTION_START)
         return 0;
-    if (left > 0)
-    {
-        if (right > 0 && left > LLONG_MAX / right)
-            return 0;
-        if (right < 0 && right < LLONG_MIN / left)
-            return 0;
-    }
-    else if (right > 0)
-    {
-        if (left < LLONG_MIN / right)
-            return 0;
-    }
-    else if (left < LLONG_MAX / right)
-    {
-        return 0;
-    }
-    *result = left * right;
-    return 1;
+    return expression_uses_symbol(p, e->left) ||
+           expression_uses_symbol(p, e->right);
 }
+
+ 
+
+ 
+
+ 
 
 int expression_uses_location(const Parser *parser, int expression)
 {
     const Expr *e = &parser->nodes[expression];
     if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
         return 1;
-    if (e->kind == EX_INT)
+    if (e->kind == EX_INT || e->kind == EX_SYMBOL)
         return 0;
     return expression_uses_location(parser, e->left) ||
            expression_uses_location(parser, e->right);
@@ -89,7 +59,8 @@ int check_program(Parser *parser, Program *program, const Target *target)
     {
         Expr *e = &parser->nodes[i];
 
-        if (e->kind == EX_CURRENT_OFFSET || e->kind == EX_SECTION_START)
+        if (expression_uses_symbol(parser, i) ||
+            expression_uses_location(parser, i))
             continue;
 
         if (e->kind != EX_INT)
@@ -118,6 +89,19 @@ int check_program(Parser *parser, Program *program, const Target *target)
     for (int i = 0; i < program->count; i++)
     {
         Statement *s = &program->statements[i];
+        if (s->repeat_expression >= 0 &&
+            expression_uses_symbol(parser, s->repeat_expression))
+        {
+            diagnostic(source, s->span, "symbolic repeat counts unsupported");
+            return 0;
+        }
+        if (!is_data_kind(s->kind) && s->expression >= 0 &&
+            (expression_uses_symbol(parser, s->expression) ||
+             expression_uses_location(parser, s->expression)))
+        {
+            diagnostic(source, s->span, "symbol expressions are only supported in data values");
+            return 0;
+        }
 
         if (is_data_kind(s->kind) && s->repeat_expression >= 0)
         {
@@ -144,6 +128,15 @@ int check_program(Parser *parser, Program *program, const Target *target)
             {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
+                if (expression_uses_location(parser, element->expression))
+                {
+                    diagnostic(source, expression->span,
+                               "location-dependent data values unsupported");
+                    return 0;
+                }
+
+                if (expression_uses_symbol(parser, element->expression))
+                    continue;
                 if (expression->value < 0 || expression->value > 255)
                 {
                     diagnostic(source, expression->span, "declare byte element must be in range 0..255");
@@ -159,6 +152,15 @@ int check_program(Parser *parser, Program *program, const Target *target)
             {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
+                if (expression_uses_location(parser, element->expression))
+                {
+                    diagnostic(source, expression->span,
+                               "location-dependent data values unsupported");
+                    return 0;
+                }
+
+                if (expression_uses_symbol(parser, element->expression))
+                    continue;
                 if (expression->value < 0 || expression->value > 65535)
                 {
                     diagnostic(source, expression->span, "declare word element must be in range 0..65535");
@@ -174,6 +176,15 @@ int check_program(Parser *parser, Program *program, const Target *target)
             {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
+                if (expression_uses_location(parser, element->expression))
+                {
+                    diagnostic(source, expression->span,
+                               "location-dependent data values unsupported");
+                    return 0;
+                }
+
+                if (expression_uses_symbol(parser, element->expression))
+                    continue;
                 if (expression->value < 0 || expression->value > 4294967295)
                 {
                     diagnostic(source, expression->span, "declare double word element must be in range 0..4294967295");
@@ -189,6 +200,15 @@ int check_program(Parser *parser, Program *program, const Target *target)
             {
                 DataElement *element = &program->data[s->data_start + j];
                 Expr *expression = &parser->nodes[element->expression];
+                if (expression_uses_location(parser, element->expression))
+                {
+                    diagnostic(source, expression->span,
+                               "location-dependent data values unsupported");
+                    return 0;
+                }
+
+                if (expression_uses_symbol(parser, element->expression))
+                    continue;
                 if (expression->value < 0 || expression->value > 18446744073709551615ULL)
                 {
                     diagnostic(source, expression->span, "declare quad word element must be in range 0..18446744073709551615");
@@ -285,7 +305,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
                     return 0;
                 }
             }
-            
+
             if (token_is(source, s->operand, "eax"))
             {
                 s->reg_code = 0;      // Assuming 0 corresponds to eax
@@ -345,7 +365,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
         }
 
         else if (s->kind == ST_ADD_RIM || s->kind == ST_SUB_RIM ||
-             s->kind == ST_SBB)
+                 s->kind == ST_SBB)
         {
             if (token_is(source, s->operand, "eax"))
             {
