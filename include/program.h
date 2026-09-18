@@ -39,17 +39,32 @@ typedef enum {
     ST_ADD_RIM,
     ST_SUB_RIM,
     ST_PUSH,
+    ST_PUSH_DS,
+    ST_POP_DS,
+    ST_PUSH_CS,
+    ST_POP_CS,
+    ST_PUSH_ES,
+    ST_POP_ES,
+    ST_PUSH_GS,
+    ST_POP_GS,
+    ST_PUSH_FS,
+    ST_POP_FS,
+    ST_PUSH_SS,
+    ST_POP_SS,
     ST_POP,
     ST_OR,
     ST_AND,
     ST_XOR,
-    ST_ADC,
+    ST_ADC, // Add with carry
+    ST_SBB, // Subtract with borrow
     ST_INT_IMM8,
     ST_CMP_RIM,
     ST_DB,
     ST_DW,
     ST_DD,
     ST_DQ,
+    ST_HALT,
+    ST_PAUSE,
 
 } StatementKind;
 

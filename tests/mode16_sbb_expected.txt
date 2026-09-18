@@ -1,0 +1,4 @@
+0000: sbb ax, 1
+0004: sbb cx, 2
+0008: sbb dx, 3
+Decoding successful.

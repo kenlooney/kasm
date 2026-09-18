@@ -39,10 +39,12 @@ size_t instruction_size(const Statement *statement)
         return statement->operand_bits == 16 ? 3 : 5;
     case ST_ADD_RIM:
     case ST_SUB_RIM:
-        if(statement->operand_bits == 16)
+        if (statement->operand_bits == 16)
             return statement->reg_code == 0 ? 3 : 4;
-        
+
         return statement->reg_code == 0 ? 5 : 6;
+    case ST_SBB:
+        return statement->operand_bits == 16 ? 4 : 6;
     case ST_RET:
         return 1;
     case ST_LABEL:
@@ -65,6 +67,31 @@ size_t instruction_size(const Statement *statement)
         return 6;
     case ST_JL:
         return 6;
+    case ST_PUSH_CS:
+        return 1;
+    case ST_POP_CS:
+        return 1;
+    case ST_PUSH_ES:
+        return 1;
+    case ST_POP_ES:
+        return 1;
+    case ST_PUSH_GS:
+        return 2;
+    case ST_POP_GS:
+        return 2;
+    case ST_PUSH_FS:
+        return 2;
+    case ST_POP_FS:
+        return 2;
+    case ST_PUSH_DS:
+        return 1;
+    case ST_POP_DS:
+        return 1;
+    case ST_PUSH_SS:
+        return 1;
+    case ST_POP_SS:
+        return 1;
+
     case ST_PUSH:
         return 1;
     case ST_POP:
@@ -81,6 +108,10 @@ size_t instruction_size(const Statement *statement)
         return 2;
     case ST_CMP_RIM:
         return 5;
+    case ST_HALT:
+        return 1;
+    case ST_PAUSE:
+        return 2;
     }
     return 0;
 }
@@ -120,8 +151,8 @@ static int evaluate_layout_expression(const Parser *parser, int expression,
     if (!evaluate_layout_expression(parser, e->left, current_offset, section_start, &left) ||
         !evaluate_layout_expression(parser, e->right, current_offset, section_start, &right))
         return 0;
-    *out = e->kind == EX_ADD ? left + right :
-           e->kind == EX_SUB ? left - right : left * right;
+    *out = e->kind == EX_ADD ? left + right : e->kind == EX_SUB ? left - right
+                                                                : left * right;
     return 1;
 }
 
