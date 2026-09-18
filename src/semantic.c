@@ -13,6 +13,55 @@
 // limitations under the License.
 
 #include "semantic.h"
+#include <limits.h>
+
+static int checked_add(long long left, long long right, long long *result)
+{
+    if ((right > 0 && left > LLONG_MAX - right) ||
+        (right < 0 && left < LLONG_MIN - right))
+        return 0;
+    *result = left + right;
+    return 1;
+}
+
+static int checked_subtract(long long left, long long right, long long *result)
+{
+    if ((right < 0 && left > LLONG_MAX + right) ||
+        (right > 0 && left < LLONG_MIN + right))
+        return 0;
+    *result = left - right;
+    return 1;
+}
+
+static int checked_multiply(long long left, long long right, long long *result)
+{
+    if (left == 0 || right == 0)
+    {
+        *result = 0;
+        return 1;
+    }
+    if ((left == -1 && right == LLONG_MIN) ||
+        (right == -1 && left == LLONG_MIN))
+        return 0;
+    if (left > 0)
+    {
+        if (right > 0 && left > LLONG_MAX / right)
+            return 0;
+        if (right < 0 && right < LLONG_MIN / left)
+            return 0;
+    }
+    else if (right > 0)
+    {
+        if (left < LLONG_MIN / right)
+            return 0;
+    }
+    else if (left < LLONG_MAX / right)
+    {
+        return 0;
+    }
+    *result = left * right;
+    return 1;
+}
 
 int expression_uses_location(const Parser *parser, int expression)
 {
@@ -47,12 +96,18 @@ int check_program(Parser *parser, Program *program, const Target *target)
         {
             long long left = parser->nodes[e->left].value;
             long long right = parser->nodes[e->right].value;
+            int valid;
             if (e->kind == EX_ADD)
-                e->value = left + right;
+                valid = checked_add(left, right, &e->value);
             else if (e->kind == EX_SUB)
-                e->value = left - right;
+                valid = checked_subtract(left, right, &e->value);
             else
-                e->value = left * right;
+                valid = checked_multiply(left, right, &e->value);
+            if (!valid)
+            {
+                diagnostic(source, e->span, "expression outside signed 32-bit range");
+                return 0;
+            }
         }
         if (e->value < -2147483648LL || e->value > 2147483647LL)
         {

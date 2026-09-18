@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.31.0 (in development) is a small C assembler with a limited
+Kasm 0.32.0 (in development) is a small C assembler with a limited
 x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -14,7 +14,7 @@ executables.
 
 ## Version history
 
-The current source version is **0.31.0 (in development)**.
+The current source version is **0.32.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -51,6 +51,7 @@ The current source version is **0.31.0 (in development)**.
 | 0.29.0 (in development) | Add 16-bit segment-register `push`/`pop` for CS, ES, SS, DS, FS, and GS, including one- and two-byte opcode decoding and an exact-byte regression test. |
 | 0.30.0 (in development) | Add 16-bit SBB immediate forms for AX, CX, and DX, including ModR/M encoding, borrow-aware decoding, and an exact-listing regression test. |
 | 0.31.0 (in development) | Add operand-free HALT and PAUSE forms with exact layout, encoding, decoding, and an end-to-end regression test. |
+| 0.32.0 (in development) | Make signed constant-expression folding overflow-safe for addition, subtraction, and multiplication, with semantic regression coverage. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -220,6 +221,21 @@ checks both the binary and decoded listing:
 ```powershell
 ctest --test-dir build/windows-debug -C Debug -R "^encode.control$" --output-on-failure
 ```
+
+## Overflow-safe constant expressions (0.32.0)
+
+Constant expressions are evaluated with checked signed `long long` arithmetic
+before Kasm applies its signed 32-bit language limit. Addition, subtraction, and
+multiplication now reject intermediate overflow instead of relying on C signed
+overflow behavior. The semantic regression retains the successful precedence
+case and checks overflowing examples for all three operators:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "^semantic.expression$" --output-on-failure
+```
+
+Symbol-valued data remains a future layout feature. Current data directives still
+accept constants and location-aware `$`/`$$` expressions only.
 
 ## Data directives and layout expressions (0.25.0)
 
