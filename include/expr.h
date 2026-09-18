@@ -24,6 +24,7 @@ typedef enum {
     EX_MUL,
     EX_CURRENT_OFFSET, /* $ */
     EX_SECTION_START, /* $$ */
+    EX_SYMBOL,
 } ExprKind;
 
 typedef struct {

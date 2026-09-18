@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.32.0 LANGUAGES C)
+project(kasm VERSION 0.33.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -18,6 +18,33 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 include(CTest)
 
 if(BUILD_TESTING)
+    add_executable(coff_writer_test tests/coff_writer.c src/coff.c src/bytes.c src/binary.c)
+    target_include_directories(coff_writer_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/coff-tests")
+    add_test(NAME coff.writer COMMAND coff_writer_test "${CMAKE_CURRENT_BINARY_DIR}/coff-tests/relocation.obj")
+    add_test(NAME coff.cli COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/coff-cli/$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/coff_cli.cmake")
+    if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(coff_dir "${CMAKE_CURRENT_BINARY_DIR}/coff-link/$<CONFIG>")
+        add_custom_command(OUTPUT "${coff_dir}/coff_answer.obj"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${coff_dir}"
+            COMMAND "${CMAKE_COMMAND}" -E chdir "${coff_dir}" "$<TARGET_FILE:kasm>"
+                --format coff --export answer -o "${coff_dir}/coff_answer.obj"
+                "${CMAKE_CURRENT_SOURCE_DIR}/examples/coff_answer.asm"
+            DEPENDS kasm "${CMAKE_CURRENT_SOURCE_DIR}/examples/coff_answer.asm" VERBATIM)
+        add_custom_command(OUTPUT "${coff_dir}/external.obj"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${coff_dir}"
+            COMMAND "$<TARGET_FILE:coff_writer_test>" "${coff_dir}/external.obj"
+            DEPENDS coff_writer_test VERBATIM)
+        set_source_files_properties("${coff_dir}/coff_answer.obj" "${coff_dir}/external.obj"
+            PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
+        add_executable(coff_link_test tests/coff_caller.c "${coff_dir}/coff_answer.obj")
+        add_executable(coff_external_link_test tests/coff_external_caller.c "${coff_dir}/external.obj")
+        add_test(NAME coff.linked_answer COMMAND coff_link_test)
+        add_test(NAME coff.linked_external COMMAND coff_external_link_test)
+    endif()
     add_executable(semantic_test_driver
         tests/semantic_driver.c
         src/decode.c
@@ -98,6 +125,13 @@ if(BUILD_TESTING)
             "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/data_expected.txt"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     endforeach()
+    add_test(NAME encode.data_symbols COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/data_symbols.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/data_symbols"
+        "-DEXPECTED_HEX=03 00 00 C3"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/data_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
     add_test(NAME semantic.data_invalid COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/data_invalid"
