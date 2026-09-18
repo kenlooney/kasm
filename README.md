@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.29.0 (in development) is a small C assembler with a limited
+Kasm 0.31.0 (in development) is a small C assembler with a limited
 x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -14,7 +14,7 @@ executables.
 
 ## Version history
 
-The current source version is **0.29.0 (in development)**.
+The current source version is **0.31.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -49,6 +49,8 @@ The current source version is **0.29.0 (in development)**.
 | 0.27.0 (in development) | Add 16-bit indirect `mov` from `[bx]` into AX/CX/DX, with encoding, decoding, operand validation, and an end-to-end regression test. |
 | 0.28.0 (in development) | Add a 512-byte 16-bit boot-sector fixture using location-aware padding, binary literals, and the `55 AA` boot signature. |
 | 0.29.0 (in development) | Add 16-bit segment-register `push`/`pop` for CS, ES, SS, DS, FS, and GS, including one- and two-byte opcode decoding and an exact-byte regression test. |
+| 0.30.0 (in development) | Add 16-bit SBB immediate forms for AX, CX, and DX, including ModR/M encoding, borrow-aware decoding, and an exact-listing regression test. |
+| 0.31.0 (in development) | Add operand-free HALT and PAUSE forms with exact layout, encoding, decoding, and an end-to-end regression test. |
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -178,6 +180,45 @@ The exact-byte segment-register regression is run with:
 
 ```powershell
 ctest --test-dir build/windows-debug -C Debug -R "^encode.mode16_segment$" --output-on-failure
+```
+
+## 16-bit subtract-with-borrow (0.30.0)
+
+16-bit mode supports immediate `sbb` for AX, CX, and DX. The instruction uses
+the `81 /3` opcode family, so the register code is stored in the low three bits
+of the ModR/M byte:
+
+| Instruction | Bytes |
+| --- | --- |
+| `sbb ax, 1` | `81 D8 01 00` |
+| `sbb cx, 2` | `81 D9 02 00` |
+| `sbb dx, 3` | `81 DA 03 00` |
+
+The immediate is little-endian and the decoder prints signed 16-bit values. The
+exact-byte and exact-listing regression is run with:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "^encode.mode16_sbb$" --output-on-failure
+```
+
+`sbb` consumes the processor carry flag; the assembler encodes that contract but
+does not execute or otherwise establish the flag.
+
+## Operand-free control instructions (0.31.0)
+
+The instruction set also includes two operand-free forms:
+
+| Instruction | Bytes |
+| --- | --- |
+| `halt` | `F4` |
+| `pause` | `F3 90` |
+
+Both require a semicolon and have fixed layout sizes. `pause` is recognized as a
+two-byte sequence before a decoder reports an unknown byte. The end-to-end test
+checks both the binary and decoded listing:
+
+```powershell
+ctest --test-dir build/windows-debug -C Debug -R "^encode.control$" --output-on-failure
 ```
 
 ## Data directives and layout expressions (0.25.0)
@@ -355,7 +396,7 @@ The [statement parser](src/program.c) accepts `mov <identifier>, <expression>;`,
 `and <identifier>, <expression>;`, `adc <identifier>, <expression>;`,
 `cmp <identifier>, <expression>;`,
 `int <expression>;`,
-`push <identifier>;`, `pop <identifier>;`,
+`push <identifier>;`, `pop <identifier>;`, `halt;`, `pause;`,
 the operand-free instruction `ret;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
 `dec <identifier>;`, `jz <identifier>;`, `jnz <identifier>;`,
