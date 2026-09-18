@@ -1,6 +1,6 @@
 # Kasm — Ken's Assembler
 
-Kasm 0.32.0 (in development) is a small C assembler with a limited
+Kasm 0.33.0 (in development) is a small C assembler with a limited
 x86-64 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text, lexes tokens, parses expressions
 and statements, validates operands, assigns image offsets, resolves labels and
 relocations, emits machine-code bytes, and can decode supported instruction
@@ -9,12 +9,33 @@ images back into a listing.
 The project also emits raw data directives and assembly-time repetition. The
 default target is hosted x86-64 code; `--bits 16` selects the developing 16-bit
 encoding path, while `--bits 32` remains rejected. A raw data image is not automatically a
-bootable program, and Kasm does not yet generate object files or standalone
-executables.
+bootable program. Kasm can also generate Windows x64 COFF objects containing
+one instruction-only `.text` section and an exported label; standalone executable
+formats are not yet supported.
+
+COFF output requires `-o <output-path>`. To choose the filename and directory:
+
+```powershell
+.\build\windows-debug\Debug\kasm.exe --format coff --export answer -o .\build\coff_answer.obj examples/coff_answer.asm
+```
+
+The output directory must already exist; quote paths containing spaces. The
+export must name a label with instructions after it. Raw output remains the
+default. The COFF writer uses dynamically allocated storage with the existing
+16 MiB image limit, supports long symbol names, and accepts REL32 and ADDR64
+relocation records. Source-level external declarations and separate data sections
+remain future frontend work. Existing load-time absolute-jump patches are rejected
+for object output because they require conversion into linker relocations.
+
+Raw output uses the source filename with its last extension replaced: for
+example, `examples/coff_answer.asm` writes `coff_answer.bin` and `coff_answer.h`
+in the current working directory. The runner and inspector examples default to
+`program.h` from `program.asm`; define `KASM_GENERATED_HEADER` when using another
+generated header.
 
 ## Version history
 
-The current source version is **0.32.0 (in development)**.
+The current source version is **0.33.0 (in development)**.
 
 | Version | Added capability |
 | --- | --- |
@@ -52,6 +73,20 @@ The current source version is **0.32.0 (in development)**.
 | 0.30.0 (in development) | Add 16-bit SBB immediate forms for AX, CX, and DX, including ModR/M encoding, borrow-aware decoding, and an exact-listing regression test. |
 | 0.31.0 (in development) | Add operand-free HALT and PAUSE forms with exact layout, encoding, decoding, and an end-to-end regression test. |
 | 0.32.0 (in development) | Make signed constant-expression folding overflow-safe for addition, subtraction, and multiplication, with semantic regression coverage. |
+| 0.33.0 (in development) | Resolve label expressions in data directives after layout; add Windows x64 COFF object output with an explicit output path and exported label; name raw binaries and C headers after the input file. |
+
+Version 0.33.0 adds `--format coff --export <label> -o <output-path>` for
+Windows x64 objects. The backend writes symbol and string tables plus REL32 and
+ADDR64 relocation records. The source adapter currently supports one
+instruction-only `.text` section and one exported label; source-level external
+declarations and separate data sections remain future work. Data directives can
+resolve label expressions after layout, while constant-only expressions retain
+checked arithmetic. Raw output now uses `<input-name>.bin` and `<input-name>.h`.
+
+Validation for this milestone passed all 40 Windows tests, including linking
+and executing an exported function and resolving an external REL32 reference
+from a backend-generated object. Output-path tests cover directories containing
+spaces, missing output arguments, and unwritable destinations.
 
 Since 0.10.0, the project has gained load-time relocation, absolute indirect
 jumps, arithmetic and conditional control flow, and inspection of generated
@@ -286,7 +321,7 @@ embedded data, as in `examples/data_all_jump.asm`, which mixes all four widths.
 Data-only examples are
 encoding fixtures, not functions to execute.
 
-The CLI still writes `program.bin` and `generated.h` for images containing data,
+The CLI writes source-named `.bin` and `.h` files for images containing data,
 but prints `Data emitted; instruction-only decoding skipped.` instead of trying
 to disassemble the image. Instruction-only images retain their decoded listing.
 TIMES/FILL repetition is supported for data directives. Strings, alignment, and
@@ -393,8 +428,8 @@ supports the initial 16-bit forms described above and the existing 64-bit path;
 32-bit mode is rejected. It
 prints one line of uppercase hexadecimal bytes, with a space after each byte,
 followed by a decoded listing and `Decoding successful.` when decoding succeeds.
-Older releases may print only the hexadecimal line. The CLI writes `program.bin` (raw bytes) and
-`generated.h` (C declarations) in the **current working directory**, replacing
+Older releases may print only the hexadecimal line. For `program.asm`, the CLI writes `program.bin` (raw bytes) and
+`program.h` (C declarations) in the **current working directory**, replacing
 previous files with those names before decoding. Redirecting stdout saves text,
 including the listing, rather than a raw binary. Unless a full listing is shown,
 the encoding examples below show only the first hexadecimal line.
@@ -1062,7 +1097,7 @@ caller's return address. The assembler does not verify stack balance.
 
 ## Generated C data and execution
 
-The [C writer](src/output.c) wraps the encoded bytes in `generated.h`, including
+The [C writer](src/output.c) wraps the encoded bytes in `program.h`, including
 an include guard and `<stddef.h>`. For [examples/program.asm](examples/program.asm),
 the declarations contain these values (shown compactly):
 
@@ -1177,7 +1212,7 @@ A small demonstration in `main.c` patches a separate 16-byte buffer; it does not
 add a relocation to the assembled program. The absolute-jump example above
 exercises relocation of actual generated code.
 
-For the runner workflow, regenerate `generated.h` from an existing example such
+For the runner workflow, regenerate `program.h` from an existing example such
 as `program.asm` using the commands above, then recompile the runner. The include
 path option is required to find `relocate.h`. Running the reusable encoding test
 writes its header under `build/example-tests`, not beside the example runner.
@@ -1396,7 +1431,7 @@ error (or incorrect command-line usage).
 ### Reusable example encoding test
 
 `tests/encode_file.cmake` assembles an existing file and checks that the raw
-`program.bin` bytes match the first hexadecimal line of stdout. Pass `EXPECTED_HEX` to also check the expected
+The source-named `.bin` bytes match the first hexadecimal line of stdout. Pass `EXPECTED_HEX` to also check the expected
 instruction encoding. Run from the repository root after building:
 
 ```powershell
@@ -1412,7 +1447,7 @@ use different directories for examples that run concurrently.
 
 CTest uses this script for `examples/mov_42.asm`, `examples/ret.asm`, and
 `examples/program.asm`, saving separate binaries under
-`build/windows-debug/examples/Debug/<test-name>/program.bin` with the Windows
+`build/windows-debug/examples/Debug/<test-name>/<input-name>.bin` with the Windows
 Debug preset. To register another example, add a call inside `BUILD_TESTING`:
 
 ```cmake
@@ -1549,7 +1584,7 @@ the full path from source text to bytes and back.
    commands above. Cover a normal value, zero, supported negative expressions,
    range boundaries, invalid registers, and malformed operands as appropriate.
    Test layout with a label or jump after the new instruction. For execution,
-   regenerate `generated.h` beside the runner, then recompile the runner before
+   regenerate `program.h` beside the runner, then recompile the runner before
    running it. Check the result against a value calculated by hand; test flags
    explicitly when their behavior matters. Run Windows and WSL2 checks before
    a release.

@@ -1,7 +1,10 @@
 #if !defined(_WIN32)
 #define _DEFAULT_SOURCE
 #endif
-#include "generated.h"
+#ifndef KASM_GENERATED_HEADER
+#define KASM_GENERATED_HEADER "program.h"
+#endif
+#include KASM_GENERATED_HEADER
 #include <stdio.h>
 #include <string.h>
 #include "relocate.h"
