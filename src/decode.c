@@ -28,11 +28,13 @@ int decode(const Bytes *bytes, const Target *target)
         const char *registers16[] = {"ax", "cx", "dx", "bx"};
         const char *registers32[] = {"eax", "ecx", "edx", "ebx"};
         const char **registers = target->mode == MODE_16 ? registers16 : registers32;
-        
+
         if (p[0] == 0x8B && left >= 2 && (p[1] & 0xC7) == 0x07)
         {
             unsigned reg = (p[1] >> 3) & 0x07;
-            const char *name = reg == 0 ? "ax" : reg == 1 ? "cx" : reg == 2 ? "dx" : NULL;
+            const char *name = reg == 0 ? "ax" : reg == 1 ? "cx"
+                                             : reg == 2   ? "dx"
+                                                          : NULL;
             if (name == NULL)
                 return 0;
             printf("mov %s, [bx]\n", name);
@@ -100,6 +102,60 @@ int decode(const Bytes *bytes, const Target *target)
                    signed_displacement(read_le(p + 1, 4), 32));
             width = 5;
         }
+        // push/pop cs
+        else if (p[0] == 0x0E)
+        {
+            puts("push cs");
+            width = 1;
+        }
+     
+        // push es
+        else if (p[0] == 0x06)
+        {
+            puts("push es");
+            width = 1;
+        }
+        // pop es
+        else if (p[0] == 0x07)
+        {
+            puts("pop es");
+            width = 1;
+        }
+        // push/pop gs
+        else if (p[0] == 0x0F && left >= 2 && p[1] == 0xA8)
+        {
+            puts("push gs");
+            width = 2;
+        }
+        else if (p[0] == 0x0F && left >= 2 && p[1] == 0xA9)
+        {
+            puts("pop gs");
+            width = 2;
+        }
+        else if (p[0] == 0x0F && left >= 2 && p[1] == 0xA0)
+        {
+            puts("push fs");
+            width = 2;
+        }
+        else if (p[0] == 0x0F && left >= 2 && p[1] == 0xA1)
+        {
+            puts("pop fs");
+            width = 2;
+        }
+      
+        // push ds
+        else if (p[0] == 0x1E)
+        {
+            puts("push ds");
+            width = 1;
+        }
+        // pop ds
+        else if (p[0] == 0x1F)
+        {
+            puts("pop ds");
+            width = 1;
+        }
+
         // xor rim
         else if (p[0] == 0x35 && left >= 5)
         {

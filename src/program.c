@@ -303,26 +303,57 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
-    // push instruction
+    // push instructions
     else if (token_is(source, name, "push"))
     {
-        s.kind = ST_PUSH;
         s.operand = parser->lexer.token;
+
+        if (token_is(source, s.operand, "ds"))
+            s.kind = ST_PUSH_DS;
+        else if (token_is(source, s.operand, "es"))
+            s.kind = ST_PUSH_ES;
+        else if (token_is(source, s.operand, "cs"))
+            s.kind = ST_PUSH_CS;
+        else if (token_is(source, s.operand, "ss"))
+            s.kind = ST_PUSH_SS;
+        else if (token_is(source, s.operand, "gs"))
+            s.kind = ST_PUSH_GS;
+        else if (token_is(source, s.operand, "fs"))
+            s.kind = ST_PUSH_FS;
+        else
+            s.kind = ST_PUSH;
+
         if (!take(parser, TK_IDENT, "expected register"))
             return 0;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
-    // pop instruction
+    // pop instructions
     else if (token_is(source, name, "pop"))
     {
-        s.kind = ST_POP;
         s.operand = parser->lexer.token;
+
+        if (token_is(source, s.operand, "ds"))
+            s.kind = ST_POP_DS;
+        else if (token_is(source, s.operand, "es"))
+            s.kind = ST_POP_ES;
+        else if (token_is(source, s.operand, "cs"))
+            s.kind = ST_POP_CS;
+        else if (token_is(source, s.operand, "ss"))
+            s.kind = ST_POP_SS;
+        else if (token_is(source, s.operand, "gs"))
+            s.kind = ST_POP_GS;
+        else if (token_is(source, s.operand, "fs"))
+            s.kind = ST_POP_FS;
+        else
+            s.kind = ST_POP;
+
         if (!take(parser, TK_IDENT, "expected register"))
             return 0;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+
     // add rim instruction
     else if (token_is(source, name, "add"))
     {
