@@ -21,6 +21,7 @@
 - [0.34.0 — Launching This Journal](./15-launching-the-journal.md)
 - [0.35.0 — A Freestanding Linux Entry Sequence](./16-freestanding-linux-entry.md)
 - [0.36.0 — ELF64 Executables](./17-elf-executables.md)
+- [0.37.0 — A Focused Release Archive](./18-release-retention.md)
 - [Retrospective: Six Days, Thirty-Four Versions](./15-retrospective.md)
 - [Version Reference](./appendix-version-table.md)
 

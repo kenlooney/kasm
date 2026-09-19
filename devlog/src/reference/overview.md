@@ -1,6 +1,6 @@
 # Overview
 
-Kasm 0.36.0 (in development) is a small C assembler with a limited x86-64
+Kasm 0.37.0 (documentation-only) is a small C assembler with a limited x86-64
 instruction set and initial 16-bit MOV/ADD/SUB support. It owns source text,
 lexes tokens, parses expressions and statements, validates operands, assigns
 image offsets, resolves labels and relocations, emits machine-code bytes, and

@@ -55,6 +55,12 @@ Release ZIPs through CPack and publish a GitHub Release. Tags use
 [CMakeLists.txt](https://github.com/kenlooney/kasm/blob/main/CMakeLists.txt).
 A merge to `main` triggers this process through its push.
 
+The project retains downloadable packages for the seven most recent GitHub
+Releases. Older release pages and binary assets may be removed as new versions
+arrive, but their Git tags and commits remain available. The development
+journal preserves the complete version roadmap and explains the changes behind
+those historical tags.
+
 To build a Windows ZIP locally from the repository root:
 
 ```powershell
