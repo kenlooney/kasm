@@ -153,6 +153,9 @@ jobs:
       - name: Build book
         run: mdbook build devlog
 
+      - name: Preserve custom domain
+        run: echo "kasm.kennethlooney.com" > devlog/book/CNAME
+
       - name: Configure Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
