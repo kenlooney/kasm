@@ -8,11 +8,14 @@ decode supported instruction images back into a listing. It can also
 generate Windows x64 COFF objects, standalone Linux x86-64 ELF executables,
 and raw data images with assembly-time repetition.
 
-The current source version is **0.36.0 (in development)**. All detailed
+The current source version is **0.37.0 (documentation-only)**. All detailed
 documentation now lives in the **[Kasm Dev Log](https://kasm.kennethlooney.com/)**,
 an [mdbook](https://rust-lang.github.io/mdBook/) built from
 [`devlog/`](devlog/src/introduction.md). This README is intentionally short —
 use it to find the right page in the book.
+
+Downloadable packages are retained for the seven most recent GitHub Releases.
+Older source remains available through Git tags, commits, and the dev log.
 
 ## Where to go
 
