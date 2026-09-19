@@ -196,6 +196,12 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
     }
+    else if (token_is(source, name, "syscall"))
+    {
+        s.kind = ST_SYSCALL;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+    }
     // or rim instruction
     else if (token_is(source, name, "or"))
     {

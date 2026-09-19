@@ -1,0 +1,4 @@
+0000: mov eax, 60
+0005: mov edi, 42
+0010: syscall
+Decoding successful.

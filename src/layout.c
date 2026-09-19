@@ -49,6 +49,8 @@ size_t instruction_size(const Statement *statement)
         return statement->operand_bits == 16 ? 4 : 6;
     case ST_RET:
         return 1;
+    case ST_SYSCALL:
+        return 2;
     case ST_LABEL:
         return 0;
     case ST_NEAR_JMP:

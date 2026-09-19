@@ -58,6 +58,13 @@ int decode(const Bytes *bytes, const Target *target)
                    (unsigned long long)read_le(p + 1, immediate_width));
             width = 1 + immediate_width;
         }
+        else if (p[0] == 0xBF &&
+                 left >= (size_t)(1 + immediate_width))
+        {
+            printf("mov edi, %llu\n",
+                   (unsigned long long)read_le(p + 1, immediate_width));
+            width = 1 + immediate_width;
+        }
         else if ((p[0] == 0x05 || p[0] == 0x2D) &&
                  left >= (size_t)(1 + immediate_width))
         {
@@ -81,10 +88,17 @@ int decode(const Bytes *bytes, const Target *target)
                                        immediate_width * 8));
             width = 2 + immediate_width;
         }
+        // ret
         else if (p[0] == 0xC3)
         {
             puts("ret");
             width = 1;
+        }
+        // syscall
+        else if (p[0] == 0x0F && left >= 2 && p[1] == 0x05)
+        {
+            puts("syscall");
+            width = 2;
         }
         else if (p[0] == 0x50)
         {
@@ -108,7 +122,7 @@ int decode(const Bytes *bytes, const Target *target)
             puts("push cs");
             width = 1;
         }
-     
+
         // push es
         else if (p[0] == 0x06)
         {
@@ -142,7 +156,7 @@ int decode(const Bytes *bytes, const Target *target)
             puts("pop fs");
             width = 2;
         }
-      
+
         // push ds
         else if (p[0] == 0x1E)
         {
