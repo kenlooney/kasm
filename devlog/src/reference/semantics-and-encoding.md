@@ -50,7 +50,7 @@ RET, 64-bit SYSCALL, short, near, or absolute indirect JMP, and near JZ/JNZ/JB/J
 label. Far jumps, short conditional jumps, other condition codes, other
 instructions and registers, labels in expressions, memory operands,
 directives beyond DB/DW/DD/DQ and their aliases, and object or executable
-file formats beyond COFF are not implemented. MOV immediates must be in
+profiles beyond COFF and the minimal Linux ELF64 writer are not implemented. MOV immediates must be in
 `0..2147483647`; ADD/SUB/OR/ADC accept signed 32-bit expression results,
 subject to the expression restrictions below. INT requires a final value in
 `0..255`. Blocks provide grouping, not scope or control flow. Empty input or

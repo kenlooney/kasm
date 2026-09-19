@@ -64,6 +64,8 @@ The registered CTest tests cover:
   adjacent comments.
 - The 16-bit, data-directive, control-instruction, and overflow-safety
   suites described in their own reference chapters.
+- ELF header and program-header fields, exact entry payload, invalid entry and
+  unsupported-input rejection, plus exit status 42 when tests run on Linux.
 
 Expression tests use `expr_test_driver` to inspect ASTs independently of
 the encoding CLI. Semantic and multiple-statement tests use

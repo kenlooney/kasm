@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.35.0 LANGUAGES C)
+project(kasm VERSION 0.36.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -18,6 +18,11 @@ install(FILES README.md LICENSE DESTINATION share/doc/kasm)
 include(CTest)
 
 if(BUILD_TESTING)
+    add_test(NAME elf.cli COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/exit42.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/elf-cli/$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/elf_cli.cmake")
     add_executable(coff_writer_test tests/coff_writer.c src/coff.c src/bytes.c src/binary.c)
     target_include_directories(coff_writer_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/coff-tests")

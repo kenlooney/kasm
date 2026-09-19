@@ -20,12 +20,14 @@
 - [0.33.0 — COFF Objects and Linking with the Real World](./14-coff-objects.md)
 - [0.34.0 — Launching This Journal](./15-launching-the-journal.md)
 - [0.35.0 — A Freestanding Linux Entry Sequence](./16-freestanding-linux-entry.md)
+- [0.36.0 — ELF64 Executables](./17-elf-executables.md)
 - [Retrospective: Six Days, Thirty-Four Versions](./15-retrospective.md)
 - [Version Reference](./appendix-version-table.md)
 
 # Reference
 
 - [Overview](./reference/overview.md)
+- [Executable output](./reference/executable-formats.md)
 - [The instruction set and parser](./reference/instruction-set.md)
 - [Semantic checking and encoding](./reference/semantics-and-encoding.md)
 - [Generated C data, execution, and decoding](./reference/execution-and-decoding.md)

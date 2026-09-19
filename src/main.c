@@ -28,13 +28,23 @@
 #include "decode.h"
 #include "target.h"
 #include "coff.h"
+#include "elf.h"
+
+typedef enum
+{
+    OUTPUT_RAW,
+    OUTPUT_COFF,
+    OUTPUT_ELF
+} OutputFormat;
+
 /* Use the final filename component and replace only its last extension.
    Raw outputs remain in the current working directory. */
 static char *raw_output_name(const char *source_path, const char *extension)
 {
     const char *name = source_path;
     for (const char *p = source_path; *p; ++p)
-        if (*p == '/' || *p == '\\') name = p + 1;
+        if (*p == '/' || *p == '\\')
+            name = p + 1;
     const char *dot = strrchr(name, '.');
     size_t length = dot && dot != name ? (size_t)(dot - name) : strlen(name);
     char *path = malloc(length + strlen(extension) + 1);
@@ -47,6 +57,12 @@ static char *raw_output_name(const char *source_path, const char *extension)
 }
 int main(int argc, char **argv)
 {
+    // Initialize output formats
+    OutputFormat output_format = OUTPUT_RAW;
+    const char *coff_export = NULL;
+    const char *elf_entry = NULL;
+    const char *output_path = NULL;
+
     unsigned char demonstration[16] = {8};
     size_t patch = 0;
     if (!relocate(demonstration, sizeof demonstration, &patch, 1))
@@ -55,8 +71,7 @@ int main(int argc, char **argv)
     Source source;
     Target target;
     const char *source_path;
-    const char *coff_export = NULL;
-    const char *output_path = NULL;
+
     if (argc == 2)
     {
         target.mode = MODE_64;
@@ -77,12 +92,29 @@ int main(int argc, char **argv)
         }
         source_path = argv[3];
     }
-    else if (argc == 8 && strcmp(argv[1], "--format") == 0 &&
-             strcmp(argv[2], "coff") == 0 && strcmp(argv[3], "--export") == 0 &&
-             strcmp(argv[5], "-o") == 0 && argv[6][0] != '\0')
+    else if (argc == 8 &&
+             strcmp(argv[1], "--format") == 0 &&
+             strcmp(argv[2], "coff") == 0 &&
+             strcmp(argv[3], "--export") == 0 &&
+             strcmp(argv[5], "-o") == 0 &&
+             argv[6][0] != '\0')
     {
         target.mode = MODE_64;
+        output_format = OUTPUT_COFF;
         coff_export = argv[4];
+        output_path = argv[6];
+        source_path = argv[7];
+    }
+    else if (argc == 8 &&
+             strcmp(argv[1], "--format") == 0 &&
+             strcmp(argv[2], "elf") == 0 &&
+             strcmp(argv[3], "--entry") == 0 &&
+             strcmp(argv[5], "-o") == 0 &&
+             argv[6][0] != '\0')
+    {
+        target.mode = MODE_64;
+        output_format = OUTPUT_ELF;
+        elf_entry = argv[4];
         output_path = argv[6];
         source_path = argv[7];
     }
@@ -90,6 +122,7 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "Usage: %s [--bits <target-mode>] <source-file>\n", argv[0]);
         fprintf(stderr, "       %s --format coff --export <label> -o <output-path> <source-file>\n", argv[0]);
+        fprintf(stderr, "       %s --format elf --entry <label> -o <output-path> <source-file>\n", argv[0]);
         return 1;
     }
 
@@ -131,7 +164,7 @@ int main(int argc, char **argv)
         source_free(&source);
         return 1;
     }
-    
+
     Bytes bytes = {0};
     if (!encode(&source, &program, &bytes, &target))
     {
@@ -142,7 +175,7 @@ int main(int argc, char **argv)
         source_free(&source);
         return 1;
     }
-    if (coff_export != NULL)
+    if (output_format == OUTPUT_COFF)
     {
         int okay = 1, found = 0;
         size_t entry_offset = 0;
@@ -173,6 +206,58 @@ int main(int argc, char **argv)
         free(program.data);
         free(program.statements);
         source_free(&source);
+        return okay ? 0 : 1;
+    }
+    if (output_format == OUTPUT_ELF)
+    {
+        int okay = 1;
+        int found = 0;
+        size_t entry_offset = 0;
+
+        for (int i = 0; i < program.count; ++i)
+        {
+            const Statement *s = &program.statements[i];
+
+            if (is_data_kind(s->kind))
+                okay = 0;
+
+            if (s->kind == ST_LABEL &&
+                token_is(&source, s->operand, elf_entry))
+            {
+                found = 1;
+                entry_offset = s->offset;
+            }
+        }
+
+        if (!okay)
+        {
+            fputs("ELF currently requires an instruction-only image\n",
+                  stderr);
+        }
+        else if (!found)
+        {
+            fprintf(stderr, "ELF entry label not found: %s\n",
+                    elf_entry);
+            okay = 0;
+        }
+        else if (entry_offset >= bytes.count)
+        {
+            fprintf(stderr,
+                    "ELF entry label does not point to an instruction: %s\n",
+                    elf_entry);
+            okay = 0;
+        }
+        else
+        {
+            okay = write_elf(&bytes, entry_offset, output_path);
+        }
+
+        free(bytes.data);
+        free(parser.nodes);
+        free(program.data);
+        free(program.statements);
+        source_free(&source);
+
         return okay ? 0 : 1;
     }
     for (size_t i = 0; i < bytes.count; i++)
