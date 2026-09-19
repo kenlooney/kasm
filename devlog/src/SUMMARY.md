@@ -2,6 +2,8 @@
 
 [Introduction](./introduction.md)
 
+# Development Journal
+
 - [Genesis: A Lexer for Two Days (Sept 12)](./01-genesis.md)
 - [Parsing Expressions and Programs](./02-parser-and-programs.md)
 - [0.1.0 — The First Encoded Bytes](./03-first-bytes.md)
@@ -18,5 +20,19 @@
 - [0.33.0 — COFF Objects and Linking with the Real World](./14-coff-objects.md)
 - [0.34.0 — Launching This Journal](./15-launching-the-journal.md)
 - [Retrospective: Six Days, Thirty-Four Versions](./15-retrospective.md)
+- [Version Reference](./appendix-version-table.md)
 
-[Version Reference](./appendix-version-table.md)
+# Reference
+
+- [Overview](./reference/overview.md)
+- [The instruction set and parser](./reference/instruction-set.md)
+- [Semantic checking and encoding](./reference/semantics-and-encoding.md)
+- [Generated C data, execution, and decoding](./reference/execution-and-decoding.md)
+- [The lexer](./reference/lexer.md)
+- [Data directives and layout expressions](./reference/data-directives.md)
+- [The 16-bit instruction set](./reference/sixteen-bit.md)
+- [Control instructions and overflow safety](./reference/control-and-overflow.md)
+- [Building and testing](./reference/building-and-testing.md)
+- [Extending the assembler: a checklist](./reference/extending.md)
+- [Using a release](./reference/releases.md)
+
