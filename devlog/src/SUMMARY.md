@@ -19,6 +19,7 @@
 - [0.31.0–0.32.0 — Odds, Ends, and Overflow Safety](./13-halt-pause-overflow.md)
 - [0.33.0 — COFF Objects and Linking with the Real World](./14-coff-objects.md)
 - [0.34.0 — Launching This Journal](./15-launching-the-journal.md)
+- [0.35.0 — A Freestanding Linux Entry Sequence](./16-freestanding-linux-entry.md)
 - [Retrospective: Six Days, Thirty-Four Versions](./15-retrospective.md)
 - [Version Reference](./appendix-version-table.md)
 

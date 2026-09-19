@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(kasm VERSION 0.34.1 LANGUAGES C)
+project(kasm VERSION 0.35.0 LANGUAGES C)
 
 file(GLOB_RECURSE SOURCES CONFIG_DEPENDS "src/*.c")
 add_executable(kasm
@@ -93,6 +93,27 @@ if(BUILD_TESTING)
         "-DEXPECTED_HEX=F4 F3 90"
         "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/control_expected.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    add_test(NAME encode.exit42 COMMAND "${CMAKE_COMMAND}"
+        "-DKASM=$<TARGET_FILE:kasm>"
+        "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/exit42.asm"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/examples/$<CONFIG>/exit42"
+        "-DEXPECTED_HEX=B8 3C 00 00 00 BF 2A 00 00 00 0F 05"
+        "-DEXPECTED_DECODE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/exit42_expected.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/encode_file.cmake")
+    function(add_rejected_source_test name source_text bits expected_error)
+        add_test(NAME semantic.${name} COMMAND "${CMAKE_COMMAND}"
+            "-DKASM=$<TARGET_FILE:kasm>"
+            "-DSOURCE_TEXT=${source_text}"
+            "-DBITS=${bits}"
+            "-DEXPECTED_ERROR=${expected_error}"
+            "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/rejected/$<CONFIG>/${name}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_source.cmake")
+    endfunction()
+    add_rejected_source_test(syscall_operand "syscall 1;" 64 "expected semicolon")
+    add_rejected_source_test(syscall_mode16 "syscall;" 16
+        "syscall is only supported in 64-bit mode")
+    add_rejected_source_test(edi_mode16 "mov edi,42;" 16
+        "edi is only supported in 64-bit mode")
     add_test(NAME encode.mode16_segment COMMAND "${CMAKE_COMMAND}"
         "-DKASM=$<TARGET_FILE:kasm>"
         "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/mode16_segment.asm"

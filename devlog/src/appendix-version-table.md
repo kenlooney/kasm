@@ -43,6 +43,7 @@ present-day behavior — this book is a historical record.
 | 0.32.0 | Make signed constant-expression folding overflow-safe for addition, subtraction, and multiplication. |
 | 0.33.0 | Resolve label expressions in data directives after layout; add Windows x64 COFF object output; name raw binaries and headers after the input file. |
 | 0.34.0 | Documentation only: launch this journal, trim the README's version history into a pointer to it, and publish the book to GitHub Pages via CI. |
+| 0.35.0 | Add 64-bit `mov edi, immediate` and operand-free SYSCALL for a freestanding Linux x86-64 entry payload. |
 
 ## Tag timeline
 

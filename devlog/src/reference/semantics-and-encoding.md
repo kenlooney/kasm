@@ -17,8 +17,8 @@ Produces:
 B8 2A 00 00 00
 ```
 
-MOV and arithmetic/bitwise instructions require `eax`; PUSH/POP require
-`rax`. Every literal and intermediate expression result must fit the signed
+MOV supports EAX in the established 32-bit form and EDI for MOV-immediate in
+64-bit mode; PUSH/POP require `rax`. Every literal and intermediate expression result must fit the signed
 32-bit range `-2147483648..2147483647`. The final MOV immediate must also be
 nonnegative, giving an accepted range of `0..2147483647`. These are the
 current language restrictions. The lexer's larger literal range does not
@@ -39,14 +39,14 @@ modify CPU registers.
 
 ## Encoding and current limitations
 
-The encoder emits five bytes per MOV: opcode `B8`, followed by the
-evaluated immediate as four bytes in little-endian order. For example, 42
+The encoder emits five bytes for 32-bit MOV: opcode `B8` for EAX or `BF`
+for EDI, followed by the evaluated immediate as four bytes in little-endian order. For example, 42
 becomes `2A 00 00 00`. RET emits one byte, `C3`. The byte buffer grows
 dynamically as instructions are appended.
 
 The current language supports MOV, ADD, SUB, OR, AND, ADC, CMP, INC, and
 DEC on `eax`, PUSH/POP on `rax`, INT with an immediate vector, operand-free
-RET, short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a
+RET, 64-bit SYSCALL, short, near, or absolute indirect JMP, and near JZ/JNZ/JB/JL to a
 label. Far jumps, short conditional jumps, other condition codes, other
 instructions and registers, labels in expressions, memory operands,
 directives beyond DB/DW/DD/DQ and their aliases, and object or executable
@@ -57,6 +57,16 @@ subject to the expression restrictions below. INT requires a final value in
 empty blocks print an empty hex line and `Decoding successful.`, write an
 empty binary, and generate a header with `code_size = 0` and a placeholder
 array element so the declaration remains valid C.
+
+### Freestanding Linux entry instructions
+
+In 64-bit mode, `mov edi, <expression>;` emits `BF` followed by a four-byte
+little-endian immediate. `syscall;` emits `0F 05`, occupies two bytes, and
+takes no operand. Both forms are rejected in 16-bit mode. Together with EAX
+MOV they express the payload in
+[`examples/exit42.asm`](https://github.com/kenlooney/kasm/blob/main/examples/exit42.asm).
+The payload uses Linux syscall number 60 and status 42; Kasm does not yet wrap
+it in an ELF executable.
 
 ### ADD and SUB immediate expressions
 

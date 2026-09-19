@@ -26,6 +26,7 @@
 typedef enum { 
     ST_MOV, 
     ST_RET, 
+    ST_SYSCALL,
     ST_LABEL, 
     ST_NEAR_JMP, 
     ST_SHORT_JMP, 

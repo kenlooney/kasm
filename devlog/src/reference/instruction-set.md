@@ -6,7 +6,7 @@ accepts `mov <identifier>, <expression>;`, `add <identifier>, <expression>;`,
 `xor <identifier>, <expression>;`, `and <identifier>, <expression>;`,
 `adc <identifier>, <expression>;`, `cmp <identifier>, <expression>;`,
 `int <expression>;`, `push <identifier>;`, `pop <identifier>;`, `halt;`,
-`pause;`, the operand-free instruction `ret;`, `jmp near <identifier>;`,
+`pause;`, the operand-free instructions `ret;` and `syscall;`, `jmp near <identifier>;`,
 `jmp short <identifier>;`, `jmp abs <identifier>;`, `inc <identifier>;`,
 `dec <identifier>;`, `jz <identifier>;`, `jnz <identifier>;`,
 `jb <identifier>;`, and `jl <identifier>;`, as well as `identifier:` label
@@ -53,7 +53,7 @@ comments do not nest.
 
 Instruction names are case-sensitive: use lowercase `mov`, `ret`, `jmp`,
 `inc`, `dec`, `jz`, `jnz`, `jb`, `jl`, `add`, `sub`, `or`, `xor`, `and`,
-`adc`, `cmp`, `push`, `pop`, and `int`. The parser accepts an identifier as
+`adc`, `cmp`, `push`, `pop`, `int`, and `syscall`. The parser accepts an identifier as
 the destination; semantic validation then requires lowercase `eax` for
 arithmetic and MOV, or `rax` for PUSH/POP. Each instruction requires a
 semicolon, including the last one. Statements can share a line or be
@@ -97,7 +97,7 @@ runs after semantic checking and before byte encoding. Starting at byte
 offset zero, it stores the current offset in each `Statement.offset`, then
 advances by `instruction_size()`: five bytes for MOV, ADD, SUB, OR, ADC, CMP,
 or a near JMP, two for a short JMP, fourteen for an absolute JMP including
-its address slot, two for INC, DEC, or INT, six for JZ or JNZ, one for RET,
+its address slot, two for INC, DEC, INT, or SYSCALL, six for JZ or JNZ, one for RET,
 PUSH, or POP, and zero for a label. Offsets are relative to the beginning of
 the encoded program, not source-file positions or runtime memory addresses.
 

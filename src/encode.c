@@ -61,6 +61,11 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
                     if (!byte_push(bytes, 0xBA) || !little_endian(bytes, (uint64_t)s->value, width))
                         return 0;
                     break;
+                case 7:
+                    if (!byte_push(bytes, 0xBF) ||
+                        !little_endian(bytes, (uint64_t)s->value, width))
+                        return 0;
+                    break;
                 default:
                     return 0;
                 }
@@ -97,6 +102,13 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         else if (s->kind == ST_RET)
         {
             if (!byte_push(bytes, 0xC3))
+                return 0;
+        }
+        // syscall
+        else if (s->kind == ST_SYSCALL)
+        {
+            if (!byte_push(bytes, 0x0F) ||
+                !byte_push(bytes, 0x05))
                 return 0;
         }
         // dec eax
@@ -157,7 +169,7 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
             if (!byte_push(bytes, 0xFF) || !byte_push(bytes, 0xC0))
                 return 0;
         }
-        
+
         // push cs
         else if (s->kind == ST_PUSH_CS)
         {
@@ -176,14 +188,14 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
             if (!byte_push(bytes, 0x06)) // Assuming 0x06 is the opcode for PUSH ES
                 return 0;
         }
-     
+
         // pop es
         else if (s->kind == ST_POP_ES)
         {
             if (!byte_push(bytes, 0x07)) // Assuming 0x07 is the opcode for POP ES
                 return 0;
         }
-        
+
         // push ds
         else if (s->kind == ST_PUSH_DS)
         {
@@ -199,24 +211,24 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         // push/pop gs
         else if (s->kind == ST_PUSH_GS)
         {
-            if (!byte_push(bytes, 0x0F) || !byte_push(bytes,0xA8)) // 0x0F = Escape prefix, 0xA8 is the opcode for PUSH GS
+            if (!byte_push(bytes, 0x0F) || !byte_push(bytes, 0xA8)) // 0x0F = Escape prefix, 0xA8 is the opcode for PUSH GS
                 return 0;
         }
         else if (s->kind == ST_POP_GS)
         {
-            if (!byte_push(bytes, 0x0F) || !byte_push(bytes,0xA9)) // 0x0F = Escape prefix, 0xA9 is the opcode for POP GS
+            if (!byte_push(bytes, 0x0F) || !byte_push(bytes, 0xA9)) // 0x0F = Escape prefix, 0xA9 is the opcode for POP GS
                 return 0;
         }
         // push/pop fs
         else if (s->kind == ST_PUSH_FS)
         {
             if (!byte_push(bytes, 0x0F) ||
-            !byte_push(bytes,0xA0))// 0x0F = Escape prefix, 0xA0 is the opcode for PUSH FS
-            return 0;
+                !byte_push(bytes, 0xA0)) // 0x0F = Escape prefix, 0xA0 is the opcode for PUSH FS
+                return 0;
         }
         else if (s->kind == ST_POP_FS)
         {
-            if (!byte_push(bytes, 0x0F) || !byte_push(bytes,0xA1)) // 0x0F = Escape prefix, 0xA1 is the opcode for POP FS
+            if (!byte_push(bytes, 0x0F) || !byte_push(bytes, 0xA1)) // 0x0F = Escape prefix, 0xA1 is the opcode for POP FS
                 return 0;
         }
         // push ss
@@ -224,14 +236,14 @@ int encode(const Source *source, Program *program, Bytes *bytes, const Target *t
         {
             if (!byte_push(bytes, 0x16)) // Assuming 0x16 is the opcode for PUSH SS
                 return 0;
-        }   
+        }
         // pop ss
         else if (s->kind == ST_POP_SS)
         {
             if (!byte_push(bytes, 0x17)) // Assuming 0x17 is the opcode for POP SS
                 return 0;
         }
-        
+
         // push eax
         else if (s->kind == ST_PUSH)
         {

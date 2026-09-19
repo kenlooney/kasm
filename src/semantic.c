@@ -27,12 +27,6 @@ int expression_uses_symbol(const Parser *p, int root)
            expression_uses_symbol(p, e->right);
 }
 
- 
-
- 
-
- 
-
 int expression_uses_location(const Parser *parser, int expression)
 {
     const Expr *e = &parser->nodes[expression];
@@ -288,6 +282,12 @@ int check_program(Parser *parser, Program *program, const Target *target)
             }
         }
 
+        if (s->kind == ST_SYSCALL && target->mode != MODE_64)
+        {
+            diagnostic(source, s->span,
+                       "syscall is only supported in 64-bit mode");
+            return 0;
+        }
         if (s->kind == ST_MOV)
         {
             if (s->is_memory_operand)
@@ -337,10 +337,22 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 s->reg_code = 2;      // Assuming 2 corresponds to dx
                 s->operand_bits = 16; // dx is a 16-bit register
             }
+            else if (token_is(source, s->operand, "edi"))
+            {
+                if (target->mode != MODE_64)
+                {
+                    diagnostic(source, s->operand.span,
+                               "edi is only supported in 64-bit mode");
+                    return 0;
+                }
+
+                s->reg_code = 7;
+                s->operand_bits = 32;
+            }
             else
             {
                 diagnostic(source, s->operand.span,
-                           "expected eax, ax, ecx, cx, edx, or dx");
+                           "expected eax, ax, ecx, cx, edx, dx, or edi");
                 return 0;
             }
             if (target->mode == MODE_16 && s->operand_bits != 16)
@@ -352,7 +364,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
             if (target->mode != MODE_16 && s->operand_bits != 32)
             {
                 diagnostic(source, s->operand.span,
-                           "This target requires 32-bit registers: eax, ecx, or edx");
+                           "This target requires 32-bit registers: eax, ecx, edx, or edi");
                 return 0;
             }
         }

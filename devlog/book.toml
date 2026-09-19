@@ -1,5 +1,5 @@
 [book]
-title = "Kasm Dev Log: From 0.0.0 to 0.33.0"
+title = "Kasm Dev Log: From 0.0.0 to 0.35.0"
 description = "A running development journal of Kasm, a small C x86-64/x86-16 assembler, told version by version."
 authors = ["Ken Looney"]
 language = "en"
