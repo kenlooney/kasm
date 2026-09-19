@@ -17,6 +17,7 @@ build/
 install/
 dist/
 **/generated.h
+devlog/book/
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
