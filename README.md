@@ -5,10 +5,10 @@ emerging x86-16 (real-mode) subset. It owns source text, lexes tokens,
 parses expressions and statements, validates operands, assigns image
 offsets, resolves labels and relocations, emits machine-code bytes, and can
 decode supported instruction images back into a listing. It can also
-generate Windows x64 COFF objects and raw data images with assembly-time
-repetition.
+generate Windows x64 COFF objects, standalone Linux x86-64 ELF executables,
+and raw data images with assembly-time repetition.
 
-The current source version is **0.34.0 (in development)**. All detailed
+The current source version is **0.36.0 (in development)**. All detailed
 documentation now lives in the **[Kasm Dev Log](https://kasm.kennethlooney.com/)**,
 an [mdbook](https://rust-lang.github.io/mdBook/) built from
 [`devlog/`](devlog/src/introduction.md). This README is intentionally short —
@@ -19,6 +19,7 @@ use it to find the right page in the book.
 | I want to... | Read |
 | --- | --- |
 | Understand what Kasm can do today, including COFF output | [Reference: Overview](devlog/src/reference/overview.md) |
+| Generate or inspect a Linux ELF executable | [Reference: Executable output](devlog/src/reference/executable-formats.md) |
 | Try a prebuilt release without a source checkout | [Reference: Using a release](devlog/src/reference/releases.md) |
 | Learn the assembly syntax, instruction set, and opcode encodings | [Reference: The instruction set and parser](devlog/src/reference/instruction-set.md) |
 | See how expressions are validated and how bytes are encoded | [Reference: Semantic checking and encoding](devlog/src/reference/semantics-and-encoding.md) |
