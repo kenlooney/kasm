@@ -1,0 +1,128 @@
+name: Development snapshot
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare snapshot
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.metadata.outputs.tag }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Create snapshot identifier
+        id: metadata
+        shell: bash
+        run: |
+          version="$(sed -nE 's/^[[:space:]]*VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)[[:space:]]*$/\1/p' CMakeLists.txt)"
+          if [[ -z "$version" ]]; then
+            echo "Could not read the project version from CMakeLists.txt." >&2
+            exit 1
+          fi
+          short_sha="${GITHUB_SHA::7}"
+          tag="v${version}-dev.${GITHUB_RUN_NUMBER}.${short_sha}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Preparing snapshot $tag"
+
+  package:
+    name: Build snapshot for ${{ matrix.os }}
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -DBUILD_TESTING=ON
+          -DKASM_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_BUILD_TYPE=Release
+          "-DKASM_PACKAGE_VERSION:STRING=${{ needs.prepare.outputs.tag }}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure
+
+      - name: Package
+        run: cpack --config build/CPackConfig.cmake -C Release
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-${{ matrix.os }}
+          path: build/packages/kasm-*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish snapshot prerelease
+    needs: [prepare, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: snapshot-*
+          path: packages
+          merge-multiple: true
+
+      - name: Create snapshot tag and prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SNAPSHOT_TAG: ${{ needs.prepare.outputs.tag }}
+        run: >-
+          gh release create "$SNAPSHOT_TAG" packages/*.zip
+          --target "$GITHUB_SHA"
+          --title "Development snapshot $SNAPSHOT_TAG"
+          --prerelease
+          --generate-notes
+
+      - name: Retain only the newest 25 snapshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SNAPSHOT_LIMIT: 25
+        shell: bash
+        run: |
+          mapfile -t expired_tags < <(
+            gh api --paginate --slurp \
+              "repos/{owner}/{repo}/releases?per_page=100" \
+              --jq 'add
+                | map(select(
+                    .prerelease == true
+                    and (.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-dev\\."))
+                  ))
+                | sort_by(.created_at)
+                | reverse
+                | .[($ENV.SNAPSHOT_LIMIT | tonumber):]
+                | .[].tag_name'
+          )
+
+          for tag in "${expired_tags[@]}"; do
+            echo "Deleting expired snapshot $tag"
+            gh release delete "$tag" --cleanup-tag --yes
+          done

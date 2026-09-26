@@ -11,6 +11,8 @@ project(
 include(GNUInstallDirs)
 
 option(KASM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+set(KASM_PACKAGE_VERSION "v${PROJECT_VERSION}" CACHE STRING
+    "Version label used in package filenames")
 
 add_library(kasm_core STATIC
     src/kasm.c
@@ -72,5 +74,5 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_GENERATOR "ZIP")
 set(CPACK_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/packages")
 set(CPACK_PACKAGE_FILE_NAME
-    "${PROJECT_NAME}-v${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+    "${PROJECT_NAME}-${KASM_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
