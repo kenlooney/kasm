@@ -12,6 +12,18 @@ yet.
 - CMake 3.20 or newer
 
 ## Build and test
+### Test Example
+```cmake
+add_test(
+    NAME kasm.cli.loads_source
+    COMMAND kasm "${PROJECT_SOURCE_DIR}/examples/first.asm"
+)
+
+set_tests_properties(kasm.cli.loads_source PROPERTIES
+    PASS_REGULAR_EXPRESSION "kasm [0-9]+\\.[0-9]+\\.[0-9]+"
+)
+ctest --test-dir build/windows-debug -C Debug -R "^kasm\.cli\.loads_source$" -V
+```
 
 On Windows with Visual Studio 2026:
 

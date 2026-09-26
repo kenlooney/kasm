@@ -2,6 +2,7 @@
 #define KASM_KASM_H
 
 #include "kasm/version.h"
+#include "kasm/source.h"
 
 #ifdef __cplusplus
 extern "C" {

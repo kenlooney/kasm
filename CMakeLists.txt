@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     kasm
-    VERSION 0.1.1
+    VERSION 0.2.0
     DESCRIPTION "A small x86 assembler written in C"
     HOMEPAGE_URL "https://github.com/kenlooney/kasm"
     LANGUAGES C
@@ -23,9 +23,10 @@ configure_file(
     "${KASM_GENERATED_VERSION_HEADER}"
     @ONLY
 )
-
+file(GLOB_RECURSE KASM_SOURCE_FILES CONFIGURE_DEPENDS "src/*.c")
+list(REMOVE_ITEM KASM_SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/main.c")
 add_library(kasm_core STATIC
-    src/kasm.c
+    ${KASM_SOURCE_FILES}
     "${KASM_GENERATED_VERSION_HEADER}"
 )
 add_library(kasm::core ALIAS kasm_core)
