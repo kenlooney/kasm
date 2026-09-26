@@ -4,6 +4,6 @@
 
 int main(void)
 {
-    puts(kasm_greeting());
+    printf("kasm %s\n", kasm_version());
     return 0;
 }

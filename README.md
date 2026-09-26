@@ -42,6 +42,21 @@ cpack --config build/windows-release/CPackConfig.cmake -C Release
 On Linux, replace `windows-release` with `GCC-release`. ZIP archives are written
 to the selected build directory's `packages` subdirectory.
 
+## Version information in C
+
+CMake generates `kasm/version.h` from the version in the top-level
+`CMakeLists.txt`. Include it directly, or include `kasm/kasm.h`, to access:
+
+```c
+KASM_VERSION_MAJOR   /* numeric major version */
+KASM_VERSION_MINOR   /* numeric minor version */
+KASM_VERSION_PATCH   /* numeric patch version */
+KASM_VERSION_STRING  /* complete string, such as "0.1.0" */
+```
+
+The `kasm_version()` function returns the same complete version string at
+runtime.
+
 ## Releases
 
 Every merge or push to `main` automatically builds ZIP archives on Linux,
@@ -62,6 +77,11 @@ contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this
 cleanup.
+
+#### Cleaning up Visual Studio Code of removed git tags
+```powershell
+git fetch origin --prune --prune-tags
+```
 
 ## License
 

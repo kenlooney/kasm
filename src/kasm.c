@@ -1,6 +1,6 @@
 #include "kasm/kasm.h"
 
-const char *kasm_greeting(void)
+const char *kasm_version(void)
 {
-    return "Hello, Kasm!";
+    return KASM_VERSION_STRING;
 }

@@ -3,17 +3,27 @@
 #include <stdio.h>
 #include <string.h>
 
-static int test_greeting(void)
-{
-    const char *greeting = kasm_greeting();
+#define STRINGIFY_VALUE(value) #value
+#define STRINGIFY(value) STRINGIFY_VALUE(value)
+#define EXPECTED_VERSION_STRING \
+    STRINGIFY(KASM_VERSION_MAJOR) "." \
+    STRINGIFY(KASM_VERSION_MINOR) "." \
+    STRINGIFY(KASM_VERSION_PATCH)
 
-    if (greeting == NULL) {
-        fputs("kasm_greeting returned NULL\n", stderr);
+static int test_version(void)
+{
+    if (strcmp(KASM_VERSION_STRING, EXPECTED_VERSION_STRING) != 0) {
+        fprintf(stderr,
+                "version components do not match version string: %d.%d.%d != %s\n",
+                KASM_VERSION_MAJOR,
+                KASM_VERSION_MINOR,
+                KASM_VERSION_PATCH,
+                KASM_VERSION_STRING);
         return 1;
     }
 
-    if (strcmp(greeting, "Hello, Kasm!") != 0) {
-        fprintf(stderr, "unexpected greeting: %s\n", greeting);
+    if (strcmp(kasm_version(), KASM_VERSION_STRING) != 0) {
+        fprintf(stderr, "unexpected runtime version: %s\n", kasm_version());
         return 1;
     }
 
@@ -22,5 +32,5 @@ static int test_greeting(void)
 
 int main(void)
 {
-    return test_greeting();
+    return test_version();
 }
