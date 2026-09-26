@@ -53,6 +53,16 @@ manually from GitHub Actions to publish the current commit on `main`.
 Package names use the format `kasm-v0.1.0-<platform>-<architecture>.zip`;
 branch names are never included.
 
+### Development snapshots
+
+Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
+builds are published as GitHub prereleases uniquely identified by tags such as
+`v0.1.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+contributor to download a binary or check out the exact source revision later.
+After publishing, automation retains the newest 25 snapshots and deletes older
+snapshot releases and their tags. Stable releases are never included in this
+cleanup.
+
 ## License
 
 Copyright (C) Kenneth Looney. This project is licensed under the
