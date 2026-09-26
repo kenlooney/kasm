@@ -1,0 +1,122 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "windows-debug",
+            "displayName": "Windows MSVC - Debug",
+            "description": "Build with Visual Studio 2026 on 64-bit Windows",
+            "generator": "Visual Studio 18 2026",
+            "toolset": "host=x64",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "BUILD_TESTING": "ON",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
+                "KASM_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows MSVC - Release",
+            "description": "Build with Visual Studio 2026 on 64-bit Windows",
+            "generator": "Visual Studio 18 2026",
+            "toolset": "host=x64",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "BUILD_TESTING": "OFF",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}"
+            }
+        },
+        {
+            "name": "GCC-debug",
+            "displayName": "Linux GCC - Debug",
+            "description": "Build with GCC and Unix Makefiles on Linux or WSL2",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "BUILD_TESTING": "ON",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
+                "KASM_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "GCC-release",
+            "displayName": "Linux GCC - Release",
+            "description": "Build an optimized release with GCC on Linux or WSL2",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "BUILD_TESTING": "OFF",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-debug",
+            "configurePreset": "windows-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-release",
+            "configurePreset": "windows-release",
+            "configuration": "Release"
+        },
+        {
+            "name": "GCC-debug",
+            "configurePreset": "GCC-debug"
+        },
+        {
+            "name": "GCC-release",
+            "configurePreset": "GCC-release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "windows-debug",
+            "configurePreset": "windows-debug",
+            "configuration": "Debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "GCC-debug",
+            "configurePreset": "GCC-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}
