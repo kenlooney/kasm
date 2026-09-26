@@ -44,9 +44,11 @@ to the selected build directory's `packages` subdirectory.
 
 ## Releases
 
-Pushing a tag such as `v0.1.0` builds ZIP archives on Linux, macOS, and Windows
-and creates a GitHub release. The tag must match the version declared in the
-top-level `CMakeLists.txt`.
+After merging to `main`, pushing a tag such as `v0.1.0` builds ZIP archives on
+Linux, macOS, and Windows and creates a GitHub release. The tagged commit must
+already be part of `main`, and the tag must match the version declared in the
+top-level `CMakeLists.txt`. Package names use the format
+`kasm-v0.1.0-<platform>-<architecture>.zip`; branch names are never included.
 
 ## License
 
