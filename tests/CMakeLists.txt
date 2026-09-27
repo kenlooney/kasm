@@ -16,12 +16,17 @@ target_link_libraries(kasm_ident_numbers_cli PRIVATE kasm::core)
 
 add_executable(kasm_expr_cli expr_cli.c)
 target_link_libraries(kasm_expr_cli PRIVATE kasm::core)
+
+add_executable(kasm_instructions_cli instructions_cli.c)
+target_link_libraries(kasm_instructions_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
     target_compile_options(kasm_puncuation_cli PRIVATE /W4)
     target_compile_options(kasm_ident_numbers_cli PRIVATE /W4)
     target_compile_options(kasm_expr_cli PRIVATE /W4)
+    target_compile_options(kasm_instructions_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -33,12 +38,15 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_expr_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_instructions_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_puncuation_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_ident_numbers_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_expr_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_instructions_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -64,6 +72,11 @@ add_test(
 add_test(
     NAME kasm.expr.cli
     COMMAND kasm_expr_cli "${PROJECT_SOURCE_DIR}/examples/expr.asm"
+)
+
+add_test(
+    NAME kasm.instructions.cli
+    COMMAND kasm_instructions_cli "${PROJECT_SOURCE_DIR}/examples/instructions.asm"
 )
 
 # Run the built executable with a source file from the repository. Using

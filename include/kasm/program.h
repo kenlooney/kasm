@@ -13,12 +13,31 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_VERSION_H
-#define KASM_VERSION_H
+#ifndef KASM_PROGRAM_H
+#define KASM_PROGRAM_H
 
-#define KASM_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define KASM_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define KASM_VERSION_PATCH @PROJECT_VERSION_PATCH@
-#define KASM_VERSION_STRING "@PROJECT_VERSION@"
+#include "kasm/expr.h"
 
-#endif // KASM_VERSION_H
+typedef enum {
+    ST_MOV
+} StatementKind;
+
+typedef struct {
+    StatementKind kind;
+    Span span;
+    Token operand;
+    int expression;
+    long long value;
+    size_t offset;
+} Statement;
+
+typedef struct {
+    Statement *statements;
+    int count;
+    int capacity;
+} Program;
+
+int parse_program(Parser *parser, Program *program);
+int check_program(Parser *parser, Program *program);
+
+#endif // KASM_PROGRAM_H
