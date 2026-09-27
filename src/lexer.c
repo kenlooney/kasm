@@ -65,6 +65,22 @@ void lexer_next(Lexer *lexer)
         lexer->token = token;
         return;
     }
+
+    // Handle identifiers
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
+    {
+        token.kind = TK_IDENT;
+        while ((cursor_peek(cursor) >= 'a' && cursor_peek(cursor) <= 'z') ||
+               (cursor_peek(cursor) >= 'A' && cursor_peek(cursor) <= 'Z') ||
+               (cursor_peek(cursor) >= '0' && cursor_peek(cursor) <= '9') ||
+               cursor_peek(cursor) == '_')
+        {
+            cursor_advance(cursor);
+        }
+        token.span.end = cursor->offset;
+        lexer->token = token;
+        return;
+    }
     cursor_advance(cursor); // Advance the cursor to the next character in the source code.
     switch (c)
     {

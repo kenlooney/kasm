@@ -11,10 +11,14 @@ target_link_libraries(kasm_diagnostic_cli PRIVATE kasm::core)
 add_executable(kasm_puncuation_cli puncuation_cli.c)
 target_link_libraries(kasm_puncuation_cli PRIVATE kasm::core)
 
+add_executable(kasm_ident_cli ident_cli.c)
+target_link_libraries(kasm_ident_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
     target_compile_options(kasm_puncuation_cli PRIVATE /W4)
+    target_compile_options(kasm_ident_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -22,10 +26,13 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_puncuation_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_ident_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_puncuation_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_ident_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -41,6 +48,11 @@ set_tests_properties(kasm.cli.requires_source PROPERTIES
 add_test(
     NAME kasm.puncuation.cli
     COMMAND kasm_puncuation_cli "${PROJECT_SOURCE_DIR}/examples/punctuation.asm"
+)
+
+add_test(
+    NAME kasm.ident.cli
+    COMMAND kasm_ident_cli "${PROJECT_SOURCE_DIR}/examples/ident.asm"
 )
 
 # Run the built executable with a source file from the repository. Using
