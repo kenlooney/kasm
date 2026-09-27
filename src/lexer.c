@@ -14,9 +14,19 @@
  * GNU General Public License for more details.
  */
 #include "kasm/lexer.h"
+#include <limits.h>
 #include <string.h>
-#include <stddef.h>
-#include <stdlib.h>
+
+static int digit_value(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
 
 /**
  * Check if the given token matches the specified word.
@@ -48,21 +58,83 @@ void lexer_start(Lexer *lexer, const Source *source)
 void lexer_next(Lexer *lexer)
 {
     Cursor *cursor = &lexer->cursor;
-    Token token = {TK_END, {cursor->offset, cursor->offset}, 0};
 
     // If the lexer has previously failed, return the end token immediately.
     if (lexer->failed)
     {
-        lexer->token = token;
+        lexer->token = (Token){TK_END, {cursor->offset, cursor->offset}, 0};
         return;
     }
 
     char c = cursor_peek(cursor); // Peek at the current character in the source code.
 
+    // Skip whitespace
+    while (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+    {
+        cursor_advance(cursor);
+        c = cursor_peek(cursor);
+    }
+
+    Token token = {TK_END, {cursor->offset, cursor->offset}, 0};
+
     if (c == '\0')
     {
+        lexer->token = token;
+        return;
+    }
+
+    // Handle decimal, hexadecimal, and binary integer literals.
+    if (c >= '0' && c <= '9')
+    {
+        int base = 10;
+        char next = cursor->source->text[cursor->offset + 1];
+
+        if (c == '0' && (next == 'x' || next == 'X' || next == 'b' || next == 'B'))
+        {
+            cursor_advance(cursor);
+            base = (next == 'x' || next == 'X') ? 16 : 2;
+            cursor_advance(cursor);
+        }
+
+        int saw_digit = 0;
+        while (!lexer->failed)
+        {
+            int digit = digit_value(cursor_peek(cursor));
+            if (digit >= 0 && digit < base)
+            {
+                if (token.value > (LLONG_MAX - digit) / base)
+                {
+                    lexer->failed = 1;
+                    break;
+                }
+                token.value = token.value * base + digit;
+                saw_digit = 1;
+                cursor_advance(cursor);
+                continue;
+            }
+
+            if (cursor_peek(cursor) == '_')
+            {
+                int next_digit = digit_value(
+                    cursor->source->text[cursor->offset + 1]);
+                if (!saw_digit || next_digit < 0 || next_digit >= base)
+                    lexer->failed = 1;
+                cursor_advance(cursor);
+                continue;
+            }
+
+            break;
+        }
+
+        token.kind = TK_NUMBER;
         token.span.end = cursor->offset;
         lexer->token = token;
+
+        if (!saw_digit || lexer->failed)
+        {
+            lexer->failed = 1;
+            diagnostic(cursor->source, token.span, "invalid character or integer out of range");
+        }
         return;
     }
 
