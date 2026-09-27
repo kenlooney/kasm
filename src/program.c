@@ -79,11 +79,35 @@ static int statement(Parser *parser, Program *program) {
 }
 
 int parse_program(Parser *parser, Program *program) {
+    size_t brace_depth = 0;
+
     program->statements = NULL;
     program->count = 0;
     program->capacity = 0;
-    while (parser->lexer.token.kind != TK_END && !parser->lexer.failed)
-        if (!statement(parser, program))
+
+    while(!parser->failed && !parser->lexer.failed &&
+          parser->lexer.token.kind != TK_END) {
+        if(parser->lexer.token.kind == TK_LBRACE) {
+            brace_depth++;
+            lexer_next(&parser->lexer);
+        }
+        else if(parser->lexer.token.kind == TK_RBRACE) {
+            if(brace_depth == 0) {
+                parser_error(parser, "unexpected closing brace");
+                return 0;
+            }
+            brace_depth--;
+            lexer_next(&parser->lexer);
+        }
+        else if(!statement(parser, program)) {
             return 0;
+        }
+    }
+
+    if(brace_depth != 0) {
+        parser_error(parser, "expected closing brace");
+        return 0;
+    }
+
     return !parser->failed && !parser->lexer.failed;
 }

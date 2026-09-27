@@ -5,13 +5,13 @@
 Ken's Assembler Project: an x86 assembler written in C. The project currently
 loads source files, tracks source positions, reports diagnostics, and tokenizes
 the lexical elements documented below. It also parses arithmetic expressions
-into an abstract syntax tree (AST). Instruction parsing and machine-code encoding
-are not implemented yet.
+into an abstract syntax tree (AST) and recognizes the initial
+instruction-statement syntax. Machine-code encoding is not implemented yet.
 
 ## Language support
 
-The lexer and expression parser currently recognize the following source
-syntax. Recognized text is not yet assembled into x86 instructions.
+The lexer, expression parser, and statement parser currently recognize the
+following source syntax. Recognized text is not yet encoded as x86 machine code.
 
 ### Identifiers
 
@@ -65,6 +65,41 @@ primary    = integer | "(" expression ")"
 The parser stores expression nodes in a dynamically growing indexed arena.
 Expressions are parsed into an AST but are not yet evaluated or encoded.
 
+### Instruction statements
+
+The only instruction mnemonic currently recognized is `mov`, using this form:
+
+```asm
+mov destination, expression;
+```
+
+For example:
+
+```asm
+mov ax, 40 + 2;
+```
+
+The destination is currently accepted as an identifier; register names and
+operand sizes are not yet semantically validated. Every instruction statement
+must end with a semicolon.
+
+### Statement blocks
+
+Statements may be visually grouped using nested braces:
+
+```asm
+{
+    mov ax, 40 + 2;
+    {
+        mov ax, 7;
+    }
+}
+```
+
+Braces currently provide source organization and balance checking only. They do
+not introduce scopes, namespaces, or separate block nodes. Statements from all
+nested blocks are flattened into `Program.statements` in source order.
+
 ### Punctuation
 
 The following single-character tokens are recognized:
@@ -87,7 +122,7 @@ multiple lines but do not nest; an unterminated block comment is an error.
 
 ### Not implemented yet
 
-- x86 instruction, register, and operand parsing
+- Additional x86 instructions and semantic operand validation
 - Labels and symbol resolution (although `:` is tokenized)
 - String literals and character literals
 - Unary expression operators and expression evaluation
