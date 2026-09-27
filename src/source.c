@@ -19,25 +19,46 @@
 #include <string.h>
 
 int kasm_source_load(Source *source, const char *path) {
+    char *text;
+    long file_length;
+
+    if (!source || !path) {
+        return -1;
+    }
+
     FILE *file = fopen(path, "rb");
     if (!file) {
         return -1;
     }
 
-    fseek(file, 0, SEEK_END);
-    source->length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    source->text = (char *)malloc(source->length + 1);
-    if (!source->text) {
+    if (fseek(file, 0, SEEK_END) != 0 ||
+        (file_length = ftell(file)) < 0 ||
+        fseek(file, 0, SEEK_SET) != 0) {
         fclose(file);
         return -1;
     }
 
-    fread((void *)source->text, 1, source->length, file);
-    fclose(file);
-    ((char *)source->text)[source->length] = '\0';
+    text = (char *)malloc((size_t)file_length + 1);
+    if (!text) {
+        fclose(file);
+        return -1;
+    }
+
+    if (fread(text, 1, (size_t)file_length, file) != (size_t)file_length) {
+        fclose(file);
+        free(text);
+        return -1;
+    }
+
+    if (fclose(file) != 0) {
+        free(text);
+        return -1;
+    }
+
+    text[file_length] = '\0';
     source->path = path;
+    source->text = text;
+    source->length = (size_t)file_length;
 
     return 0;
 }
