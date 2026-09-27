@@ -51,11 +51,17 @@ Spaces, tabs, carriage returns, and newlines separate tokens and are otherwise
 ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 `[start,end)`. Diagnostic line and column positions are one-based.
 
+### Comments
+
+Both `//` line comments and `/* ... */` block comments are supported. Line
+comments continue through the end of the line or file. Block comments may span
+multiple lines but do not nest; an unterminated block comment is an error.
+
 ### Not implemented yet
 
 - x86 instruction, register, and operand parsing
 - Labels and symbol resolution (although `:` is tokenized)
-- Comments, string literals, and character literals
+- String literals and character literals
 - Machine-code encoding and object-file output
 
 ## Requirements

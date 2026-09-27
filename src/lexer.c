@@ -28,6 +28,64 @@ static int digit_value(char c)
     return -1;
 }
 
+static char cursor_peek_next(const Cursor *cursor)
+{
+    return cursor->source->text[cursor->offset + 1];
+}
+
+static int skip_trivia(Lexer *lexer)
+{
+    Cursor *cursor = &lexer->cursor;
+
+    for (;;)
+    {
+        char c = cursor_peek(cursor);
+
+        while (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+        {
+            cursor_advance(cursor);
+            c = cursor_peek(cursor);
+        }
+
+        if (c == '/' && cursor_peek_next(cursor) == '/')
+        {
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+            while (cursor_peek(cursor) != '\0' && cursor_peek(cursor) != '\n')
+                cursor_advance(cursor);
+            continue;
+        }
+
+        if (c == '/' && cursor_peek_next(cursor) == '*')
+        {
+            size_t comment_start = cursor->offset;
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+
+            while (cursor_peek(cursor) != '\0' &&
+                   !(cursor_peek(cursor) == '*' && cursor_peek_next(cursor) == '/'))
+            {
+                cursor_advance(cursor);
+            }
+
+            if (cursor_peek(cursor) == '\0')
+            {
+                Span span = {comment_start, cursor->offset};
+                lexer->failed = 1;
+                lexer->token = (Token){TK_END, span, 0};
+                diagnostic(cursor->source, span, "unterminated block comment");
+                return 0;
+            }
+
+            cursor_advance(cursor);
+            cursor_advance(cursor);
+            continue;
+        }
+
+        return 1;
+    }
+}
+
 /**
  * Check if the given token matches the specified word.
  *
@@ -66,16 +124,11 @@ void lexer_next(Lexer *lexer)
         return;
     }
 
-    char c = cursor_peek(cursor); // Peek at the current character in the source code.
-
-    // Skip whitespace
-    while (c == ' ' || c == '\t' || c == '\n' || c == '\r')
-    {
-        cursor_advance(cursor);
-        c = cursor_peek(cursor);
-    }
+    if (!skip_trivia(lexer))
+        return;
 
     Token token = {TK_END, {cursor->offset, cursor->offset}, 0};
+    char c = cursor_peek(cursor);
 
     if (c == '\0')
     {
@@ -87,7 +140,7 @@ void lexer_next(Lexer *lexer)
     if (c >= '0' && c <= '9')
     {
         int base = 10;
-        char next = cursor->source->text[cursor->offset + 1];
+        char next = cursor_peek_next(cursor);
 
         if (c == '0' && (next == 'x' || next == 'X' || next == 'b' || next == 'B'))
         {
