@@ -2,9 +2,67 @@
 
 [![CI](https://github.com/kenlooney/kasm/actions/workflows/ci.yml/badge.svg)](https://github.com/kenlooney/kasm/actions/workflows/ci.yml)
 
-Ken's Assembler Project: an x86 assembler written in C. The assembler is at the
-initial project-setup stage; instruction parsing and encoding are not implemented
-yet.
+Ken's Assembler Project: an x86 assembler written in C. The project currently
+loads source files, tracks source positions, reports diagnostics, and tokenizes
+the lexical elements documented below. Instruction parsing and machine-code
+encoding are not implemented yet.
+
+## Language support
+
+The lexer currently recognizes the following source syntax. This section
+describes lexical support only; recognized text is not yet assembled into x86
+instructions.
+
+### Identifiers
+
+Identifiers begin with an ASCII letter or underscore and may continue with
+ASCII letters, decimal digits, or underscores:
+
+```text
+[A-Za-z_][A-Za-z0-9_]*
+```
+
+Examples include `mov`, `eax_2`, and `_local`.
+
+### Integer literals
+
+| Format | Syntax | Examples |
+| --- | --- | --- |
+| Decimal | Decimal digits | `42`, `1_000_000` |
+| Hexadecimal | `0x` or `0X`, then hexadecimal digits | `0xAD12`, `0xAD12_FFFF` |
+| Binary | `0b` or `0B`, then binary digits | `0b1010`, `0b0000_1111` |
+
+Underscores may separate digits for readability. They cannot appear first,
+last, or consecutively. Integer values must fit in a signed `long long`
+(`0` through `LLONG_MAX`). A leading minus sign is currently a separate token,
+not part of the integer literal.
+
+### Punctuation
+
+The following single-character tokens are recognized:
+
+```text
++ - * / % ( ) , ; { } :
+```
+
+### Whitespace and source locations
+
+Spaces, tabs, carriage returns, and newlines separate tokens and are otherwise
+ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
+`[start,end)`. Diagnostic line and column positions are one-based.
+
+### Comments
+
+Both `//` line comments and `/* ... */` block comments are supported. Line
+comments continue through the end of the line or file. Block comments may span
+multiple lines but do not nest; an unterminated block comment is an error.
+
+### Not implemented yet
+
+- x86 instruction, register, and operand parsing
+- Labels and symbol resolution (although `:` is tokenized)
+- String literals and character literals
+- Machine-code encoding and object-file output
 
 ## Requirements
 
