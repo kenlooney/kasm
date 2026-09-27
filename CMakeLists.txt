@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     kasm
-    VERSION 0.1.0
+    VERSION 0.4.0
     DESCRIPTION "A small x86 assembler written in C"
     HOMEPAGE_URL "https://github.com/kenlooney/kasm"
     LANGUAGES C
@@ -14,8 +14,20 @@ option(KASM_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 set(KASM_PACKAGE_VERSION "v${PROJECT_VERSION}" CACHE STRING
     "Version label used in package filenames")
 
+set(KASM_GENERATED_INCLUDE_DIR "${PROJECT_BINARY_DIR}/generated/include")
+set(KASM_GENERATED_VERSION_HEADER
+    "${KASM_GENERATED_INCLUDE_DIR}/kasm/version.h")
+file(MAKE_DIRECTORY "${KASM_GENERATED_INCLUDE_DIR}/kasm")
+configure_file(
+    include/kasm/version.h.in
+    "${KASM_GENERATED_VERSION_HEADER}"
+    @ONLY
+)
+file(GLOB_RECURSE KASM_SOURCE_FILES CONFIGURE_DEPENDS "src/*.c")
+list(REMOVE_ITEM KASM_SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/main.c")
 add_library(kasm_core STATIC
-    src/kasm.c
+    ${KASM_SOURCE_FILES}
+    "${KASM_GENERATED_VERSION_HEADER}"
 )
 add_library(kasm::core ALIAS kasm_core)
 
@@ -23,6 +35,7 @@ target_compile_features(kasm_core PUBLIC c_std_11)
 target_include_directories(kasm_core
     PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${KASM_GENERATED_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
