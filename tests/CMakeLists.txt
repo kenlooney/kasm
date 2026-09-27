@@ -1,5 +1,23 @@
 add_subdirectory(unit)
 
+# This test has its own main function, so it can exercise library APIs without
+# adding temporary lesson code to the real kasm command-line program.
+add_executable(kasm_cursor_cli cursor_cli.c)
+target_link_libraries(kasm_cursor_cli PRIVATE kasm::core)
+
+if(MSVC)
+    target_compile_options(kasm_cursor_cli PRIVATE /W4)
+    set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_test(
+    NAME kasm.cursor.cli
+    COMMAND kasm_cursor_cli "${PROJECT_SOURCE_DIR}/examples/sample.asm"
+)
+
 add_test(NAME kasm.cli.requires_source COMMAND kasm)
 set_tests_properties(kasm.cli.requires_source PROPERTIES
     WILL_FAIL TRUE

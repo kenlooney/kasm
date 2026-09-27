@@ -22,7 +22,13 @@ add_test(
 set_tests_properties(kasm.cli.loads_source PROPERTIES
     PASS_REGULAR_EXPRESSION "kasm [0-9]+\\.[0-9]+\\.[0-9]+"
 )
+```
+Examples:
+```powershell
 ctest --test-dir build/windows-debug -C Debug -R "^kasm\.cli\.loads_source$" -V
+
+cmake --build build/windows-debug --config Debug
+ctest --test-dir build/windows-debug -C Debug -R "^kasm\.cursor\.cli$" -V
 ```
 
 On Windows with Visual Studio 2026:
