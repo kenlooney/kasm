@@ -36,7 +36,7 @@ On Windows with Visual Studio 2026:
 ```sh
 cmake --preset windows-debug
 cmake --build --preset windows-debug
-ctest --preset windows-debug
+ctest --preset windows-debug -V
 ```
 
 On Linux or WSL2 with GCC:

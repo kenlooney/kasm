@@ -5,12 +5,20 @@ add_subdirectory(unit)
 add_executable(kasm_cursor_cli cursor_cli.c)
 target_link_libraries(kasm_cursor_cli PRIVATE kasm::core)
 
+add_executable(kasm_diagnostic_cli diagnostic_cli.c)
+target_link_libraries(kasm_diagnostic_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
+    target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
+
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_diagnostic_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -32,4 +40,11 @@ add_test(
 set_tests_properties(kasm.cli.loads_source PROPERTIES
     # A zero exit code and this output mean the source file loaded successfully.
     PASS_REGULAR_EXPRESSION "kasm [0-9]+\\.[0-9]+\\.[0-9]+"
+)
+add_test(
+    NAME kasm.diagnostic.cli
+    COMMAND kasm_diagnostic_cli "${PROJECT_SOURCE_DIR}/examples/oops.asm"
+)
+set_tests_properties(kasm.diagnostic.cli PROPERTIES
+    WILL_FAIL TRUE
 )
