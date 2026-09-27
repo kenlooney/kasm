@@ -54,24 +54,6 @@ static int primary(Parser *parser){
     return node(parser, expression);
 }
 
-static int binary(Parser *parser, ExprKind kind, int left, int right)
-{
-    if(left < 0 || right < 0) {
-        return -1;
-    }
-    Span span = { parser->nodes[left].span.start, parser->nodes[right].span.end };
-    Expr expression = { kind, span, 0, left, right };
-    return node(parser, expression);
-}
-
 int parse_expression(Parser *parser) {
-    int left = primary(parser);
-
-    while(left >= 0 && (parser->lexer.token.kind == TK_PLUS || parser->lexer.token.kind == TK_MINUS)) {
-        TokenKind op = parser->lexer.token.kind;
-        lexer_next(&parser->lexer);
-        int right = primary(parser);
-        left = binary(parser, op == TK_PLUS ? EX_ADD : EX_SUB, left, right);
-    }
-    return left;
+    return primary(parser);
 }
