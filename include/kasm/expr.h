@@ -18,7 +18,7 @@
 #define KASM_EXPR_H
 #include "kasm/lexer.h"
 
-typedef enum { EX_INT } ExprKind;
+typedef enum { EX_INT, EX_ADD, EX_SUB } ExprKind;
 typedef struct {
     ExprKind kind;
     Span span;
