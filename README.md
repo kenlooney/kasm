@@ -4,14 +4,14 @@
 
 Ken's Assembler Project: an x86 assembler written in C. The project currently
 loads source files, tracks source positions, reports diagnostics, and tokenizes
-the lexical elements documented below. Instruction parsing and machine-code
-encoding are not implemented yet.
+the lexical elements documented below. It also parses arithmetic expressions
+into an abstract syntax tree (AST). Instruction parsing and machine-code encoding
+are not implemented yet.
 
 ## Language support
 
-The lexer currently recognizes the following source syntax. This section
-describes lexical support only; recognized text is not yet assembled into x86
-instructions.
+The lexer and expression parser currently recognize the following source
+syntax. Recognized text is not yet assembled into x86 instructions.
 
 ### Identifiers
 
@@ -36,6 +36,34 @@ Underscores may separate digits for readability. They cannot appear first,
 last, or consecutively. Integer values must fit in a signed `long long`
 (`0` through `LLONG_MAX`). A leading minus sign is currently a separate token,
 not part of the integer literal.
+
+### Arithmetic expressions
+
+Arithmetic expressions support integer literals, nested parentheses, and the
+following binary operators:
+
+| Precedence | Operators | Associativity |
+| --- | --- | --- |
+| Higher | `*`, `/`, `%` | Left-to-right |
+| Lower | `+`, `-` | Left-to-right |
+
+Parentheses override normal precedence. For example:
+
+```text
+9 * (3 + 2)
+```
+
+is parsed as multiplication whose right operand is the grouped addition. The
+current grammar is equivalent to:
+
+```text
+expression = product (("+" | "-") product)*
+product    = primary (("*" | "/" | "%") primary)*
+primary    = integer | "(" expression ")"
+```
+
+The parser stores expression nodes in a dynamically growing indexed arena.
+Expressions are parsed into an AST but are not yet evaluated or encoded.
 
 ### Punctuation
 
@@ -62,6 +90,7 @@ multiple lines but do not nest; an unterminated block comment is an error.
 - x86 instruction, register, and operand parsing
 - Labels and symbol resolution (although `:` is tokenized)
 - String literals and character literals
+- Unary expression operators and expression evaluation
 - Machine-code encoding and object-file output
 
 ## Requirements

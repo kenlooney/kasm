@@ -18,7 +18,7 @@
 #define KASM_EXPR_H
 #include "kasm/lexer.h"
 
-typedef enum { EX_INT, EX_ADD, EX_SUB } ExprKind;
+typedef enum { EX_INT, EX_ADD, EX_SUB, EX_MUL, EX_DIV, EX_MOD } ExprKind;
 typedef struct {
     ExprKind kind;
     Span span;
@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
     Lexer lexer;
     Expr *nodes;
-    int count, depth, failed;
+    int count, capacity, failed;
 } Parser;
 
 void parser_start(Parser *parser, const Source *source);
