@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int kasm_source_load(Source *source, const char *path) {
+int source_load(Source *source, const char *path) {
     char *text;
     long file_length;
 

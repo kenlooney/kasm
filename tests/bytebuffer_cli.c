@@ -1,6 +1,7 @@
 #include "kasm/program.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "kasm/emit.h"
 
 int main(int argc, char **argv) {
     Source source;
@@ -24,9 +25,25 @@ int main(int argc, char **argv) {
         free(parser.nodes);
         return 1;
     }
-    printf("statements = %d\n", program.count);
-    for (int i = 0; i < program.count; i++)
-        printf("value = %lld\n", program.statements[i].value);
+    Bytes bytes = {0};
+    if (!byte_push(&bytes, 0x2A)) {
+        free(program.statements);
+        free(parser.nodes);
+        return 1;
+    }
+
+    // Push enough bytes to exercise automatic capacity growth.
+    for (size_t i = 0; i < KASM_BYTES_INITIAL_CAPACITY * 2; i++) {
+        if (!byte_push(&bytes, (uint8_t)i)) {
+            bytes_free(&bytes);
+            free(program.statements);
+            free(parser.nodes);
+            return 1;
+        }
+    }
+
+    printf("%02X\n", (unsigned int)bytes.data[0]);
+    bytes_free(&bytes);
     free(program.statements);
     free(parser.nodes);
     return 0;

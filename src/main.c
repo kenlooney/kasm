@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     Source source;
-    if (kasm_source_load(&source, argv[1]) != 0) {
+    if (source_load(&source, argv[1]) != 0) {
         fprintf(stderr, "Failed to load source file: %s\n", argv[1]);
         return 1;
     }

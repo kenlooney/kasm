@@ -11,7 +11,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (kasm_source_load(&source, argv[1]) != 0) {
+    if (source_load(&source, argv[1]) != 0) {
         fprintf(stderr, "could not load source file: %s\n", argv[1]);
         return 1;
     }

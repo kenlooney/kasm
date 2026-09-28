@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "usage: lesson input.asm\n");
         return 1;
     }
-    if (kasm_source_load(&source, argv[1]) != 0)
+    if (source_load(&source, argv[1]) != 0)
         return 1;
 
     Span span = {0, source.length};
