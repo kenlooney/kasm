@@ -2,8 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "kasm/emit.h"
+#include "kasm/target.h"
 
 int main(int argc, char **argv) {
+    // For now, we assume the target is 16-bit x86.
+    const Target target = { .arch = ARCH_X86, .mode = MODE_16 };
+
     Source source;
     if (argc != 2) {
         fprintf(stderr, "usage: input.asm\n");
@@ -20,7 +24,7 @@ int main(int argc, char **argv) {
         free(parser.nodes);
         return 1;
     }
-    if (!check_program(&parser, &program)) {
+    if (!check_program(&parser, &program, &target)) {
         free(program.statements);
         free(parser.nodes);
         return 1;

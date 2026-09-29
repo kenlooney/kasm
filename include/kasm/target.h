@@ -13,33 +13,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_PROGRAM_H
-#define KASM_PROGRAM_H
 
-#include "kasm/expr.h"
-#include "kasm/target.h"
+#ifndef KASM_TARGET_H
+#define KASM_TARGET_H
 
-
-typedef enum {
-    ST_MOV
-} StatementKind;
-
-typedef struct {
-    StatementKind kind;
-    Span span;
-    Token operand;
-    int expression;
-    long long value;
-    size_t offset;
-} Statement;
-
-typedef struct {
-    Statement *statements;
-    int count;
-    int capacity;
-} Program;
-
-int parse_program(Parser *parser, Program *program);
-int check_program(Parser *parser, Program *program, const Target *target);
-
-#endif // KASM_PROGRAM_H
+#include "kasm/arch.h"
+typedef enum
+{
+    MODE_16,
+    MODE_32,
+    MODE_64
+} MachineMode;
+typedef struct
+{
+    Architecture arch;
+    MachineMode mode;
+} Target;
+#endif // KASM_TARGET_H

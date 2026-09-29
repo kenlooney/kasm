@@ -29,6 +29,9 @@ target_link_libraries(kasm_semi_cli PRIVATE kasm::core)
 add_executable(kasm_bytebuffer_cli bytebuffer_cli.c)
 target_link_libraries(kasm_bytebuffer_cli PRIVATE kasm::core)
 
+add_executable(kasm_real_mode_cli real_mode_cli.c)
+target_link_libraries(kasm_real_mode_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -39,6 +42,7 @@ if(MSVC)
     target_compile_options(kasm_braces_cli PRIVATE /W4)
     target_compile_options(kasm_semi_cli PRIVATE /W4)
     target_compile_options(kasm_bytebuffer_cli PRIVATE /W4)
+    target_compile_options(kasm_real_mode_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -58,6 +62,8 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_bytebuffer_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_real_mode_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -68,6 +74,7 @@ else()
     target_compile_options(kasm_braces_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_semi_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_bytebuffer_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_real_mode_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -110,6 +117,10 @@ add_test(
 add_test(
     NAME kasm.bytebuffer.cli
     COMMAND kasm_bytebuffer_cli "${PROJECT_SOURCE_DIR}/examples/semi.asm"
+)
+add_test(
+    NAME kasm.real_mode.cli
+    COMMAND kasm_real_mode_cli "${PROJECT_SOURCE_DIR}/examples/real_mode.asm"
 )
 
 # Run the built executable with a source file from the repository. Using

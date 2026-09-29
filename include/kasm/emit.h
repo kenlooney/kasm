@@ -30,6 +30,7 @@ typedef struct {
 } Bytes;
 
 int byte_push(Bytes *bytes, uint8_t value);
+int little_endian(Bytes *bytes, uint64_t value, size_t width);
 void bytes_free(Bytes *bytes);
 
 #endif // KASM_EMIT_H

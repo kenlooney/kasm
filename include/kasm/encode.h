@@ -13,33 +13,18 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_PROGRAM_H
-#define KASM_PROGRAM_H
 
-#include "kasm/expr.h"
+#ifndef KASM_ENCODE_H
+#define KASM_ENCODE_H
+
+#include "kasm/emit.h"
+#include "kasm/program.h"
 #include "kasm/target.h"
 
+int emit_program(
+    const Program *program,
+    const Target *target,
+    Bytes *bytes
+);
 
-typedef enum {
-    ST_MOV
-} StatementKind;
-
-typedef struct {
-    StatementKind kind;
-    Span span;
-    Token operand;
-    int expression;
-    long long value;
-    size_t offset;
-} Statement;
-
-typedef struct {
-    Statement *statements;
-    int count;
-    int capacity;
-} Program;
-
-int parse_program(Parser *parser, Program *program);
-int check_program(Parser *parser, Program *program, const Target *target);
-
-#endif // KASM_PROGRAM_H
+#endif // KASM_ENCODE_H
