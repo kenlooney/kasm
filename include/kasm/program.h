@@ -34,6 +34,14 @@ typedef enum {
     ST_DW,
     ST_DD,
     ST_PADTO,
+    ST_NOP,
+    ST_CLC,
+    ST_STC,
+    ST_CMC,
+    ST_CLD,
+    ST_STD,
+    ST_LAHF,
+    ST_SAHF
 } StatementKind;
 
 typedef struct {

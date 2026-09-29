@@ -2,15 +2,27 @@
 #include <stdint.h>
 
 #define CPU16_MEMORY_SIZE (1024u * 1024u)
+#define CPU16_FLAG_CF (1u << 0)
+#define CPU16_FLAG_FIXED (1u << 1)
+#define CPU16_FLAG_PF (1u << 2)
+#define CPU16_FLAG_AF (1u << 4)
+#define CPU16_FLAG_ZF (1u << 6)
+#define CPU16_FLAG_SF (1u << 7)
+#define CPU16_FLAG_TF (1u << 8)
+#define CPU16_FLAG_IF (1u << 9)
+#define CPU16_FLAG_DF (1u << 10)
+#define CPU16_FLAG_OF (1u << 11)
 
-typedef struct {
+typedef struct
+{
     unsigned char memory[CPU16_MEMORY_SIZE];
     uint32_t image_start;
     size_t image_size;
+    uint8_t ah, al, bh, bl, ch, cl, dh, dl;
     uint16_t ax, bx, cx, dx;
     uint16_t sp, bp, si, di;
     uint16_t cs, ds, es, ss, ip;
-    int interrupt_enabled;
+    uint16_t flags; // Bit 0: Carry, Bit 2: Parity, Bit 4: Auxiliary Carry, Bit 6: Zero, Bit 7: Sign, Bit 8: Trap, Bit 9: Interrupt Enable, Bit 10: Direction, Bit 11: Overflow
     int halted;
 } Cpu16;
 
@@ -84,17 +96,59 @@ static int emulate_instruction(Cpu16 *cpu)
         return 1;
     }
 
-    case 0xFA: /* CLI */
-        cpu->interrupt_enabled = 0;
+    case 0xFD:                       /* STD */
+        cpu->flags |= CPU16_FLAG_DF; // Set direction flag
+        return 1;
+    case 0x90: /* NOP */
+        return 1;
+    case 0xF8:                        /* CLC */
+        cpu->flags &= ~CPU16_FLAG_CF; // Clear carry flag
+        return 1;
+    case 0xF9:                       /* STC */
+        cpu->flags |= CPU16_FLAG_CF; // Set carry flag
+        return 1;
+    case 0xFA:                        /* CLI */
+        cpu->flags &= ~CPU16_FLAG_IF; // Clear interrupt enable flag
         return 1;
 
-    case 0xFB: /* STI */
-        cpu->interrupt_enabled = 1;
+    case 0xFB:                       /* STI */
+        cpu->flags |= CPU16_FLAG_IF; // Set interrupt enable flag
+        return 1;
+    case 0xF5: /* CMC */
+        // Complement carry flag (simulated as toggling interrupt_enabled for simplicity)
+        cpu->flags ^= CPU16_FLAG_CF; // Complement carry flag
+        return 1;
+    case 0xFC: /* CLD */
+        // Clear direction flag
+        cpu->flags &= ~CPU16_FLAG_DF;
         return 1;
 
     case 0xF4: /* HLT */
         cpu->halted = 1;
         return 1;
+    case 0x9F: /* LAHF */
+    {
+        uint16_t mask =
+            CPU16_FLAG_CF | CPU16_FLAG_PF | CPU16_FLAG_AF |
+            CPU16_FLAG_ZF | CPU16_FLAG_SF;
+
+        uint8_t ah = (uint8_t)((cpu->flags & mask) | CPU16_FLAG_FIXED);
+        cpu->ax = (uint16_t)((cpu->ax & 0x00FFu) | ((uint16_t)ah << 8));
+        return 1;
+    }
+
+    case 0x9E: /* SAHF */
+    {
+        uint16_t mask =
+            CPU16_FLAG_CF | CPU16_FLAG_PF | CPU16_FLAG_AF |
+            CPU16_FLAG_ZF | CPU16_FLAG_SF;
+
+        uint16_t ah = (uint16_t)(cpu->ax >> 8);
+        cpu->flags = (uint16_t)((cpu->flags & ~mask) |
+                                (ah & mask) |
+                                CPU16_FLAG_FIXED);
+        return 1;
+    }
 
     case 0xEB: /* JMP rel8 */
     {
@@ -109,8 +163,7 @@ static int emulate_instruction(Cpu16 *cpu)
             return 0;
         }
 
-        cpu->ip = (uint16_t)(
-            cpu->ip + (int16_t)(int8_t)encoded_displacement);
+        cpu->ip = (uint16_t)(cpu->ip + (int16_t)(int8_t)encoded_displacement);
         return 1;
     }
 
@@ -124,10 +177,12 @@ static int emulate_instruction(Cpu16 *cpu)
     }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     uint32_t entry_address;
 
-    if (!cpu16_physical_address(0x0000, 0x7C00, &entry_address)) {
+    if (!cpu16_physical_address(0x0000, 0x7C00, &entry_address))
+    {
         fprintf(stderr, "invalid real-mode entry address\n");
         return 1;
     }
@@ -139,24 +194,27 @@ int main(int argc, char **argv) {
     cpu.ss = 0x0000;
     cpu.sp = 0x7C00;
     cpu.ip = 0x0000;
-    cpu.interrupt_enabled = 1;
+    cpu.flags = 0; // Clear all flags initially
     cpu.halted = 0;
 
     // Set the entry point in the instruction pointer
     cpu.ip = (uint16_t)(entry_address & 0xFFFF);
 
-    if(argc < 2) {
+    if (argc < 2)
+    {
         fprintf(stderr, "usage: %s <program.bin>\n", argv[0]);
         return 1;
     }
-    
+
     FILE *file = fopen(argv[1], "rb");
-    if (!file) {
+    if (!file)
+    {
         fprintf(stderr, "failed to open file: %s\n", argv[1]);
         return 1;
     }
 
-    if (fseek(file, 0, SEEK_END) != 0) {
+    if (fseek(file, 0, SEEK_END) != 0)
+    {
         fprintf(stderr, "failed to measure file: %s\n", argv[1]);
         fclose(file);
         return 1;
@@ -164,7 +222,8 @@ int main(int argc, char **argv) {
 
     long file_size = ftell(file);
     if (file_size < 0 ||
-        (uint64_t)file_size > CPU16_MEMORY_SIZE - entry_address) {
+        (uint64_t)file_size > CPU16_MEMORY_SIZE - entry_address)
+    {
         fprintf(stderr, "program does not fit in emulated memory\n");
         fclose(file);
         return 1;
@@ -172,7 +231,8 @@ int main(int argc, char **argv) {
 
     if (fseek(file, 0, SEEK_SET) != 0 ||
         fread(&cpu.memory[entry_address], 1, (size_t)file_size, file) !=
-            (size_t)file_size) {
+            (size_t)file_size)
+    {
         fprintf(stderr, "failed to read file: %s\n", argv[1]);
         fclose(file);
         return 1;
@@ -181,7 +241,8 @@ int main(int argc, char **argv) {
     cpu.image_start = entry_address;
     cpu.image_size = (size_t)file_size;
 
-    if (fclose(file) != 0) {
+    if (fclose(file) != 0)
+    {
         fprintf(stderr, "failed to close file: %s\n", argv[1]);
         return 1;
     }
@@ -190,14 +251,16 @@ int main(int argc, char **argv) {
     const size_t max_steps = 1000;
     size_t steps = 0;
 
-    while (!cpu.halted && steps < max_steps) {
+    while (!cpu.halted && steps < max_steps)
+    {
         // Fetch and execute the next instruction
         if (!emulate_instruction(&cpu))
             return 1;
         steps++;
     }
 
-    if (!cpu.halted) {
+    if (!cpu.halted)
+    {
         fprintf(stderr, "step limit exceeded after %zu instructions\n",
                 max_steps);
         return 1;
