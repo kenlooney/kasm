@@ -4,6 +4,8 @@
 
 Ken's Assembler Project is an x86 assembler written in C. KASM currently
 assembles a small 16-bit x86 language directly into flat binary files.
+The project also includes KEMU, an early 16-bit emulator that can load and
+execute the machine code produced by KASM.
 
 > **v0.15.0 is KASM's first bootable release.** It can produce a complete
 > 512-byte legacy BIOS boot sector containing executable real-mode code,
@@ -23,7 +25,7 @@ ctest --preset windows-debug -V
 Assemble the included boot sector into a raw image:
 
 ```powershell
-build/windows-debug/Debug/kasm.exe examples/bootsect.asm bootsect.bin
+.\bin\Debug\kasm.exe .\examples\bootsect.asm .\bootsect.bin
 ```
 
 Boot it with QEMU:
@@ -39,6 +41,43 @@ qemu-system-i386 `
 The example intentionally enters a halt loop, so QEMU displays
 `Booting from Floppy...` and remains running with a blank screen. This means
 the BIOS accepted the image and transferred control to KASM's generated code.
+
+## Execute the image with KEMU
+
+KEMU is a small, deliberately partial 16-bit emulator and deterministic test
+environment for KASM's output. Run the same boot image without launching a
+full-system emulator:
+
+```powershell
+.\bin\Debug\kemu.exe .\bootsect.bin
+```
+
+Expected output:
+
+```text
+halted after 2 instructions at 0000:7C02, AX=0000
+```
+
+This demonstrates the complete local toolchain:
+
+```text
+bootsect.asm -> kasm -> bootsect.bin -> kemu
+```
+
+KEMU currently provides:
+
+- 1 MiB of emulated physical memory;
+- checked real-mode `segment:offset` address translation;
+- image loading at physical address `0x7C00`;
+- an initial `CS:IP` of `0000:7C00`;
+- checked instruction fetching and a 1000-instruction execution limit;
+- emulation of `mov ax, imm16`, `cli`, `sti`, `hlt`, and `jmp8`;
+- clear failures for unknown opcodes, truncated instructions, oversized images,
+  and execution that exceeds the step limit.
+
+KEMU is not intended to replace QEMU or emulate an entire PC. It currently
+implements only the machine state and instructions needed to test KASM's first
+real-mode programs.
 
 ## Language support
 
@@ -187,6 +226,9 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
   implemented yet.
 - Output is a flat binary image; object files and executable formats are not
   implemented yet.
+- KEMU currently uses the legacy BIOS boot address and implements only KASM's
+  initial instruction subset; devices, interrupts, and general PC hardware are
+  not emulated yet.
 
 ## Requirements
 

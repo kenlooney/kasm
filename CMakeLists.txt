@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     kasm
-    VERSION 0.15.0
+    VERSION 0.16.0
     DESCRIPTION "A small x86 assembler written in C"
     HOMEPAGE_URL "https://github.com/kenlooney/kasm"
     LANGUAGES C
@@ -23,8 +23,15 @@ configure_file(
     "${KASM_GENERATED_VERSION_HEADER}"
     @ONLY
 )
+
+set(KASM_CLI_SOURCE "${PROJECT_SOURCE_DIR}/src/main.c")
+set(KEMU_CLI_SOURCE "${PROJECT_SOURCE_DIR}/src/kemu.c")
+
 file(GLOB_RECURSE KASM_SOURCE_FILES CONFIGURE_DEPENDS "src/*.c")
-list(REMOVE_ITEM KASM_SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/main.c")
+list(REMOVE_ITEM KASM_SOURCE_FILES
+    "${KASM_CLI_SOURCE}"
+    "${KEMU_CLI_SOURCE}"
+)
 add_library(kasm_core STATIC
     ${KASM_SOURCE_FILES}
     "${KASM_GENERATED_VERSION_HEADER}"
@@ -39,10 +46,18 @@ target_include_directories(kasm_core
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-add_executable(kasm src/main.c)
+add_executable(kasm "${KASM_CLI_SOURCE}")
+add_executable(kemu "${KEMU_CLI_SOURCE}")
 target_link_libraries(kasm PRIVATE kasm::core)
+target_link_libraries(kemu PRIVATE kasm::core)
 
-foreach(target kasm_core kasm)
+# Keep the user-facing executables easy to find. Multi-config generators such
+# as Visual Studio append the active configuration (for example, Debug).
+set_target_properties(kasm kemu PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
+)
+
+foreach(target kasm_core kasm kemu)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
         if(KASM_WARNINGS_AS_ERRORS)
@@ -60,11 +75,14 @@ endforeach()
 if(MSVC)
     set_property(TARGET kasm PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kemu PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_core PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 install(TARGETS kasm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS kemu RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES README.md LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 include(CTest)
