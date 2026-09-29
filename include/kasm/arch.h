@@ -13,12 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_VERSION_H
-#define KASM_VERSION_H
 
-#define KASM_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define KASM_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define KASM_VERSION_PATCH @PROJECT_VERSION_PATCH@
-#define KASM_VERSION_STRING "@PROJECT_VERSION@"
+#ifndef KASM_ARCH_H
+#define KASM_ARCH_H
 
-#endif // KASM_VERSION_H
+typedef enum
+{
+    ARCH_X86,
+    ARCH_ARM,
+    ARCH_RISCV
+} Architecture;
+
+#endif // KASM_ARCH_H

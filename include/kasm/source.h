@@ -25,6 +25,6 @@ typedef struct {
     size_t length;
 } Source;
 
-int kasm_source_load(Source *source, const char *path);
+int source_load(Source *source, const char *path);
 
 #endif // KASM_SOURCE_H

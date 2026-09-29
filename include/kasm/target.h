@@ -13,12 +13,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_VERSION_H
-#define KASM_VERSION_H
 
-#define KASM_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define KASM_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define KASM_VERSION_PATCH @PROJECT_VERSION_PATCH@
-#define KASM_VERSION_STRING "@PROJECT_VERSION@"
+#ifndef KASM_TARGET_H
+#define KASM_TARGET_H
 
-#endif // KASM_VERSION_H
+#include "kasm/arch.h"
+typedef enum
+{
+    MODE_16,
+    MODE_32,
+    MODE_64
+} MachineMode;
+typedef struct
+{
+    Architecture arch;
+    MachineMode mode;
+} Target;
+#endif // KASM_TARGET_H

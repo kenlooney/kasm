@@ -13,12 +13,18 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef KASM_VERSION_H
-#define KASM_VERSION_H
 
-#define KASM_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define KASM_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define KASM_VERSION_PATCH @PROJECT_VERSION_PATCH@
-#define KASM_VERSION_STRING "@PROJECT_VERSION@"
+#ifndef KASM_ENCODE_H
+#define KASM_ENCODE_H
 
-#endif // KASM_VERSION_H
+#include "kasm/emit.h"
+#include "kasm/program.h"
+#include "kasm/target.h"
+
+int emit_program(
+    const Program *program,
+    const Target *target,
+    Bytes *bytes
+);
+
+#endif // KASM_ENCODE_H
