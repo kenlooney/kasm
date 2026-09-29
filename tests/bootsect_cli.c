@@ -40,8 +40,54 @@ int main(int argc, char **argv)
     if (!check_program(&parser, &program, &target))
         goto cleanup;
 
+    if (!program.has_origin || program.origin != 0x7C00)
+    {
+        fprintf(stderr, "expected origin 0x7C00\n");
+        goto cleanup;
+    }
+
     if (!emit_program(&program, &target, &bytes))
         goto cleanup;
+
+    if (bytes.count != 512)
+    {
+        fprintf(stderr,
+                "expected a 512-byte boot sector, got %zu bytes\n",
+                bytes.count);
+        goto cleanup;
+    }
+
+    if (bytes.data[0] != 0xFA ||
+        bytes.data[1] != 0xF4 ||
+        bytes.data[2] != 0xEB ||
+        bytes.data[3] != 0xFD)
+    {
+        fprintf(stderr, "expected boot code FA F4 EB FD\n");
+        goto cleanup;
+    }
+
+    for (size_t i = 4; i < 510; i++)
+    {
+        if (bytes.data[i] != 0)
+        {
+            fprintf(stderr,
+                    "expected zero padding at offset %zu, got %02X\n",
+                    i,
+                    (unsigned int)bytes.data[i]);
+            goto cleanup;
+        }
+    }
+
+    if (bytes.data[510] != 0x55 || bytes.data[511] != 0xAA)
+    {
+        fprintf(stderr, "expected boot signature 55 AA\n");
+        goto cleanup;
+    }
+
+    printf("boot sector: %zu bytes, signature %02X %02X\n",
+           bytes.count,
+           (unsigned int)bytes.data[510],
+           (unsigned int)bytes.data[511]);
 
     FILE *output = fopen(argv[2], "wb");
     if (!output)

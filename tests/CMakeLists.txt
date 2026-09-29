@@ -32,6 +32,8 @@ target_link_libraries(kasm_bytebuffer_cli PRIVATE kasm::core)
 add_executable(kasm_real_mode_cli real_mode_cli.c)
 target_link_libraries(kasm_real_mode_cli PRIVATE kasm::core)
 
+add_executable(kasm_bootsect_cli bootsect_cli.c)
+target_link_libraries(kasm_bootsect_cli PRIVATE kasm::core)
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -43,6 +45,7 @@ if(MSVC)
     target_compile_options(kasm_semi_cli PRIVATE /W4)
     target_compile_options(kasm_bytebuffer_cli PRIVATE /W4)
     target_compile_options(kasm_real_mode_cli PRIVATE /W4)
+    target_compile_options(kasm_bootsect_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -63,6 +66,8 @@ if(MSVC)
     set_property(TARGET kasm_bytebuffer_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_real_mode_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_bootsect_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -123,15 +128,20 @@ add_test(
     COMMAND kasm_real_mode_cli "${PROJECT_SOURCE_DIR}/examples/real_mode.asm"
 )
 
+add_test(
+    NAME kasm.bootsect.cli
+    COMMAND kasm_bootsect_cli
+        "${PROJECT_SOURCE_DIR}/examples/bootsect.asm"
+        "${CMAKE_CURRENT_BINARY_DIR}/bootsect.bin"
+)
+
 # Run the built executable with a source file from the repository. Using
 # PROJECT_SOURCE_DIR makes the path work regardless of the build directory.
 add_test(
     NAME kasm.cli.loads_source
-    COMMAND kasm "${PROJECT_SOURCE_DIR}/examples/first.asm"
-)
-set_tests_properties(kasm.cli.loads_source PROPERTIES
-    # A zero exit code and this output mean the source file loaded successfully.
-    PASS_REGULAR_EXPRESSION "kasm [0-9]+\\.[0-9]+\\.[0-9]+"
+    COMMAND kasm
+        "${PROJECT_SOURCE_DIR}/examples/first.asm"
+        "${CMAKE_CURRENT_BINARY_DIR}/first.bin"
 )
 add_test(
     NAME kasm.diagnostic.cli

@@ -1,1 +1,4 @@
-mov ax, 0x1234;
+cli;
+stopped:
+hlt;
+jmp8 stopped;
