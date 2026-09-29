@@ -59,6 +59,7 @@ static int statement(Parser *parser, Program *program)
     Statement s = {0};
     s.span = name.span;
     s.expression = -1;
+    s.fill_expression = -1;
 
     if (parser->lexer.token.kind == TK_COLON)
     {
@@ -89,6 +90,80 @@ static int statement(Parser *parser, Program *program)
 
         s.span.end = semicolon.span.end;
     }
+    // org instruction
+    else if (token_is(source, name, "org"))
+    {
+        s.kind = ST_ORG;
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        Token semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+        s.span.end = semicolon.span.end;
+    }
+    // db instruction
+    else if (token_is(source, name, "db"))
+    {
+        s.kind = ST_DB;
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        Token semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+        s.span.end = semicolon.span.end;
+    }
+    // dw instruction
+    else if (token_is(source, name, "dw"))
+    {
+        s.kind = ST_DW;
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        Token semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+        s.span.end = semicolon.span.end;
+    }
+    // dd instruction
+    else if (token_is(source, name, "dd"))
+    {
+        s.kind = ST_DD;
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+        Token semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+        s.span.end = semicolon.span.end;
+    }
+    // Position-aware padding directive
+    else if (token_is(source, name, "padto"))
+    {
+        s.kind = ST_PADTO;
+
+        /* Parse the destination file offset. */
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+
+        /* Parse the byte used for padding. */
+        s.fill_expression = parse_expression(parser);
+        if (s.fill_expression < 0)
+            return 0;
+
+        Token semicolon = parser->lexer.token;
+
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+
+        s.span.end = semicolon.span.end;
+    }
+    
     // jump instructions
     else if (token_is(source, name, "jmp8"))
     {
@@ -139,7 +214,8 @@ static int statement(Parser *parser, Program *program)
 int parse_program(Parser *parser, Program *program)
 {
     size_t brace_depth = 0;
-
+    program->origin = 0;
+    program->has_origin = 0;
     program->statements = NULL;
     program->count = 0;
     program->capacity = 0;

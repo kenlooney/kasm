@@ -40,6 +40,35 @@ static int statement_size(
         *size = 2;
         return 1;
 
+    case ST_ORG:
+        *size = 0;
+        return 1;
+
+    case ST_DB:
+        *size = 1;
+        return 1;
+
+    case ST_DW:
+        *size = 2;
+        return 1;
+
+    case ST_DD:
+        *size = 4;
+        return 1;
+
+    case ST_PADTO:
+        if (statement->value < 0)
+            return 0;
+
+        if ((uint64_t)statement->value > (uint64_t)SIZE_MAX)
+            return 0;
+
+        if ((size_t)statement->value < statement->offset)
+            return 0;
+
+        *size = (size_t)statement->value - statement->offset;
+        return 1;
+
     case ST_MOV:
         *size = 3;
         return 1;
@@ -60,10 +89,14 @@ int layout_program(Program *program, const Target *target)
         Statement *statement = &program->statements[i];
         size_t size;
 
+        /*
+         * Record where this statement begins before calculating its size.
+         * Position-aware directives such as PADTO need the current offset.
+         */
+        statement->offset = offset;
+
         if (!statement_size(statement, target, &size))
             return 0;
-
-        statement->offset = offset;
 
         if (size > SIZE_MAX - offset)
             return 0;

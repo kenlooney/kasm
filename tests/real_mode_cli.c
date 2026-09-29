@@ -32,6 +32,8 @@ int main(int argc, char **argv)
 
     if (!parse_program(&parser, &program))
         goto cleanup;
+    if (!evaluate_program(&parser, &program))
+        goto cleanup;
     if (!layout_program(&program, &target))
         goto cleanup;
 

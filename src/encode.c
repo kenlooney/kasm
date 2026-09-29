@@ -50,6 +50,54 @@ int emit_program(
             }
             break;
 
+        // ORG
+        case ST_ORG:
+            // ORG does not emit any bytes
+            break;
+        // Data definition instructions (db, dw, dd)
+        case ST_DB:
+            if (!byte_push(bytes, (uint8_t)statement->value))
+            {
+                return 0;
+            }
+            break;
+
+        case ST_DW:
+            if (!little_endian(
+                    bytes,
+                    (uint64_t)statement->value,
+                    2))
+            {
+                return 0;
+            }
+            break;
+
+        case ST_DD:
+            if (!little_endian(
+                    bytes,
+                    (uint64_t)statement->value,
+                    4))
+            {
+                return 0;
+            }
+            break;
+
+        case ST_PADTO:
+            /*
+             * Layout and emission must agree about where PADTO begins.
+             * Semantic analysis and layout have already established that
+             * the destination is not behind this offset.
+             */
+            if (bytes->count != statement->offset)
+                return 0;
+
+            while (bytes->count < (size_t)statement->value)
+            {
+                if (!byte_push(bytes, (uint8_t)statement->fill_value))
+                    return 0;
+            }
+            break;
+
         case ST_MOV:
             if (!byte_push(bytes, 0xB8) ||
                 !little_endian(

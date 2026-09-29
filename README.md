@@ -2,16 +2,101 @@
 
 [![CI](https://github.com/kenlooney/kasm/actions/workflows/ci.yml/badge.svg)](https://github.com/kenlooney/kasm/actions/workflows/ci.yml)
 
-Ken's Assembler Project: an x86 assembler written in C. The project currently
-loads source files, tracks source positions, reports diagnostics, and tokenizes
-the lexical elements documented below. It also parses arithmetic expressions
-into an abstract syntax tree (AST) and recognizes the initial
-instruction-statement syntax. Machine-code encoding is not implemented yet.
+Ken's Assembler Project is an x86 assembler written in C. KASM currently
+assembles a small 16-bit x86 language directly into flat binary files.
+
+> **v0.15.0 is KASM's first bootable release.** It can produce a complete
+> 512-byte legacy BIOS boot sector containing executable real-mode code,
+> padding, and the `55 AA` boot signature. The generated image boots
+> successfully in QEMU.
+
+## Assemble and boot the example
+
+Configure, build, and test on Windows:
+
+```powershell
+cmake --preset windows-debug
+cmake --build --preset windows-debug
+ctest --preset windows-debug -V
+```
+
+Assemble the included boot sector into a raw image:
+
+```powershell
+build/windows-debug/Debug/kasm.exe examples/bootsect.asm bootsect.bin
+```
+
+Boot it with QEMU:
+
+```powershell
+qemu-system-i386 `
+  -drive file=bootsect.bin,format=raw,if=floppy `
+  -boot a `
+  -no-reboot `
+  -no-shutdown
+```
+
+The example intentionally enters a halt loop, so QEMU displays
+`Booting from Floppy...` and remains running with a blank screen. This means
+the BIOS accepted the image and transferred control to KASM's generated code.
 
 ## Language support
 
-The lexer, expression parser, and statement parser currently recognize the
-following source syntax. Recognized text is not yet encoded as x86 machine code.
+KASM currently targets 16-bit x86 real mode and writes raw, little-endian
+binary output. Source statements end with semicolons.
+
+### Instructions
+
+| Syntax | Encoding | Description |
+| --- | --- | --- |
+| `mov ax, expression;` | `B8 iw` | Load a 16-bit immediate into `AX` |
+| `cli;` | `FA` | Clear the interrupt flag |
+| `sti;` | `FB` | Set the interrupt flag |
+| `hlt;` | `F4` | Halt the processor |
+| `jmp8 label;` | `EB cb` | Explicit signed 8-bit relative jump |
+
+`jmp8` targets must be defined labels within the range `-128..127` bytes from
+the end of the jump instruction.
+
+### Labels
+
+Labels use an identifier followed by a colon:
+
+```asm
+hang:
+hlt;
+jmp8 hang;
+```
+
+KASM records statement offsets during layout and resolves jump targets before
+encoding.
+
+### Data and layout directives
+
+| Syntax | Description |
+| --- | --- |
+| `org expression;` | Set the logical origin without emitting bytes |
+| `db expression;` | Emit one byte |
+| `dw expression;` | Emit a 16-bit little-endian word |
+| `dd expression;` | Emit a 32-bit little-endian double word |
+| `padto offset, byte;` | Emit the byte until output reaches the file offset |
+
+`org` must appear before emitted content. `padto` cannot move backward, and its
+fill value must be in the range `0..255`.
+
+The bootable example is deliberately small:
+
+```asm
+org 0x7C00;
+
+cli;
+hang:
+hlt;
+jmp8 hang;
+
+padto 510, 0;
+dw 0xAA55;
+```
 
 ### Identifiers
 
@@ -33,9 +118,9 @@ Examples include `mov`, `eax_2`, and `_local`.
 | Binary | `0b` or `0B`, then binary digits | `0b1010`, `0b0000_1111` |
 
 Underscores may separate digits for readability. They cannot appear first,
-last, or consecutively. Integer values must fit in a signed `long long`
-(`0` through `LLONG_MAX`). A leading minus sign is currently a separate token,
-not part of the integer literal.
+last, or consecutively. Evaluated expressions must currently fit in the signed
+32-bit range. A leading minus sign is a separate token, and unary operators are
+not yet supported.
 
 ### Arithmetic expressions
 
@@ -53,8 +138,7 @@ Parentheses override normal precedence. For example:
 9 * (3 + 2)
 ```
 
-is parsed as multiplication whose right operand is the grouped addition. The
-current grammar is equivalent to:
+The current grammar is equivalent to:
 
 ```text
 expression = product (("+" | "-") product)*
@@ -62,26 +146,9 @@ product    = primary (("*" | "/" | "%") primary)*
 primary    = integer | "(" expression ")"
 ```
 
-The parser stores expression nodes in a dynamically growing indexed arena.
-Expressions are parsed into an AST but are not yet evaluated or encoded.
-
-### Instruction statements
-
-The only instruction mnemonic currently recognized is `mov`, using this form:
-
-```asm
-mov destination, expression;
-```
-
-For example:
-
-```asm
-mov ax, 40 + 2;
-```
-
-The destination is currently accepted as an identifier; register names and
-operand sizes are not yet semantically validated. Every instruction statement
-must end with a semicolon.
+Expression nodes are stored in a dynamically growing indexed arena and are
+evaluated before layout and semantic validation. Division or remainder by zero
+is diagnosed as an error.
 
 ### Statement blocks
 
@@ -91,71 +158,47 @@ Statements may be visually grouped using nested braces:
 {
     mov ax, 40 + 2;
     {
-        mov ax, 7;
+        hlt;
     }
 }
 ```
 
-Braces currently provide source organization and balance checking only. They do
-not introduce scopes, namespaces, or separate block nodes. Statements from all
-nested blocks are flattened into `Program.statements` in source order.
+Braces provide source organization and balance checking only. They do not
+introduce scopes or namespaces. Statements from nested blocks are flattened
+into the program in source order.
 
-### Punctuation
+### Comments, whitespace, and source locations
 
-The following single-character tokens are recognized:
-
-```text
-+ - * / % ( ) , ; { } :
-```
-
-### Whitespace and source locations
+Both `//` line comments and `/* ... */` block comments are supported. Block
+comments may span multiple lines but do not nest; an unterminated block comment
+is an error.
 
 Spaces, tabs, carriage returns, and newlines separate tokens and are otherwise
 ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 `[start,end)`. Diagnostic line and column positions are one-based.
 
-### Comments
+### Current limitations
 
-Both `//` line comments and `/* ... */` block comments are supported. Line
-comments continue through the end of the line or file. Block comments may span
-multiple lines but do not nest; an unterminated block comment is an error.
-
-### Not implemented yet
-
-- Additional x86 instructions and semantic operand validation
-- Labels and symbol resolution (although `:` is tokenized)
-- String literals and character literals
-- Unary expression operators and expression evaluation
-- Machine-code encoding and object-file output
+- Only the 16-bit x86 real-mode target is implemented.
+- `mov` currently supports only `AX` with a 16-bit immediate.
+- `jmp8` is the only control-flow encoding and must be requested explicitly.
+- Data directives currently accept one expression each.
+- String literals, character literals, and unary expression operators are not
+  implemented yet.
+- Output is a flat binary image; object files and executable formats are not
+  implemented yet.
 
 ## Requirements
 
 - A C11 compiler (GCC, Clang, or MSVC)
 - CMake 3.20 or newer
+- QEMU (optional, for running the boot-sector example)
 
 ## Build and test
-### Test Example
-```cmake
-add_test(
-    NAME kasm.cli.loads_source
-    COMMAND kasm "${PROJECT_SOURCE_DIR}/examples/first.asm"
-)
-
-set_tests_properties(kasm.cli.loads_source PROPERTIES
-    PASS_REGULAR_EXPRESSION "kasm [0-9]+\\.[0-9]+\\.[0-9]+"
-)
-```
-Examples:
-```powershell
-ctest --test-dir build/windows-debug -C Debug -R "^kasm\.cli\.loads_source$" -V
-
-cmake --build build/windows-debug --config Debug
-ctest --test-dir build/windows-debug -C Debug -R "^kasm\.cursor\.cli$" -V
-```
 
 On Windows with Visual Studio 2026:
 
-```sh
+```powershell
 cmake --preset windows-debug
 cmake --build --preset windows-debug
 ctest --preset windows-debug -V
@@ -191,7 +234,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.1.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.15.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -205,20 +248,21 @@ The tag comes from the version declared in the top-level `CMakeLists.txt`, so
 increment that version before the next release. The workflow can also be run
 manually from GitHub Actions to publish the current commit on `main`.
 
-Package names use the format `kasm-v0.1.0-<platform>-<architecture>.zip`;
+Package names use the format `kasm-v0.15.0-<platform>-<architecture>.zip`;
 branch names are never included.
 
 ### Development snapshots
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.1.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.15.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this
 cleanup.
 
-#### Cleaning up Visual Studio Code of removed git tags
+To remove locally cached tags that have been deleted remotely:
+
 ```powershell
 git fetch origin --prune --prune-tags
 ```

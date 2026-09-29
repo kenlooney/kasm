@@ -18,6 +18,8 @@
 
 #include "kasm/expr.h"
 #include "kasm/target.h"
+#include <stddef.h>
+#include <stdint.h>
 
 
 typedef enum {
@@ -27,7 +29,11 @@ typedef enum {
     ST_STI,
     ST_LABEL,
     ST_JMP8,
-    
+    ST_ORG,
+    ST_DB,
+    ST_DW,
+    ST_DD,
+    ST_PADTO,
 } StatementKind;
 
 typedef struct {
@@ -36,8 +42,13 @@ typedef struct {
     Token operand;
     Token label;
     Token target;
+
     int expression;
+    int fill_expression;
+    
     long long value;
+    long long fill_value;
+
     size_t offset;
 } Statement;
 
@@ -45,9 +56,12 @@ typedef struct {
     Statement *statements;
     int count;
     int capacity;
+    uint64_t origin;
+    int has_origin;
 } Program;
 
 int parse_program(Parser *parser, Program *program);
+int evaluate_program(Parser *parser, Program *program);
 int check_program(Parser *parser, Program *program, const Target *target);
 
 #endif // KASM_PROGRAM_H

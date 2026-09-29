@@ -24,6 +24,11 @@ int main(int argc, char **argv) {
         free(parser.nodes);
         return 1;
     }
+    if (!evaluate_program(&parser, &program)) {
+        free(program.statements);
+        free(parser.nodes);
+        return 1;
+    }
     if (!check_program(&parser, &program, &target)) {
         free(program.statements);
         free(parser.nodes);
