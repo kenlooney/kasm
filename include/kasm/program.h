@@ -21,13 +21,21 @@
 
 
 typedef enum {
-    ST_MOV
+    ST_MOV,
+    ST_HLT,
+    ST_CLI,
+    ST_STI,
+    ST_LABEL,
+    ST_JMP8,
+    
 } StatementKind;
 
 typedef struct {
     StatementKind kind;
     Span span;
     Token operand;
+    Token label;
+    Token target;
     int expression;
     long long value;
     size_t offset;

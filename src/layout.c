@@ -1,0 +1,75 @@
+/*
+ * Copyright (C) 2026 Kenneth Looney
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+#include "kasm/layout.h"
+
+#include <stdint.h>
+
+static int statement_size(
+    const Statement *statement,
+    const Target *target,
+    size_t *size
+) {
+    if (target->arch != ARCH_X86 || target->mode != MODE_16)
+        return 0;
+
+    switch (statement->kind) {
+    case ST_LABEL:
+        *size = 0;
+        return 1;
+
+    case ST_CLI:
+    case ST_STI:
+    case ST_HLT:
+        *size = 1;
+        return 1;
+
+    case ST_JMP8:
+        *size = 2;
+        return 1;
+
+    case ST_MOV:
+        *size = 3;
+        return 1;
+
+    default:
+        return 0;
+    }
+}
+
+int layout_program(Program *program, const Target *target)
+{
+    if (!program || !target)
+        return 0;
+
+    size_t offset = 0;
+
+    for (int i = 0; i < program->count; i++) {
+        Statement *statement = &program->statements[i];
+        size_t size;
+
+        if (!statement_size(statement, target, &size))
+            return 0;
+
+        statement->offset = offset;
+
+        if (size > SIZE_MAX - offset)
+            return 0;
+
+        offset += size;
+    }
+
+    return 1;
+}

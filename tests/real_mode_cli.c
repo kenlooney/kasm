@@ -2,6 +2,7 @@
 #include "kasm/encode.h"
 #include "kasm/program.h"
 #include "kasm/target.h"
+#include "kasm/layout.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +32,8 @@ int main(int argc, char **argv)
 
     if (!parse_program(&parser, &program))
         goto cleanup;
+    if (!layout_program(&program, &target))
+        goto cleanup;
 
     if (!check_program(&parser, &program, &target))
         goto cleanup;
@@ -38,11 +41,12 @@ int main(int argc, char **argv)
     if (!emit_program(&program, &target, &bytes))
         goto cleanup;
 
-    if (bytes.count != 3 ||
-        bytes.data[0] != 0xB8 ||
-        bytes.data[1] != 0x34 ||
-        bytes.data[2] != 0x12) {
-        fprintf(stderr, "expected B8 34 12\n");
+    if (bytes.count != 4 ||
+        bytes.data[0] != 0xFA ||
+        bytes.data[1] != 0xF4 ||
+        bytes.data[2] != 0xEB ||
+        bytes.data[3] != 0xFD) {
+        fprintf(stderr, "expected FA F4 EB FD\n");
         goto cleanup;
     }
 
