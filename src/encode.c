@@ -118,9 +118,46 @@ int emit_program(
             break;
         // Single-byte opcode with encoded register
         case ST_INC:
-            if(statement->reg16 > REG16_DI)
+            if (statement->reg16 > REG16_DI)
                 return 0;
-            if(!byte_push(bytes,(uint8_t)(0x40u + (unsigned)statement->reg16)))
+            if (!byte_push(bytes, (uint8_t)(0x40u + (unsigned)statement->reg16)))
+                return 0;
+            break;
+
+        case ST_DEC:
+            if (statement->reg16 > REG16_DI)
+                return 0;
+
+            if (!byte_push(
+                    bytes,
+                    (uint8_t)(0x48u + (unsigned)statement->reg16)))
+                return 0;
+            break;
+        case ST_PUSH:
+            if (statement->reg16 > REG16_DI)
+                return 0;
+
+            if (!byte_push(
+                    bytes,
+                    (uint8_t)(0x50u + (unsigned)statement->reg16)))
+                return 0;
+            break;
+        case ST_POP:
+            if (statement->reg16 > REG16_DI)
+                return 0;
+
+            if (!byte_push(
+                    bytes,
+                    (uint8_t)(0x58u + (unsigned)statement->reg16)))
+                return 0;
+            break;
+        case ST_XCHG:
+            if (statement->reg16 > REG16_DI)
+                return 0;
+
+            if (!byte_push(
+                    bytes,
+                    (uint8_t)(0x90u + (unsigned)statement->reg16)))
                 return 0;
             break;
 
@@ -186,11 +223,13 @@ int emit_program(
             break;
 
         case ST_MOV:
-            if (!byte_push(bytes, 0xB8) ||
-                !little_endian(
+            if (statement->reg16 > REG16_DI)
+                return 0;
+
+            if (!byte_push(
                     bytes,
-                    (uint64_t)statement->value,
-                    2))
+                    (uint8_t)(0xB8u + (unsigned)statement->reg16)) ||
+                !little_endian(bytes, (uint64_t)statement->value, 2))
             {
                 return 0;
             }

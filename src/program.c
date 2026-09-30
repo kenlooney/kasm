@@ -89,8 +89,7 @@ static int statement(Parser *parser, Program *program)
         token_is(source, name, "popf") ||
         token_is(source, name, "cbw") ||
         token_is(source, name, "cwd") ||
-        token_is(source, name, "iret")
-    )
+        token_is(source, name, "iret"))
     {
         if (token_is(source, name, "cli"))
             s.kind = ST_CLI;
@@ -124,7 +123,6 @@ static int statement(Parser *parser, Program *program)
             s.kind = ST_IRET;
         else
             s.kind = ST_NOP;
-        
 
         Token semicolon = parser->lexer.token;
 
@@ -207,18 +205,53 @@ static int statement(Parser *parser, Program *program)
         s.span.end = semicolon.span.end;
     }
     // Single-byte opcode with encoded register
-    else if (token_is(source, name, "inc"))
+    else if (
+        token_is(source, name, "inc") ||
+        token_is(source, name, "dec") ||
+        token_is(source, name, "push") ||
+        token_is(source, name, "pop"))
     {
-        s.kind = ST_INC;
+        Token semicolon;
+        if (token_is(source, name, "inc"))
+            s.kind = ST_INC;
+        else if (token_is(source, name, "dec"))
+            s.kind = ST_DEC;
+        else if (token_is(source, name, "push"))
+            s.kind = ST_PUSH;
+        else
+            s.kind = ST_POP;
+
         s.operand = parser->lexer.token;
-        if (!take(parser, TK_IDENT, "expected 16-bit register after 'inc'"))
+        if (!take(parser, TK_IDENT, "expected 16-bit register after instruction"))
             return 0;
-        Token semicolon = parser->lexer.token;
+        semicolon = parser->lexer.token;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
         s.span.end = semicolon.span.end;
     }
-    
+    else if (token_is(source, name, "xchg"))
+    {
+        Token semicolon;
+
+        s.kind = ST_XCHG;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected ax"))
+            return 0;
+
+        if (!take(parser, TK_COMMA, "expected comma"))
+            return 0;
+
+        s.second_operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected 16-bit register"))
+            return 0;
+
+        semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+
+        s.span.end = semicolon.span.end;
+    }
+
     // jump instructions
     else if (token_is(source, name, "jmp8"))
     {

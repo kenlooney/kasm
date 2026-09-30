@@ -47,10 +47,12 @@ static int statement_size(
     case ST_CWD:
     case ST_IRET:
     case ST_INC:
+    case ST_DEC:
+    case ST_PUSH:
+    case ST_POP:
+    case ST_XCHG:
         *size = 1;
-        return 1;
-    
-
+        return 1;    
     case ST_JMP8:
         *size = 2;
         return 1;

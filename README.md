@@ -75,9 +75,10 @@ KEMU currently provides:
 - image loading at physical address `0x7C00`;
 - an initial `CS:IP` of `0000:7C00`;
 - checked instruction fetching and a 1000-instruction execution limit;
-- emulation of `mov ax, imm16`, `jmp8`, and the no-operand instruction set
-  documented below;
-- a 16-bit downward-growing stack used by `pushf`, `popf`, and `iret`;
+- emulation of encoded-register instructions, `jmp8`, and the no-operand
+  instruction set documented below;
+- a 16-bit downward-growing stack used by `push`, `pop`, `pushf`, `popf`, and
+  `iret`;
 - modeled 16-bit FLAGS state, including carry, interrupt, direction, and
   arithmetic status flags;
 - clear failures for unknown opcodes, truncated instructions, oversized images,
@@ -96,7 +97,12 @@ binary output. Source statements end with semicolons.
 
 | Syntax | Encoding | Description |
 | --- | --- | --- |
-| `mov ax, expression;` | `B8 iw` | Load a 16-bit immediate into `AX` |
+| `inc register;` | `40+rw` | Increment a 16-bit register |
+| `dec register;` | `48+rw` | Decrement a 16-bit register |
+| `push register;` | `50+rw` | Push a 16-bit register onto the stack |
+| `pop register;` | `58+rw` | Pop a stack value into a 16-bit register |
+| `xchg ax, register;` | `90+rw` | Exchange `AX` with a 16-bit register |
+| `mov register, expression;` | `B8+rw iw` | Load a 16-bit immediate into a register |
 | `nop;` | `90` | Perform no operation |
 | `cli;` | `FA` | Clear the interrupt flag |
 | `sti;` | `FB` | Set the interrupt flag |
@@ -117,6 +123,11 @@ binary output. Source statements end with semicolons.
 
 `jmp8` targets must be defined labels within the range `-128..127` bytes from
 the end of the jump instruction.
+
+The supported 16-bit registers are `ax`, `cx`, `dx`, `bx`, `sp`, `bp`, `si`,
+and `di`. In the encoding table, `rw` selects one of these registers and `iw`
+is a 16-bit immediate stored in little-endian byte order. The compact `xchg`
+form requires `ax` as its first operand.
 
 ### Labels
 
@@ -240,7 +251,7 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 ### Current limitations
 
 - Only the 16-bit x86 real-mode target is implemented.
-- `mov` currently supports only `AX` with a 16-bit immediate.
+- Register operands are limited to the eight 16-bit general-purpose registers.
 - `jmp8` is the only control-flow encoding and must be requested explicitly.
 - Data directives currently accept one expression each.
 - String literals, character literals, and unary expression operators are not

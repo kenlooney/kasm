@@ -48,6 +48,10 @@ typedef enum {
     ST_CWD,
     ST_IRET,
     ST_INC,
+    ST_DEC,
+    ST_PUSH,
+    ST_POP,
+    ST_XCHG,
 } StatementKind;
 
 typedef enum {
@@ -66,6 +70,7 @@ typedef struct {
     StatementKind kind;
     Span span;
     Token operand;
+    Token second_operand;
     Token label;
     Token target;
 

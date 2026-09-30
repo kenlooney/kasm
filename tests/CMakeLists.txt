@@ -129,7 +129,7 @@ add_test(
 set_tests_properties(kemu.encoded_register.cli PROPERTIES
     FIXTURES_REQUIRED kasm_encoded_register_image
     PASS_REGULAR_EXPRESSION
-        "halted after 9 instructions at 0000:7C09, AX=0001"
+        "halted after 43 instructions at 0000:7C2F, AX=1234"
 )
 
 add_test(
