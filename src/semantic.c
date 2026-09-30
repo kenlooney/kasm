@@ -17,6 +17,37 @@ static int tokens_equal(
                left_length) == 0;
 }
 
+static int register16_from_token(
+    const Source *source,
+    Token token,
+    Register16 *reg)
+
+{
+    if (!reg)
+        return 0;
+
+    if (token_is(source, token, "ax"))
+        *reg = REG16_AX;
+    else if (token_is(source, token, "cx"))
+        *reg = REG16_CX;
+    else if (token_is(source, token, "dx"))
+        *reg = REG16_DX;
+    else if (token_is(source, token, "bx"))
+        *reg = REG16_BX;
+    else if (token_is(source, token, "sp"))
+        *reg = REG16_SP;
+    else if (token_is(source, token, "bp"))
+        *reg = REG16_BP;
+    else if (token_is(source, token, "si"))
+        *reg = REG16_SI;
+    else if (token_is(source, token, "di"))
+        *reg = REG16_DI;
+    else
+        return 0;
+
+    return 1;
+}
+
 int evaluate_program(Parser *parser, Program *program)
 {
     if (!parser || !program)
@@ -87,13 +118,14 @@ int check_program(Parser *parser, Program *program, const Target *target)
 
         if (s->kind == ST_MOV)
         {
-            if (!token_is(source, s->operand, "ax"))
+            if (!register16_from_token(source, s->operand, &s->reg16))
             {
-                diagnostic(source, s->operand.span, "only register ax is supported");
+                diagnostic(source,
+                           s->operand.span,
+                           "expected ax, cx, dx, bx, sp, bp, si, or di");
                 return 0;
             }
-            // TODO: Select the immediate range from the target mode when 32-bit
-            // and 64-bit instruction encoding is supported.
+
             if (s->value < 0 || s->value > 65535)
             {
                 diagnostic(source,
@@ -102,6 +134,43 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 return 0;
             }
         }
+
+        // Single-byte opcode with encoded register
+        else if (s->kind == ST_INC ||
+                 s->kind == ST_DEC ||
+                 s->kind == ST_PUSH ||
+                 s->kind == ST_POP)
+        {
+            if (!register16_from_token(source, s->operand, &s->reg16))
+            {
+                diagnostic(source,
+                           s->operand.span,
+                           "expected ax, cx, dx, bx, sp, bp, si, or di");
+                return 0;
+            }
+        }
+        else if (s->kind == ST_XCHG)
+        {
+            if (!token_is(source, s->operand, "ax"))
+            {
+                diagnostic(source,
+                           s->operand.span,
+                           "this form of xchg requires ax first");
+                return 0;
+            }
+
+            if (!register16_from_token(
+                    source,
+                    s->second_operand,
+                    &s->reg16))
+            {
+                diagnostic(source,
+                           s->second_operand.span,
+                           "expected a 16-bit register after the comma");
+                return 0;
+            }
+        }
+
         else if (s->kind == ST_JMP8)
         {
             const Statement *destination = NULL;

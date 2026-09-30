@@ -16,7 +16,12 @@ KEMU's decoder. The syntax column shows how they are written in KASM source.
 
 | Instruction | KASM syntax | Encoding | Name and meaning | CPU effect |
 | --- | --- | --- | --- | --- |
-| `MOV AX, imm16` | `mov ax, expression;` | `B8 iw` | Move a 16-bit immediate value into `AX` | Replaces `AX`; flags are unchanged |
+| `INC r16` | `inc register;` | `40+rw` | Increment a 16-bit register | Adds one; updates arithmetic status flags except `CF` |
+| `DEC r16` | `dec register;` | `48+rw` | Decrement a 16-bit register | Subtracts one; updates arithmetic status flags except `CF` |
+| `PUSH r16` | `push register;` | `50+rw` | Push a 16-bit register | Decrements `SP` by two and stores the register at `SS:SP` |
+| `POP r16` | `pop register;` | `58+rw` | Pop into a 16-bit register | Loads the register from `SS:SP` and increments `SP` by two |
+| `XCHG AX, r16` | `xchg ax, register;` | `90+rw` | Exchange `AX` with a 16-bit register | Swaps the register values; flags are unchanged |
+| `MOV r16, imm16` | `mov register, expression;` | `B8+rw iw` | Move a 16-bit immediate into a register | Replaces the register; flags are unchanged |
 | `NOP` | `nop;` | `90` | No Operation | Advances `IP` without otherwise changing CPU state |
 | `CLI` | `cli;` | `FA` | Clear Interrupt Flag | Clears `IF`, disabling maskable interrupts |
 | `STI` | `sti;` | `FB` | Set Interrupt Flag | Sets `IF`, enabling maskable interrupts |
@@ -38,6 +43,7 @@ KEMU's decoder. The syntax column shows how they are written in KASM source.
 Encoding notation used above:
 
 - `iw` is an immediate 16-bit word stored in little-endian byte order.
+- `rw` is the three-bit code for a 16-bit general-purpose register.
 - `cb` is a signed 8-bit relative displacement measured from the end of the
   jump instruction.
 - `CF`, `PF`, `AF`, `ZF`, `SF`, `IF`, and `DF` mean carry, parity, auxiliary
@@ -69,13 +75,13 @@ though string instructions that consume `DF` are not implemented yet.
 
 ## Single-byte opcode with encoded register
 
-- [ ] `INC r16` — `40+rw`
-- [ ] `DEC r16` — `48+rw`
-- [ ] `PUSH r16` — `50+rw`
-- [ ] `POP r16` — `58+rw`
-- [ ] `XCHG AX,r16` — `90+rw`
+- [x] `INC r16` — `40+rw`
+- [x] `DEC r16` — `48+rw`
+- [x] `PUSH r16` — `50+rw`
+- [x] `POP r16` — `58+rw`
+- [x] `XCHG AX,r16` — `90+rw`
 - [x] `MOV AX,imm16` — `B8 iw`
-- [ ] `MOV r16,imm16` — `B8+rw iw`
+- [x] `MOV r16,imm16` — `B8+rw iw`
 
 ## Opcode plus immediate or relative operand
 

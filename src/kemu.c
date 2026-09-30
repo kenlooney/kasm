@@ -91,6 +91,52 @@ static int cpu16_pop16(Cpu16 *cpu, uint16_t *value)
     return 1;
 }
 
+static uint16_t *cpu16_reg16(Cpu16 *cpu, unsigned code)
+{
+    if (!cpu)
+        return NULL;
+
+    switch (code)
+    {
+    case 0:
+        return &cpu->ax;
+    case 1:
+        return &cpu->cx;
+    case 2:
+        return &cpu->dx;
+    case 3:
+        return &cpu->bx;
+    case 4:
+        return &cpu->sp;
+    case 5:
+        return &cpu->bp;
+    case 6:
+        return &cpu->si;
+    case 7:
+        return &cpu->di;
+    default:
+        return NULL;
+    }
+}
+
+static void cpu16_write_flag(Cpu16 *cpu, uint16_t flag, int set)
+{
+    if (set)
+        cpu->flags |= flag;
+    else
+        cpu->flags &= (uint16_t)~flag;
+}
+
+static int even_parity8(uint8_t value)
+{
+    unsigned ones = 0;
+
+    for (unsigned bit = 0; bit < 8; bit++)
+        ones += (value >> bit) & 1u;
+
+    return (ones & 1u) == 0;
+}
+
 static int emulate_instruction(Cpu16 *cpu)
 {
     uint16_t instruction_ip;
@@ -110,31 +156,118 @@ static int emulate_instruction(Cpu16 *cpu)
         return 0;
     }
 
-    switch (opcode)
+    if (opcode >= 0x40u && opcode <= 0x47u)
     {
-    case 0xB8: /* MOV AX, imm16 */
+        unsigned code = opcode & 0x07u;
+        uint16_t *reg = cpu16_reg16(cpu, code);
+        uint16_t old_value;
+        uint16_t result;
+
+        if (!reg)
+            return 0;
+
+        old_value = *reg;
+        result = (uint16_t)(old_value + 1u);
+        *reg = result;
+
+        cpu16_write_flag(cpu, CPU16_FLAG_OF, old_value == 0x7FFFu);
+        cpu16_write_flag(cpu, CPU16_FLAG_SF,
+                         (result & 0x8000u) != 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_ZF, result == 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_AF,
+                         (old_value & 0x000Fu) == 0x000Fu);
+        cpu16_write_flag(cpu, CPU16_FLAG_PF,
+                         even_parity8((uint8_t)result));
+
+        return 1;
+    }
+    if (opcode >= 0x48u && opcode <= 0x4Fu)
     {
+        unsigned code = opcode & 0x07u;
+        uint16_t *reg = cpu16_reg16(cpu, code);
+        uint16_t old_value;
+        uint16_t result;
+
+        if (!reg)
+            return 0;
+
+        old_value = *reg;
+        result = (uint16_t)(old_value - 1u);
+        *reg = result;
+
+        cpu16_write_flag(cpu, CPU16_FLAG_OF, old_value == 0x8000u);
+        cpu16_write_flag(cpu, CPU16_FLAG_SF,
+                         (result & 0x8000u) != 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_ZF, result == 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_AF,
+                         (old_value & 0x000Fu) == 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_PF,
+                         even_parity8((uint8_t)result));
+
+        return 1;
+    }
+    if (opcode >= 0x50u && opcode <= 0x57u)
+    {
+        uint16_t *reg = cpu16_reg16(cpu, opcode & 0x07u);
+        uint16_t value;
+
+        if (!reg)
+            return 0;
+
+        value = *reg;
+        return cpu16_push16(cpu, value);
+    }
+    if (opcode >= 0x58u && opcode <= 0x5Fu)
+    {
+        uint16_t *reg = cpu16_reg16(cpu, opcode & 0x07u);
+        uint16_t value;
+
+        if (!reg || !cpu16_pop16(cpu, &value))
+            return 0;
+
+        *reg = value;
+        return 1;
+    }
+    if (opcode >= 0x90u && opcode <= 0x97u)
+    {
+        uint16_t *reg = cpu16_reg16(cpu, opcode & 0x07u);
+        uint16_t temporary;
+
+        if (!reg)
+            return 0;
+
+        temporary = cpu->ax;
+        cpu->ax = *reg;
+        *reg = temporary;
+        return 1;
+    }
+    if (opcode >= 0xB8u && opcode <= 0xBFu)
+    {
+        uint16_t *reg = cpu16_reg16(cpu, opcode & 0x07u);
         uint8_t low;
         uint8_t high;
 
-        if (!cpu16_fetch8(cpu, &low) || !cpu16_fetch8(cpu, &high))
+        if (!reg ||
+            !cpu16_fetch8(cpu, &low) ||
+            !cpu16_fetch8(cpu, &high))
         {
             fprintf(stderr,
                     "truncated MOV instruction at %04X:%04X\n",
-                    (unsigned int)cpu->cs,
-                    (unsigned int)instruction_ip);
+                    (unsigned)cpu->cs,
+                    (unsigned)instruction_ip);
             return 0;
         }
 
-        cpu->ax = (uint16_t)((uint16_t)low | ((uint16_t)high << 8));
+        *reg = (uint16_t)((uint16_t)low | ((uint16_t)high << 8));
         return 1;
     }
 
+    switch (opcode)
+    {
     case 0xFD:                       /* STD */
         cpu->flags |= CPU16_FLAG_DF; // Set direction flag
         return 1;
-    case 0x90: /* NOP */
-        return 1;
+
     case 0xF8:                        /* CLC */
         cpu->flags &= ~CPU16_FLAG_CF; // Clear carry flag
         return 1;
