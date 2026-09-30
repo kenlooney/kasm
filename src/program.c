@@ -72,16 +72,58 @@ static int statement(Parser *parser, Program *program)
     }
 
     // no-operand instructions
-    else if (token_is(source, name, "cli") ||
-             token_is(source, name, "sti") ||
-             token_is(source, name, "hlt"))
+    else if (
+        token_is(source, name, "cli") ||
+        token_is(source, name, "sti") ||
+        token_is(source, name, "hlt") ||
+        token_is(source, name, "nop") ||
+        token_is(source, name, "clc") ||
+        token_is(source, name, "stc") ||
+        token_is(source, name, "cmc") ||
+        token_is(source, name, "cld") ||
+        token_is(source, name, "std") ||
+        token_is(source, name, "lahf") ||
+        token_is(source, name, "sahf") ||
+        token_is(source, name, "pushf") ||
+        token_is(source, name, "popf") ||
+        token_is(source, name, "cbw") ||
+        token_is(source, name, "cwd") ||
+        token_is(source, name, "iret")
+    )
     {
         if (token_is(source, name, "cli"))
             s.kind = ST_CLI;
         else if (token_is(source, name, "sti"))
             s.kind = ST_STI;
-        else
+        else if (token_is(source, name, "hlt"))
             s.kind = ST_HLT;
+        else if (token_is(source, name, "clc"))
+            s.kind = ST_CLC;
+        else if (token_is(source, name, "stc"))
+            s.kind = ST_STC;
+        else if (token_is(source, name, "cmc"))
+            s.kind = ST_CMC;
+        else if (token_is(source, name, "cld"))
+            s.kind = ST_CLD;
+        else if (token_is(source, name, "std"))
+            s.kind = ST_STD;
+        else if (token_is(source, name, "lahf"))
+            s.kind = ST_LAHF;
+        else if (token_is(source, name, "sahf"))
+            s.kind = ST_SAHF;
+        else if (token_is(source, name, "pushf"))
+            s.kind = ST_PUSHF;
+        else if (token_is(source, name, "popf"))
+            s.kind = ST_POPF;
+        else if (token_is(source, name, "cbw"))
+            s.kind = ST_CBW;
+        else if (token_is(source, name, "cwd"))
+            s.kind = ST_CWD;
+        else if (token_is(source, name, "iret"))
+            s.kind = ST_IRET;
+        else
+            s.kind = ST_NOP;
+        
 
         Token semicolon = parser->lexer.token;
 

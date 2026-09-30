@@ -37,6 +37,86 @@ int emit_program(
                 return 0;
             }
             break;
+        case ST_NOP:
+            if (!byte_push(bytes, 0x90))
+            {
+                return 0;
+            }
+            break;
+        case ST_CLC:
+            if (!byte_push(bytes, 0xF8))
+            {
+                return 0;
+            }
+            break;
+        case ST_STC:
+            if (!byte_push(bytes, 0xF9))
+            {
+                return 0;
+            }
+            break;
+        case ST_CMC:
+            if (!byte_push(bytes, 0xF5))
+            {
+                return 0;
+            }
+            break;
+        case ST_CLD:
+            if (!byte_push(bytes, 0xFC))
+            {
+                return 0;
+            }
+            break;
+        case ST_STD:
+            if (!byte_push(bytes, 0xFD))
+            {
+                return 0;
+            }
+            break;
+
+        case ST_LAHF:
+            if (!byte_push(bytes, 0x9F))
+            {
+                return 0;
+            }
+            break;
+        case ST_SAHF:
+            if (!byte_push(bytes, 0x9E))
+            {
+                return 0;
+            }
+            break;
+        case ST_PUSHF:
+            if (!byte_push(bytes, 0x9C))
+            {
+                return 0;
+            }
+            break;
+        case ST_POPF:
+            if (!byte_push(bytes, 0x9D))
+            {
+                return 0;
+            }
+            break;
+        case ST_CBW:
+            if (!byte_push(bytes, 0x98))
+            {
+                return 0;
+            }
+            break;
+        case ST_CWD:
+            if (!byte_push(bytes, 0x99))
+            {
+                return 0;
+            }
+            break;
+        case ST_IRET:
+            if (!byte_push(bytes, 0xCF))
+            {
+                return 0;
+            }
+            break;
+
         case ST_LABEL:
             // Labels do not emit any bytes
             break;

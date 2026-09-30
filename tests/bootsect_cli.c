@@ -57,16 +57,16 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    if (bytes.data[0] != 0xFA ||
-        bytes.data[1] != 0xF4 ||
-        bytes.data[2] != 0xEB ||
-        bytes.data[3] != 0xFD)
+    if (
+        bytes.data[0] != 0x99 ||
+        bytes.data[1] != 0xCF
+    )
     {
-        fprintf(stderr, "expected boot code FA F4 EB FD\n");
+        fprintf(stderr, "expected boot code 99 CF\n");
         goto cleanup;
     }
 
-    for (size_t i = 4; i < 510; i++)
+    for (size_t i = 2; i < 510; i++)
     {
         if (bytes.data[i] != 0)
         {
