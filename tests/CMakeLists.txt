@@ -34,6 +34,13 @@ target_link_libraries(kasm_real_mode_cli PRIVATE kasm::core)
 
 add_executable(kasm_bootsect_cli bootsect_cli.c)
 target_link_libraries(kasm_bootsect_cli PRIVATE kasm::core)
+
+add_executable(kasm_inc_cli inc_cli.c)
+target_link_libraries(kasm_inc_cli PRIVATE kasm::core)
+
+add_executable(kasm_encoded_register_cli encoded_register_cli.c)
+target_link_libraries(kasm_encoded_register_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -46,6 +53,8 @@ if(MSVC)
     target_compile_options(kasm_bytebuffer_cli PRIVATE /W4)
     target_compile_options(kasm_real_mode_cli PRIVATE /W4)
     target_compile_options(kasm_bootsect_cli PRIVATE /W4)
+    target_compile_options(kasm_inc_cli PRIVATE /W4)
+    target_compile_options(kasm_encoded_register_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -69,6 +78,10 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_bootsect_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_inc_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_encoded_register_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -80,7 +93,44 @@ else()
     target_compile_options(kasm_semi_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_bytebuffer_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_real_mode_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_inc_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_encoded_register_cli PRIVATE
+        -Wall -Wextra -Wpedantic)
 endif()
+
+add_test(
+    NAME kasm.inc.cli
+    COMMAND kasm_inc_cli "${PROJECT_SOURCE_DIR}/examples/inc.asm"
+)
+
+add_test(
+    NAME kasm.encoded_register.cli
+    COMMAND kasm_encoded_register_cli
+        "${PROJECT_SOURCE_DIR}/examples/encoded_register.asm"
+)
+
+set(KASM_ENCODED_REGISTER_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/encoded_register.bin")
+
+add_test(
+    NAME kasm.encoded_register.image
+    COMMAND kasm
+        "${PROJECT_SOURCE_DIR}/examples/encoded_register.asm"
+        "${KASM_ENCODED_REGISTER_IMAGE}"
+)
+set_tests_properties(kasm.encoded_register.image PROPERTIES
+    FIXTURES_SETUP kasm_encoded_register_image
+)
+
+add_test(
+    NAME kemu.encoded_register.cli
+    COMMAND kemu "${KASM_ENCODED_REGISTER_IMAGE}"
+)
+set_tests_properties(kemu.encoded_register.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_encoded_register_image
+    PASS_REGULAR_EXPRESSION
+        "halted after 9 instructions at 0000:7C09, AX=0001"
+)
 
 add_test(
     NAME kasm.cursor.cli

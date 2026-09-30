@@ -91,6 +91,52 @@ static int cpu16_pop16(Cpu16 *cpu, uint16_t *value)
     return 1;
 }
 
+static uint16_t *cpu16_reg16(Cpu16 *cpu, unsigned code)
+{
+    if (!cpu)
+        return NULL;
+
+    switch (code)
+    {
+    case 0:
+        return &cpu->ax;
+    case 1:
+        return &cpu->cx;
+    case 2:
+        return &cpu->dx;
+    case 3:
+        return &cpu->bx;
+    case 4:
+        return &cpu->sp;
+    case 5:
+        return &cpu->bp;
+    case 6:
+        return &cpu->si;
+    case 7:
+        return &cpu->di;
+    default:
+        return NULL;
+    }
+}
+
+static void cpu16_write_flag(Cpu16 *cpu, uint16_t flag, int set)
+{
+    if (set)
+        cpu->flags |= flag;
+    else
+        cpu->flags &= (uint16_t)~flag;
+}
+
+static int even_parity8(uint8_t value)
+{
+    unsigned ones = 0;
+
+    for (unsigned bit = 0; bit < 8; bit++)
+        ones += (value >> bit) & 1u;
+
+    return (ones & 1u) == 0;
+}
+
 static int emulate_instruction(Cpu16 *cpu)
 {
     uint16_t instruction_ip;
@@ -110,8 +156,35 @@ static int emulate_instruction(Cpu16 *cpu)
         return 0;
     }
 
+    if (opcode >= 0x40u && opcode <= 0x47u)
+    {
+        unsigned code = opcode & 0x07u;
+        uint16_t *reg = cpu16_reg16(cpu, code);
+        uint16_t old_value;
+        uint16_t result;
+
+        if (!reg)
+            return 0;
+
+        old_value = *reg;
+        result = (uint16_t)(old_value + 1u);
+        *reg = result;
+
+        cpu16_write_flag(cpu, CPU16_FLAG_OF, old_value == 0x7FFFu);
+        cpu16_write_flag(cpu, CPU16_FLAG_SF,
+                         (result & 0x8000u) != 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_ZF, result == 0);
+        cpu16_write_flag(cpu, CPU16_FLAG_AF,
+                         (old_value & 0x000Fu) == 0x000Fu);
+        cpu16_write_flag(cpu, CPU16_FLAG_PF,
+                         even_parity8((uint8_t)result));
+
+        return 1;
+    }
+
     switch (opcode)
     {
+
     case 0xB8: /* MOV AX, imm16 */
     {
         uint8_t low;

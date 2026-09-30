@@ -47,7 +47,20 @@ typedef enum {
     ST_CBW,
     ST_CWD,
     ST_IRET,
+    ST_INC,
 } StatementKind;
+
+typedef enum {
+    REG16_AX = 0,
+    REG16_CX = 1,
+    REG16_DX = 2,
+    REG16_BX = 3,
+    REG16_SP = 4,
+    REG16_BP = 5,
+    REG16_SI = 6,
+    REG16_DI = 7,
+    REG16_INVALID = 8
+} Register16;
 
 typedef struct {
     StatementKind kind;
@@ -63,6 +76,7 @@ typedef struct {
     long long fill_value;
 
     size_t offset;
+    Register16 reg16;
 } Statement;
 
 typedef struct {

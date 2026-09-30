@@ -116,6 +116,13 @@ int emit_program(
                 return 0;
             }
             break;
+        // Single-byte opcode with encoded register
+        case ST_INC:
+            if(statement->reg16 > REG16_DI)
+                return 0;
+            if(!byte_push(bytes,(uint8_t)(0x40u + (unsigned)statement->reg16)))
+                return 0;
+            break;
 
         case ST_LABEL:
             // Labels do not emit any bytes

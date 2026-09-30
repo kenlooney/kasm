@@ -46,6 +46,7 @@ static int statement_size(
     case ST_CBW:
     case ST_CWD:
     case ST_IRET:
+    case ST_INC:
         *size = 1;
         return 1;
     

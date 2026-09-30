@@ -57,6 +57,7 @@ static int statement(Parser *parser, Program *program)
         return 0;
 
     Statement s = {0};
+    s.reg16 = REG16_INVALID;
     s.span = name.span;
     s.expression = -1;
     s.fill_expression = -1;
@@ -203,6 +204,18 @@ static int statement(Parser *parser, Program *program)
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
 
+        s.span.end = semicolon.span.end;
+    }
+    // Single-byte opcode with encoded register
+    else if (token_is(source, name, "inc"))
+    {
+        s.kind = ST_INC;
+        s.operand = parser->lexer.token;
+        if (!take(parser, TK_IDENT, "expected 16-bit register after 'inc'"))
+            return 0;
+        Token semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
         s.span.end = semicolon.span.end;
     }
     
