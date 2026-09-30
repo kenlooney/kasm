@@ -7,10 +7,14 @@ assembles a small 16-bit x86 language directly into flat binary files.
 The project also includes KEMU, an early 16-bit emulator that can load and
 execute the machine code produced by KASM.
 
-> **v0.15.0 is KASM's first bootable release.** It can produce a complete
+> **v0.20.0 completes KASM's first no-operand, single-byte instruction
+> milestone.** KASM and KEMU now share an initial real-mode instruction set
+> covering processor control, flag manipulation, sign extension, stack-based
+> flag save/restore, and interrupt returns.
+>
+> **v0.15.0 was KASM's first bootable release.** KASM can produce a complete
 > 512-byte legacy BIOS boot sector containing executable real-mode code,
-> padding, and the `55 AA` boot signature. The generated image boots
-> successfully in QEMU.
+> padding, and the `55 AA` boot signature.
 
 ## Assemble and boot the example
 
@@ -25,7 +29,7 @@ ctest --preset windows-debug -V
 Assemble the included boot sector into a raw image:
 
 ```powershell
-.\bin\Debug\kasm.exe .\examples\bootsect.asm .\bootsect.bin
+.\bin\Debug\kasm.exe .\examples\bootable.asm .\bootsect.bin
 ```
 
 Boot it with QEMU:
@@ -61,7 +65,7 @@ halted after 2 instructions at 0000:7C02, AX=0000
 This demonstrates the complete local toolchain:
 
 ```text
-bootsect.asm -> kasm -> bootsect.bin -> kemu
+bootable.asm -> kasm -> bootsect.bin -> kemu
 ```
 
 KEMU currently provides:
@@ -71,7 +75,11 @@ KEMU currently provides:
 - image loading at physical address `0x7C00`;
 - an initial `CS:IP` of `0000:7C00`;
 - checked instruction fetching and a 1000-instruction execution limit;
-- emulation of `mov ax, imm16`, `cli`, `sti`, `hlt`, and `jmp8`;
+- emulation of `mov ax, imm16`, `jmp8`, and the no-operand instruction set
+  documented below;
+- a 16-bit downward-growing stack used by `pushf`, `popf`, and `iret`;
+- modeled 16-bit FLAGS state, including carry, interrupt, direction, and
+  arithmetic status flags;
 - clear failures for unknown opcodes, truncated instructions, oversized images,
   and execution that exceeds the step limit.
 
@@ -89,9 +97,22 @@ binary output. Source statements end with semicolons.
 | Syntax | Encoding | Description |
 | --- | --- | --- |
 | `mov ax, expression;` | `B8 iw` | Load a 16-bit immediate into `AX` |
+| `nop;` | `90` | Perform no operation |
 | `cli;` | `FA` | Clear the interrupt flag |
 | `sti;` | `FB` | Set the interrupt flag |
 | `hlt;` | `F4` | Halt the processor |
+| `clc;` | `F8` | Clear the carry flag |
+| `stc;` | `F9` | Set the carry flag |
+| `cmc;` | `F5` | Complement the carry flag |
+| `cld;` | `FC` | Clear the direction flag |
+| `std;` | `FD` | Set the direction flag |
+| `lahf;` | `9F` | Load status flags into `AH` |
+| `sahf;` | `9E` | Store `AH` into the status flags |
+| `pushf;` | `9C` | Push FLAGS onto the stack |
+| `popf;` | `9D` | Restore FLAGS from the stack |
+| `cbw;` | `98` | Sign-extend `AL` into `AX` |
+| `cwd;` | `99` | Sign-extend `AX` into `DX:AX` |
+| `iret;` | `CF` | Restore `IP`, `CS`, and FLAGS from the stack |
 | `jmp8 label;` | `EB cb` | Explicit signed 8-bit relative jump |
 
 `jmp8` targets must be defined labels within the range `-128..127` bytes from
@@ -123,7 +144,7 @@ encoding.
 `org` must appear before emitted content. `padto` cannot move backward, and its
 fill value must be in the range `0..255`.
 
-The bootable example is deliberately small:
+The stable bootable example in `examples/bootable.asm` is deliberately small:
 
 ```asm
 org 0x7C00;
@@ -227,8 +248,9 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 - Output is a flat binary image; object files and executable formats are not
   implemented yet.
 - KEMU currently uses the legacy BIOS boot address and implements only KASM's
-  initial instruction subset; devices, interrupts, and general PC hardware are
-  not emulated yet.
+  initial instruction subset. `iret` can restore a prepared interrupt frame,
+  but interrupt delivery, devices, and general PC hardware are not emulated
+  yet.
 
 ## Requirements
 
@@ -276,7 +298,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.15.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.20.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -290,14 +312,14 @@ The tag comes from the version declared in the top-level `CMakeLists.txt`, so
 increment that version before the next release. The workflow can also be run
 manually from GitHub Actions to publish the current commit on `main`.
 
-Package names use the format `kasm-v0.15.0-<platform>-<architecture>.zip`;
+Package names use the format `kasm-v0.20.0-<platform>-<architecture>.zip`;
 branch names are never included.
 
 ### Development snapshots
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.15.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.20.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this

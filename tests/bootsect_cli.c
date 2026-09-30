@@ -58,26 +58,15 @@ int main(int argc, char **argv)
     }
 
     if (
-        bytes.data[0] != 0xFD ||
-        bytes.data[1] != 0xFC ||
-        bytes.data[2] != 0xF5 ||
-        bytes.data[3] != 0xF8 ||
-        bytes.data[4] != 0x90 ||
-        bytes.data[5] != 0xFA ||
-        bytes.data[6] != 0x9F ||
-        bytes.data[7] != 0x9E ||
-        bytes.data[8] != 0x9C ||
-        bytes.data[9] != 0x9D ||
-        bytes.data[10] != 0xF4 ||
-        bytes.data[11] != 0xEB ||
-        bytes.data[12] != 0xFD
+        bytes.data[0] != 0x99 ||
+        bytes.data[1] != 0xCF
     )
     {
-        fprintf(stderr, "expected boot code FD FC F5 F8 90 FA 9F 9E 9C 9D F4 EB FD\n");
+        fprintf(stderr, "expected boot code 99 CF\n");
         goto cleanup;
     }
 
-    for (size_t i = 13; i < 510; i++)
+    for (size_t i = 2; i < 510; i++)
     {
         if (bytes.data[i] != 0)
         {

@@ -98,6 +98,24 @@ int emit_program(
                 return 0;
             }
             break;
+        case ST_CBW:
+            if (!byte_push(bytes, 0x98))
+            {
+                return 0;
+            }
+            break;
+        case ST_CWD:
+            if (!byte_push(bytes, 0x99))
+            {
+                return 0;
+            }
+            break;
+        case ST_IRET:
+            if (!byte_push(bytes, 0xCF))
+            {
+                return 0;
+            }
+            break;
 
         case ST_LABEL:
             // Labels do not emit any bytes

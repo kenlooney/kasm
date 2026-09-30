@@ -26,6 +26,13 @@ KEMU's decoder. The syntax column shows how they are written in KASM source.
 | `CMC` | `cmc;` | `F5` | Complement Carry Flag | Toggles `CF` |
 | `CLD` | `cld;` | `FC` | Clear Direction Flag | Clears `DF`; string operations advance toward higher addresses |
 | `STD` | `std;` | `FD` | Set Direction Flag | Sets `DF`; string operations advance toward lower addresses |
+| `LAHF` | `lahf;` | `9F` | Load AH from Flags | Copies `SF`, `ZF`, `AF`, `PF`, and `CF` into `AH` using the architectural fixed-bit layout |
+| `SAHF` | `sahf;` | `9E` | Store AH into Flags | Copies the status-flag bits in `AH` into `SF`, `ZF`, `AF`, `PF`, and `CF` |
+| `PUSHF` | `pushf;` | `9C` | Push Flags | Decrements `SP` by two and stores FLAGS at `SS:SP` |
+| `POPF` | `popf;` | `9D` | Pop Flags | Restores FLAGS from `SS:SP` and increments `SP` by two |
+| `CBW` | `cbw;` | `98` | Convert Byte to Word | Sign-extends `AL` into `AX` |
+| `CWD` | `cwd;` | `99` | Convert Word to Doubleword | Sign-extends `AX` into the `DX:AX` register pair |
+| `IRET` | `iret;` | `CF` | Interrupt Return | Pops `IP`, `CS`, and FLAGS from the stack in that order |
 | `JMP rel8` | `jmp8 label;` | `EB cb` | Jump using a signed 8-bit relative displacement | Adds the displacement to `IP` after the instruction has been fetched |
 
 Encoding notation used above:
@@ -33,7 +40,8 @@ Encoding notation used above:
 - `iw` is an immediate 16-bit word stored in little-endian byte order.
 - `cb` is a signed 8-bit relative displacement measured from the end of the
   jump instruction.
-- `CF`, `IF`, and `DF` mean carry flag, interrupt flag, and direction flag.
+- `CF`, `PF`, `AF`, `ZF`, `SF`, `IF`, and `DF` mean carry, parity, auxiliary
+  carry, zero, sign, interrupt, and direction flag.
 
 KEMU is intentionally a partial emulator. For example, `HLT` records the
 halted state and ends the current driver loop; interrupt wake-up behavior is
@@ -55,9 +63,9 @@ though string instructions that consume `DF` are not implemented yet.
 - [x] `SAHF` — `9E`
 - [x] `PUSHF` — `9C`
 - [x] `POPF` — `9D`
-- [ ] `CBW` — `98`
-- [ ] `CWD` — `99`
-- [ ] `IRET` — `CF`
+- [x] `CBW` — `98`
+- [x] `CWD` — `99`
+- [x] `IRET` — `CF`
 
 ## Single-byte opcode with encoded register
 

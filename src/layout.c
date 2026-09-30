@@ -43,8 +43,12 @@ static int statement_size(
     case ST_PUSHF:
     case ST_NOP:
     case ST_POPF:
+    case ST_CBW:
+    case ST_CWD:
+    case ST_IRET:
         *size = 1;
         return 1;
+    
 
     case ST_JMP8:
         *size = 2;

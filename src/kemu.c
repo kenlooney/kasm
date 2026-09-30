@@ -18,7 +18,6 @@ typedef struct
     unsigned char memory[CPU16_MEMORY_SIZE];
     uint32_t image_start;
     size_t image_size;
-    uint8_t ah, al, bh, bl, ch, cl, dh, dl;
     uint16_t ax, bx, cx, dx;
     uint16_t sp, bp, si, di;
     uint16_t cs, ds, es, ss, ip;
@@ -197,7 +196,27 @@ static int emulate_instruction(Cpu16 *cpu)
         cpu->flags = (uint16_t)(flags | CPU16_FLAG_FIXED);
         return 1;
     }
+    case 0x98: /* CBW */
+        cpu->ax = (uint16_t)((int8_t)(cpu->ax & 0x00FFu));
+        return 1;
+    case 0x99: /* CWD */
+        cpu->dx = (cpu->ax & 0x8000u) ? 0xFFFFu : 0x0000u;
+        return 1;
+    case 0xCF: /* IRET */
+        // Pop IP, CS, and FLAGS from the stack
+        {
+            uint16_t ip, cs, flags;
 
+            if (!cpu16_pop16(cpu, &ip) ||
+                !cpu16_pop16(cpu, &cs) ||
+                !cpu16_pop16(cpu, &flags))
+                return 0;
+
+            cpu->ip = ip;
+            cpu->cs = cs;
+            cpu->flags = (uint16_t)(flags | CPU16_FLAG_FIXED);
+            return 1;
+        }
     case 0xEB: /* JMP rel8 */
     {
         uint8_t encoded_displacement;

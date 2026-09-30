@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     kasm
-    VERSION 0.19.0
+    VERSION 0.20.0
     DESCRIPTION "A small x86 assembler written in C"
     HOMEPAGE_URL "https://github.com/kenlooney/kasm"
     LANGUAGES C
