@@ -7,9 +7,10 @@ nop;
 cli;
 lahf;
 sahf;
+pushf;
+popf;
 hang:
 hlt;
 jmp8 hang;
-
 padto 510, 0;
 dw 0xAA55;

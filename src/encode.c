@@ -86,6 +86,18 @@ int emit_program(
                 return 0;
             }
             break;
+        case ST_PUSHF:
+            if (!byte_push(bytes, 0x9C))
+            {
+                return 0;
+            }
+            break;
+        case ST_POPF:
+            if (!byte_push(bytes, 0x9D))
+            {
+                return 0;
+            }
+            break;
 
         case ST_LABEL:
             // Labels do not emit any bytes

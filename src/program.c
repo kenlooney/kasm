@@ -83,7 +83,9 @@ static int statement(Parser *parser, Program *program)
         token_is(source, name, "cld") ||
         token_is(source, name, "std") ||
         token_is(source, name, "lahf") ||
-        token_is(source, name, "sahf")
+        token_is(source, name, "sahf") ||
+        token_is(source, name, "pushf") ||
+        token_is(source, name, "popf") 
     )
     {
         if (token_is(source, name, "cli"))
@@ -106,6 +108,10 @@ static int statement(Parser *parser, Program *program)
             s.kind = ST_LAHF;
         else if (token_is(source, name, "sahf"))
             s.kind = ST_SAHF;
+        else if (token_is(source, name, "pushf"))
+            s.kind = ST_PUSHF;
+        else if (token_is(source, name, "popf"))
+            s.kind = ST_POPF;
         else
             s.kind = ST_NOP;
         

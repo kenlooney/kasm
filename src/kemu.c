@@ -57,6 +57,41 @@ static int cpu16_fetch8(Cpu16 *cpu, uint8_t *value)
     return 1;
 }
 
+static int cpu16_push16(Cpu16 *cpu, uint16_t value)
+{
+    uint32_t address;
+    uint16_t new_sp;
+
+    if (!cpu)
+        return 0;
+
+    new_sp = (uint16_t)(cpu->sp - 2u);
+
+    if (!cpu16_physical_address(cpu->ss, new_sp, &address) ||
+        address > CPU16_MEMORY_SIZE - 2u)
+        return 0;
+
+    cpu->memory[address] = (uint8_t)(value & 0xFF);
+    cpu->memory[address + 1] = (uint8_t)(value >> 8);
+    cpu->sp = new_sp;
+    return 1;
+}
+
+static int cpu16_pop16(Cpu16 *cpu, uint16_t *value)
+{
+    uint32_t address;
+
+    if (!cpu || !value ||
+        !cpu16_physical_address(cpu->ss, cpu->sp, &address) ||
+        address > CPU16_MEMORY_SIZE - 2u)
+        return 0;
+
+    *value = (uint16_t)((uint16_t)cpu->memory[address] |
+                        ((uint16_t)cpu->memory[address + 1] << 8));
+    cpu->sp = (uint16_t)(cpu->sp + 2u);
+    return 1;
+}
+
 static int emulate_instruction(Cpu16 *cpu)
 {
     uint16_t instruction_ip;
@@ -147,6 +182,19 @@ static int emulate_instruction(Cpu16 *cpu)
         cpu->flags = (uint16_t)((cpu->flags & ~mask) |
                                 (ah & mask) |
                                 CPU16_FLAG_FIXED);
+        return 1;
+    }
+    case 0x9C: /* PUSHF */
+        return cpu16_push16(cpu, cpu->flags | CPU16_FLAG_FIXED);
+
+    case 0x9D: /* POPF */
+    {
+        uint16_t flags;
+
+        if (!cpu16_pop16(cpu, &flags))
+            return 0;
+
+        cpu->flags = (uint16_t)(flags | CPU16_FLAG_FIXED);
         return 1;
     }
 

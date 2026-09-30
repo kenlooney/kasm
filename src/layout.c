@@ -40,7 +40,9 @@ static int statement_size(
     case ST_STD:
     case ST_LAHF:
     case ST_SAHF:
+    case ST_PUSHF:
     case ST_NOP:
+    case ST_POPF:
         *size = 1;
         return 1;
 

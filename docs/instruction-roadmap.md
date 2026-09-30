@@ -53,8 +53,8 @@ though string instructions that consume `DF` are not implemented yet.
 - [x] `STD` — `FD`
 - [x] `LAHF` — `9F`
 - [x] `SAHF` — `9E`
-- [ ] `PUSHF` — `9C`
-- [ ] `POPF` — `9D`
+- [x] `PUSHF` — `9C`
+- [x] `POPF` — `9D`
 - [ ] `CBW` — `98`
 - [ ] `CWD` — `99`
 - [ ] `IRET` — `CF`

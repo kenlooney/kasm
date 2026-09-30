@@ -41,7 +41,9 @@ typedef enum {
     ST_CLD,
     ST_STD,
     ST_LAHF,
-    ST_SAHF
+    ST_SAHF,
+    ST_PUSHF,
+    ST_POPF,
 } StatementKind;
 
 typedef struct {
