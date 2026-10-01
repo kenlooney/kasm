@@ -54,6 +54,7 @@ typedef enum {
     ST_POP,
     ST_XCHG,
     ST_JMPFAR,
+    ST_MODE,
 } StatementKind;
 
 typedef enum {
@@ -67,6 +68,19 @@ typedef enum {
     REG16_DI = 7,
     REG16_INVALID = 8
 } Register16;
+
+typedef enum {
+    REG32_EAX = 0,
+    REG32_ECX = 1,
+    REG32_EDX = 2,
+    REG32_EBX = 3,
+    REG32_ESP = 4,
+    REG32_EBP = 5,
+    REG32_ESI = 6,
+    REG32_EDI = 7,
+    REG32_INVALID = 8
+} Register32;
+
 
 typedef enum {
     SEG_ES = 0,
@@ -94,8 +108,10 @@ typedef struct {
 
     size_t offset;
     Register16 reg16;
+    Register32 reg32;
     SegmentRegister segment_register;
     long long far_offset;
+    MachineMode mode;
 } Statement;
 
 typedef struct {
@@ -106,7 +122,7 @@ typedef struct {
     int has_origin;
 } Program;
 
-int parse_program(Parser *parser, Program *program);
+int parse_program(Parser *parser, Program *program, const Target *target);
 int evaluate_program(Parser *parser, Program *program);
 int check_program(Parser *parser, Program *program, const Target *target);
 

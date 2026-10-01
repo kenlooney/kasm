@@ -47,6 +47,35 @@ static int register16_from_token(
 
     return 1;
 }
+static int register32_from_token(
+    const Source *source,
+    Token token,
+    Register32 *reg)
+{
+    if (!reg)
+        return 0;
+
+    if (token_is(source, token, "eax"))
+        *reg = REG32_EAX;
+    else if (token_is(source, token, "ecx"))
+        *reg = REG32_ECX;
+    else if (token_is(source, token, "edx"))
+        *reg = REG32_EDX;
+    else if (token_is(source, token, "ebx"))
+        *reg = REG32_EBX;
+    else if (token_is(source, token, "esp"))
+        *reg = REG32_ESP;
+    else if (token_is(source, token, "ebp"))
+        *reg = REG32_EBP;
+    else if (token_is(source, token, "esi"))
+        *reg = REG32_ESI;
+    else if (token_is(source, token, "edi"))
+        *reg = REG32_EDI;
+    else
+        return 0;
+
+    return 1;
+}
 
 static int segment_register_from_token(
     const Source *source,
@@ -121,7 +150,7 @@ int evaluate_program(Parser *parser, Program *program)
 
 int check_program(Parser *parser, Program *program, const Target *target)
 {
-    if (!target)
+    if (!parser || !program || !target || target->arch != ARCH_X86)
         return 0;
 
     const Source *source = parser->lexer.cursor.source;
@@ -130,32 +159,73 @@ int check_program(Parser *parser, Program *program, const Target *target)
     {
         Statement *s = &program->statements[i];
 
-        if (target->arch != ARCH_X86 || target->mode != MODE_16)
+        if (s->mode != MODE_16 &&
+            s->kind != ST_MODE &&
+            s->kind != ST_LABEL &&
+            s->kind != ST_ORG &&
+            s->kind != ST_DB &&
+            s->kind != ST_DW &&
+            s->kind != ST_DD &&
+            s->kind != ST_PADTO &&
+            s->kind != ST_MOV &&
+            s->kind != ST_MOV_SEGMENT)
         {
-            diagnostic(source, s->span, "only 16-bit x86 mode is supported");
+            diagnostic(source, s->span,
+                       "instruction is not implemented in this mode");
             return 0;
         }
 
         if (s->kind == ST_MOV)
         {
-            if (!register16_from_token(source, s->operand, &s->reg16))
+            if (s->mode == MODE_16)
             {
-                diagnostic(source,
-                           s->operand.span,
-                           "expected ax, cx, dx, bx, sp, bp, si, or di");
-                return 0;
-            }
+                if (!register16_from_token(source, s->operand, &s->reg16))
+                {
+                    diagnostic(source, s->operand.span,
+                               "expected a 16-bit register in mode 16");
+                    return 0;
+                }
 
-            if (s->value < 0 || s->value > 65535)
+                if (s->value < 0 || s->value > UINT16_MAX)
+                {
+                    diagnostic(source, parser->nodes[s->expression].span,
+                               "16-bit immediate must be in range 0..65535");
+                    return 0;
+                }
+            }
+            else if (s->mode == MODE_32)
             {
-                diagnostic(source,
-                           parser->nodes[s->expression].span,
-                           "16-bit immediate must be in range 0..65535");
+                if (!register32_from_token(source, s->operand, &s->reg32))
+                {
+                    diagnostic(source, s->operand.span,
+                               "expected a 32-bit register in mode 32");
+                    return 0;
+                }
+
+                if (s->value < 0 || (uint64_t)s->value > UINT32_MAX)
+                {
+                    diagnostic(source, parser->nodes[s->expression].span,
+                               "32-bit immediate must fit in 32 bits");
+                    return 0;
+                }
+            }
+            else
+            {
+                diagnostic(source, s->span,
+                           "64-bit MOV is not implemented yet");
                 return 0;
             }
         }
+
         else if (s->kind == ST_MOV_SEGMENT)
         {
+            if (s->mode != MODE_16)
+            {
+                diagnostic(source, s->span,
+                           "segment-register MOV currently requires mode 16");
+                return 0;
+            }
+
             if (!segment_register_from_token(
                     source,
                     s->operand,

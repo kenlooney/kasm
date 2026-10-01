@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     Parser parser;
     Program program;
     parser_start(&parser, &source);
-    if (!parse_program(&parser, &program)) {
+    if (!parse_program(&parser, &program, &target)) {
         free(program.statements);
         free(parser.nodes);
         return 1;
