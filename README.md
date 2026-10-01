@@ -7,11 +7,14 @@ assembles a small 16-bit x86 language directly into flat binary files.
 The project also includes KEMU, an early 16-bit emulator that can load and
 execute the machine code produced by KASM.
 
-> **v0.22.0 adds the first segment-register MOV form.** KASM can encode
+> **v0.24.0 establishes a complete real-mode startup environment.** KASM can
+> normalize `CS` with an immediate far jump, initialize `DS`, `ES`, `SS`, and
+> `SP`, and emit a complete 512-byte startup image. KEMU checks far-jump
+> targets against the loaded image, and the same image boots under QEMU.
+>
+> **v0.22.0 added the first segment-register MOV form.** KASM can encode
 > `mov es, ax`, `mov ss, ax`, and `mov ds, ax` with opcode `8E`, and KEMU can
-> decode and execute their register-mode ModR/M bytes. The development setup
-> also includes focused VS Code launch configurations for tracing KASM and
-> KEMU.
+> decode and execute their register-mode ModR/M bytes.
 >
 > **v0.20.0 completes KASM's first no-operand, single-byte instruction
 > milestone.** KASM and KEMU now share an initial real-mode instruction set
@@ -32,24 +35,23 @@ cmake --build --preset windows-debug
 ctest --preset windows-debug -V
 ```
 
-Assemble the included boot sector into a raw image:
+Assemble the complete startup sector into a raw image:
 
 ```powershell
-.\bin\Debug\kasm.exe .\examples\bootable.asm .\bootsect.bin
+.\bin\Debug\kasm.exe .\examples\startup.asm .\startup.bin
 ```
 
 Boot it with QEMU:
 
 ```powershell
-qemu-system-i386 `
-  -drive file=bootsect.bin,format=raw,if=floppy `
-  -boot a `
+qemu-system-x86_64.exe `
+  -drive format=raw,file=.\startup.bin `
   -no-reboot `
   -no-shutdown
 ```
 
 The example intentionally enters a halt loop, so QEMU displays
-`Booting from Floppy...` and remains running with a blank screen. This means
+`Booting from Hard Disk...` and remains running with a blank screen. This means
 the BIOS accepted the image and transferred control to KASM's generated code.
 
 ## Execute the image with KEMU
@@ -59,19 +61,19 @@ environment for KASM's output. Run the same boot image without launching a
 full-system emulator:
 
 ```powershell
-.\bin\Debug\kemu.exe .\bootsect.bin
+.\bin\Debug\kemu.exe .\startup.bin
 ```
 
 Expected output:
 
 ```text
-halted after 2 instructions at 0000:7C02, AX=0000
+halted after 9 instructions at 0000:7C14, AX=0000
 ```
 
 This demonstrates the complete local toolchain:
 
 ```text
-bootable.asm -> kasm -> bootsect.bin -> kemu
+startup.asm -> kasm -> startup.bin -> kemu or QEMU
 ```
 
 KEMU currently provides:
@@ -82,7 +84,7 @@ KEMU currently provides:
 - an initial `CS:IP` of `0000:7C00`;
 - checked instruction fetching and a 1000-instruction execution limit;
 - emulation of encoded-register instructions, segment-register MOV, `jmp8`,
-  and the no-operand instruction set documented below;
+  immediate far jumps, and the no-operand instruction set documented below;
 - a 16-bit downward-growing stack used by `push`, `pop`, `pushf`, `popf`, and
   `iret`;
 - modeled 16-bit FLAGS state, including carry, interrupt, direction, and
@@ -127,9 +129,11 @@ binary output. Source statements end with semicolons.
 | `cwd;` | `99` | Sign-extend `AX` into `DX:AX` |
 | `iret;` | `CF` | Restore `IP`, `CS`, and FLAGS from the stack |
 | `jmp8 label;` | `EB cb` | Explicit signed 8-bit relative jump |
+| `jmpfar segment, label;` | `EA ptr16:16` | Jump to an absolute 16-bit segment and offset |
 
 `jmp8` targets must be defined labels within the range `-128..127` bytes from
-the end of the jump instruction.
+the end of the jump instruction. A `jmpfar` segment and its origin-adjusted
+label offset must each fit in 16 bits.
 
 The supported 16-bit registers are `ax`, `cx`, `dx`, `bx`, `sp`, `bp`, `si`,
 and `di`. In the encoding table, `rw` selects one of these registers and `iw`
@@ -166,16 +170,24 @@ encoding.
 `org` must appear before emitted content. `padto` cannot move backward, and its
 fill value must be in the range `0..255`.
 
-The stable bootable example in `examples/bootable.asm` is deliberately small:
+The complete startup example in `examples/startup.asm` normalizes `CS`,
+initializes the data and stack segments, and installs a stack before entering
+its halt loop:
 
 ```asm
 org 0x7C00;
-
+jmpfar 0x0000, normalized;
+normalized:
 cli;
+mov ax, 0;
+mov ds, ax;
+mov es, ax;
+mov ss, ax;
+mov sp, 0x7C00;
+sti;
 hang:
 hlt;
 jmp8 hang;
-
 padto 510, 0;
 dw 0xAA55;
 ```
@@ -264,7 +276,7 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 - Only the 16-bit x86 real-mode target is implemented.
 - General-purpose register operands are limited to the eight 16-bit registers;
   segment-register MOV currently supports only `es`, `ss`, and `ds` from `ax`.
-- `jmp8` is the only control-flow encoding and must be requested explicitly.
+- Control flow is currently limited to explicit `jmp8` and `jmpfar` forms.
 - Data directives currently accept one expression each.
 - String literals, character literals, and unary expression operators are not
   implemented yet.
@@ -333,6 +345,11 @@ assembles `examples/segment_mov.asm` as `build/vscode-segment-mov.bin`, and
 launches that image in KEMU. This provides a focused way to trace opcode `8E`
 and its ModR/M byte.
 
+The **Debug KEMU with startup image** configuration launches the startup image
+created by `kasm.startup.cli`. Run that focused test once to create
+`build/windows-debug/tests/startup.bin`, then use the configuration to inspect
+the normalized `CS:IP`, initialized segment registers, and stack pointer.
+
 > **Future enhancement:** add a similar QEMU launch configuration that reuses
 > a named assembled image, making it easy to inspect the same output in a
 > full-system emulator.
@@ -357,7 +374,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.22.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.24.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -371,14 +388,14 @@ The tag comes from the version declared in the top-level `CMakeLists.txt`, so
 increment that version before the next release. The workflow can also be run
 manually from GitHub Actions to publish the current commit on `main`.
 
-Package names use the format `kasm-v0.22.0-<platform>-<architecture>.zip`;
+Package names use the format `kasm-v0.24.0-<platform>-<architecture>.zip`;
 branch names are never included.
 
 ### Development snapshots
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.22.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.24.0-dev.43.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this

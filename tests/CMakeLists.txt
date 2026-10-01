@@ -50,8 +50,6 @@ target_link_libraries(kasm_confirm_reg_mov_cli PRIVATE kasm::core)
 add_executable(kasm_segment_mov_cli segment_mov_cli.c)
 target_link_libraries(kasm_segment_mov_cli PRIVATE kasm::core)
 
-
-
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -102,8 +100,6 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_confirm_reg_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    set_property(TARGET kasm_confirm_reg_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
-        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -115,14 +111,14 @@ else()
     target_compile_options(kasm_semi_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_bytebuffer_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_real_mode_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_bootsect_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_startup_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_inc_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_encoded_register_cli PRIVATE
         -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_segment_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
-
-
 
 add_test(
     NAME kasm.inc.cli
