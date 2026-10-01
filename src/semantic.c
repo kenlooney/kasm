@@ -48,6 +48,26 @@ static int register16_from_token(
     return 1;
 }
 
+static int segment_register_from_token(
+    const Source *source,
+    Token token,
+    SegmentRegister *segment_register)
+{
+    if (!segment_register)
+        return 0;
+
+    if (token_is(source, token, "es"))
+        *segment_register = SEG_ES;
+    else if (token_is(source, token, "ss"))
+        *segment_register = SEG_SS;
+    else if (token_is(source, token, "ds"))
+        *segment_register = SEG_DS;
+    else
+        return 0;
+
+    return 1;
+}
+
 int evaluate_program(Parser *parser, Program *program)
 {
     if (!parser || !program)
@@ -131,6 +151,28 @@ int check_program(Parser *parser, Program *program, const Target *target)
                 diagnostic(source,
                            parser->nodes[s->expression].span,
                            "16-bit immediate must be in range 0..65535");
+                return 0;
+            }
+        }
+        else if (s->kind == ST_MOV_SEGMENT)
+        {
+            if (!segment_register_from_token(
+                    source,
+                    s->operand,
+                    &s->segment_register))
+            {
+                diagnostic(source,
+                           s->operand.span,
+                           "expected es, ss, or ds");
+                return 0;
+            }
+
+            if (!register16_from_token(source, s->second_operand, &s->reg16) ||
+                s->reg16 != REG16_AX)
+            {
+                diagnostic(source,
+                           s->second_operand.span,
+                           "this segment-register form requires ax as the source");
                 return 0;
             }
         }

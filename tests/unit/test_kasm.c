@@ -119,12 +119,30 @@ static int test_encoded_register_rejections(void)
     return failures != 0;
 }
 
+static int test_segment_mov_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "mov cs, ax;",
+        "segment mov rejects cs as a destination");
+    failures += test_semantic_rejection(
+        "mov ds, cx;",
+        "segment mov requires ax as its source");
+    failures += test_semantic_rejection(
+        "mov banana, ax;",
+        "segment mov rejects an unknown destination register");
+
+    return failures != 0;
+}
+
 int main(void)
 {
     int failures = 0;
 
     failures += test_version();
     failures += test_encoded_register_rejections();
+    failures += test_segment_mov_rejections();
 
     return failures != 0;
 }

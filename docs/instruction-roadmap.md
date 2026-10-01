@@ -22,6 +22,7 @@ KEMU's decoder. The syntax column shows how they are written in KASM source.
 | `POP r16` | `pop register;` | `58+rw` | Pop into a 16-bit register | Loads the register from `SS:SP` and increments `SP` by two |
 | `XCHG AX, r16` | `xchg ax, register;` | `90+rw` | Exchange `AX` with a 16-bit register | Swaps the register values; flags are unchanged |
 | `MOV r16, imm16` | `mov register, expression;` | `B8+rw iw` | Move a 16-bit immediate into a register | Replaces the register; flags are unchanged |
+| `MOV Sreg, r/m16` | `mov segment, ax;` | `8E /r` | Move `AX` into a segment register | Replaces `ES`, `SS`, or `DS`; flags are unchanged |
 | `NOP` | `nop;` | `90` | No Operation | Advances `IP` without otherwise changing CPU state |
 | `CLI` | `cli;` | `FA` | Clear Interrupt Flag | Clears `IF`, disabling maskable interrupts |
 | `STI` | `sti;` | `FB` | Set Interrupt Flag | Sets `IF`, enabling maskable interrupts |
@@ -44,6 +45,8 @@ Encoding notation used above:
 
 - `iw` is an immediate 16-bit word stored in little-endian byte order.
 - `rw` is the three-bit code for a 16-bit general-purpose register.
+- `/r` is a ModR/M byte; the current segment-MOV form requires register mode,
+  encodes `ES`, `SS`, or `DS` in its `reg` field, and selects `AX` with `r/m=0`.
 - `cb` is a signed 8-bit relative displacement measured from the end of the
   jump instruction.
 - `CF`, `PF`, `AF`, `ZF`, `SF`, `IF`, and `DF` mean carry, parity, auxiliary
@@ -82,6 +85,11 @@ though string instructions that consume `DF` are not implemented yet.
 - [x] `XCHG AX,r16` — `90+rw`
 - [x] `MOV AX,imm16` — `B8 iw`
 - [x] `MOV r16,imm16` — `B8+rw iw`
+
+## ModR/M instructions
+
+- [x] KASM encoding and KEMU decoding for `MOV ES/SS/DS,AX` — `8E /r`
+- [ ] Automated KEMU execution coverage from a nonzero `AX` value
 
 ## Opcode plus immediate or relative operand
 

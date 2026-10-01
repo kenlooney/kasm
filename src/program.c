@@ -59,6 +59,7 @@ static int statement(Parser *parser, Program *program)
     Statement s = {0};
     s.reg16 = REG16_INVALID;
     s.span = name.span;
+    s.segment_register = SEG_INVALID;
     s.expression = -1;
     s.fill_expression = -1;
 
@@ -276,20 +277,37 @@ static int statement(Parser *parser, Program *program)
     // mov instruction
     else if (token_is(source, name, "mov"))
     {
-        s.kind = ST_MOV;
+        Token semicolon;
+
         s.operand = parser->lexer.token;
-        if (!take(parser, TK_IDENT, "expected register"))
+        if (!take(parser, TK_IDENT, "expected destination register"))
             return 0;
+
         if (!take(parser, TK_COMMA, "expected comma"))
             return 0;
-        s.expression = parse_expression(parser);
-        if (s.expression < 0)
-            return 0;
-        Token semicolon = parser->lexer.token;
+
+        if (parser->lexer.token.kind == TK_IDENT)
+        {
+            s.kind = ST_MOV_SEGMENT;
+            s.second_operand = parser->lexer.token;
+            if (!take(parser, TK_IDENT, "expected source register"))
+                return 0;
+        }
+        else
+        {
+            s.kind = ST_MOV;
+            s.expression = parse_expression(parser);
+            if (s.expression < 0)
+                return 0;
+        }
+
+        semicolon = parser->lexer.token;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
+
         s.span.end = semicolon.span.end;
     }
+
     else
     {
         parser_error(parser, "unknown instruction");

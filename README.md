@@ -7,6 +7,12 @@ assembles a small 16-bit x86 language directly into flat binary files.
 The project also includes KEMU, an early 16-bit emulator that can load and
 execute the machine code produced by KASM.
 
+> **v0.22.0 adds the first segment-register MOV form.** KASM can encode
+> `mov es, ax`, `mov ss, ax`, and `mov ds, ax` with opcode `8E`, and KEMU can
+> decode and execute their register-mode ModR/M bytes. The development setup
+> also includes focused VS Code launch configurations for tracing KASM and
+> KEMU.
+>
 > **v0.20.0 completes KASM's first no-operand, single-byte instruction
 > milestone.** KASM and KEMU now share an initial real-mode instruction set
 > covering processor control, flag manipulation, sign extension, stack-based
@@ -75,8 +81,8 @@ KEMU currently provides:
 - image loading at physical address `0x7C00`;
 - an initial `CS:IP` of `0000:7C00`;
 - checked instruction fetching and a 1000-instruction execution limit;
-- emulation of encoded-register instructions, `jmp8`, and the no-operand
-  instruction set documented below;
+- emulation of encoded-register instructions, segment-register MOV, `jmp8`,
+  and the no-operand instruction set documented below;
 - a 16-bit downward-growing stack used by `push`, `pop`, `pushf`, `popf`, and
   `iret`;
 - modeled 16-bit FLAGS state, including carry, interrupt, direction, and
@@ -103,6 +109,7 @@ binary output. Source statements end with semicolons.
 | `pop register;` | `58+rw` | Pop a stack value into a 16-bit register |
 | `xchg ax, register;` | `90+rw` | Exchange `AX` with a 16-bit register |
 | `mov register, expression;` | `B8+rw iw` | Load a 16-bit immediate into a register |
+| `mov segment, ax;` | `8E /r` | Load `ES`, `SS`, or `DS` from `AX` |
 | `nop;` | `90` | Perform no operation |
 | `cli;` | `FA` | Clear the interrupt flag |
 | `sti;` | `FB` | Set the interrupt flag |
@@ -128,6 +135,10 @@ The supported 16-bit registers are `ax`, `cx`, `dx`, `bx`, `sp`, `bp`, `si`,
 and `di`. In the encoding table, `rw` selects one of these registers and `iw`
 is a 16-bit immediate stored in little-endian byte order. The compact `xchg`
 form requires `ax` as its first operand.
+
+The supported segment-register destinations are `es`, `ss`, and `ds`. This
+initial `8E` form accepts only `ax` as its source; `cs`, `fs`, `gs`, other
+general-purpose source registers, and memory operands are rejected.
 
 ### Labels
 
@@ -251,7 +262,8 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 ### Current limitations
 
 - Only the 16-bit x86 real-mode target is implemented.
-- Register operands are limited to the eight 16-bit general-purpose registers.
+- General-purpose register operands are limited to the eight 16-bit registers;
+  segment-register MOV currently supports only `es`, `ss`, and `ds` from `ax`.
 - `jmp8` is the only control-flow encoding and must be requested explicitly.
 - Data directives currently accept one expression each.
 - String literals, character literals, and unary expression operators are not
@@ -262,6 +274,26 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
   initial instruction subset. `iret` can restore a prepared interrupt frame,
   but interrupt delivery, devices, and general PC hardware are not emulated
   yet.
+
+### Future output-format ladder
+
+KASM currently emits only flat binary images. A future `format` directive may
+grow the output pipeline in stages:
+
+```asm
+format raw;      /* BIOS boot sectors, loaders, and kernel blobs */
+format elf64;    /* sectioned kernels and other ELF images */
+format pe64;     /* PE32+ executables */
+format efi;      /* PE32+ image with the EFI application subsystem */
+```
+
+The first incremental step can make `format raw;` explicitly select KASM's
+existing emitter while rejecting unimplemented formats clearly. The ELF and
+PE stages will require sections, headers, symbols, and eventually relocation
+support. `format efi;` is intended as an OS-development convenience shorthand
+for the appropriate PE32+ container and EFI subsystem rather than as an
+unrelated executable format. Variants such as `elf32` and `pe32` can be added
+when KASM supports their corresponding target modes.
 
 ## Requirements
 
@@ -289,6 +321,22 @@ ctest --preset GCC-debug
 
 The matching optimized presets are `windows-release` and `GCC-release`.
 
+### VS Code debugging
+
+The included VS Code launch configuration can build and debug KASM using the
+currently active assembly source file. Set a breakpoint in the C source, make
+the `.asm` file the active editor, select **Debug KASM with active ASM file**,
+and press F5.
+
+The **Debug KEMU with segment MOV image** configuration builds KASM and KEMU,
+assembles `examples/segment_mov.asm` as `build/vscode-segment-mov.bin`, and
+launches that image in KEMU. This provides a focused way to trace opcode `8E`
+and its ModR/M byte.
+
+> **Future enhancement:** add a similar QEMU launch configuration that reuses
+> a named assembled image, making it easy to inspect the same output in a
+> full-system emulator.
+
 To make an optimized package:
 
 ```sh
@@ -309,7 +357,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.20.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.22.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -323,14 +371,14 @@ The tag comes from the version declared in the top-level `CMakeLists.txt`, so
 increment that version before the next release. The workflow can also be run
 manually from GitHub Actions to publish the current commit on `main`.
 
-Package names use the format `kasm-v0.20.0-<platform>-<architecture>.zip`;
+Package names use the format `kasm-v0.22.0-<platform>-<architecture>.zip`;
 branch names are never included.
 
 ### Development snapshots
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.20.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.22.0-dev.42.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this
