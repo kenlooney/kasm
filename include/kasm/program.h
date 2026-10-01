@@ -53,6 +53,7 @@ typedef enum {
     ST_PUSH,
     ST_POP,
     ST_XCHG,
+    ST_JMPFAR,
 } StatementKind;
 
 typedef enum {
@@ -94,6 +95,7 @@ typedef struct {
     size_t offset;
     Register16 reg16;
     SegmentRegister segment_register;
+    long long far_offset;
 } Statement;
 
 typedef struct {

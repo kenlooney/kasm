@@ -258,6 +258,50 @@ int check_program(Parser *parser, Program *program, const Target *target)
 
             s->value = displacement;
         }
+        else if (s->kind == ST_JMPFAR)
+        {
+            const Statement *destination = NULL;
+            uint64_t address;
+
+            if (s->value < 0 || s->value > UINT16_MAX)
+            {
+                diagnostic(source,
+                           parser->nodes[s->expression].span,
+                           "far-jump segment must fit in 16 bits");
+                return 0;
+            }
+
+            for (int j = 0; j < program->count; j++)
+            {
+                const Statement *candidate = &program->statements[j];
+
+                if (candidate->kind == ST_LABEL &&
+                    tokens_equal(source, s->target, candidate->label))
+                {
+                    destination = candidate;
+                    break;
+                }
+            }
+
+            if (!destination)
+            {
+                diagnostic(source, s->target.span, "undefined far-jump target");
+                return 0;
+            }
+
+            if (program->origin > UINT16_MAX ||
+                destination->offset > UINT16_MAX - program->origin)
+            {
+                diagnostic(source,
+                           s->target.span,
+                           "far-jump offset must fit in 16 bits");
+                return 0;
+            }
+
+            address = program->origin + destination->offset;
+            s->far_offset = (long long)address;
+        }
+
         // ORG
         else if (s->kind == ST_ORG)
         {

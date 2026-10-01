@@ -65,6 +65,9 @@ static int statement_size(
     case ST_DD:
         *size = 4;
         return 1;
+    case ST_JMPFAR:
+        *size = 5;
+        return 1;   
     case ST_PADTO:
         if (statement->value < 0)
             return 0;

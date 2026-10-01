@@ -40,6 +40,7 @@ KEMU's decoder. The syntax column shows how they are written in KASM source.
 | `CWD` | `cwd;` | `99` | Convert Word to Doubleword | Sign-extends `AX` into the `DX:AX` register pair |
 | `IRET` | `iret;` | `CF` | Interrupt Return | Pops `IP`, `CS`, and FLAGS from the stack in that order |
 | `JMP rel8` | `jmp8 label;` | `EB cb` | Jump using a signed 8-bit relative displacement | Adds the displacement to `IP` after the instruction has been fetched |
+| `JMP ptr16:16` | `jmpfar segment, label;` | `EA cd` | Immediate far jump | Replaces `CS:IP` with the encoded segment and absolute offset |
 
 Encoding notation used above:
 
@@ -49,6 +50,8 @@ Encoding notation used above:
   encodes `ES`, `SS`, or `DS` in its `reg` field, and selects `AX` with `r/m=0`.
 - `cb` is a signed 8-bit relative displacement measured from the end of the
   jump instruction.
+- `cd` is a four-byte far pointer stored as a little-endian 16-bit offset
+  followed by a little-endian 16-bit segment.
 - `CF`, `PF`, `AF`, `ZF`, `SF`, `IF`, and `DF` mean carry, parity, auxiliary
   carry, zero, sign, interrupt, and direction flag.
 
@@ -94,6 +97,7 @@ though string instructions that consume `DF` are not implemented yet.
 ## Opcode plus immediate or relative operand
 
 - [x] `JMP rel8` — `EB cb`
+- [x] `JMP ptr16:16` — `EA cd`
 - [ ] `JMP rel16` — `E9 cw`
 - [ ] `CALL rel16` — `E8 cw`
 - [ ] `INT imm8` — `CD ib`
