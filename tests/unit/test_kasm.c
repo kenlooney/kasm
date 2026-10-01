@@ -209,6 +209,20 @@ static int test_mode_width_rejections(void)
 
     return failures != 0;
 }
+static int test_symbol_expression_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "dw missing;",
+        "data rejects an undefined symbol");
+    failures += test_semantic_rejection(
+        "org 0x7C00; db later; later: db 0;",
+        "resolved data still has to fit its width");
+
+    return failures != 0;
+}
+
 
 int main(void)
 {

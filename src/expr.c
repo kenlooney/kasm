@@ -66,10 +66,20 @@ static int primary(Parser *parser)
         lexer_next(&parser->lexer);
         return expression;
     }
+    if (token.kind == TK_IDENT)
+    {
+        Expr expression = {EX_SYMBOL, token.span, 0, -1, -1};
+        int result = node(parser, expression);
+
+        if (result >= 0)
+            lexer_next(&parser->lexer);
+
+        return result;
+    }
 
     if (token.kind != TK_NUMBER || parser->lexer.failed)
     {
-        parser_error(parser, "expected a number or '('");
+        parser_error(parser, "expected a number, identifier, or '('");
         return -1;
     }
 
