@@ -35,6 +35,9 @@ target_link_libraries(kasm_real_mode_cli PRIVATE kasm::core)
 add_executable(kasm_bootsect_cli bootsect_cli.c)
 target_link_libraries(kasm_bootsect_cli PRIVATE kasm::core)
 
+add_executable(kasm_startup_cli startup_cli.c)
+target_link_libraries(kasm_startup_cli PRIVATE kasm::core)
+
 add_executable(kasm_inc_cli inc_cli.c)
 target_link_libraries(kasm_inc_cli PRIVATE kasm::core)
 
@@ -61,6 +64,7 @@ if(MSVC)
     target_compile_options(kasm_bytebuffer_cli PRIVATE /W4)
     target_compile_options(kasm_real_mode_cli PRIVATE /W4)
     target_compile_options(kasm_bootsect_cli PRIVATE /W4)
+    target_compile_options(kasm_startup_cli PRIVATE /W4)
     target_compile_options(kasm_inc_cli PRIVATE /W4)
     target_compile_options(kasm_encoded_register_cli PRIVATE /W4)
     target_compile_options(kasm_segment_mov_cli PRIVATE /W4)
@@ -88,6 +92,8 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_bootsect_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_startup_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_inc_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_encoded_register_cli PROPERTY MSVC_RUNTIME_LIBRARY
@@ -109,6 +115,7 @@ else()
     target_compile_options(kasm_semi_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_bytebuffer_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_real_mode_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_startup_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_inc_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_encoded_register_cli PRIVATE
         -Wall -Wextra -Wpedantic)
@@ -149,6 +156,94 @@ set_tests_properties(kemu.encoded_register.cli PROPERTIES
     FIXTURES_REQUIRED kasm_encoded_register_image
     PASS_REGULAR_EXPRESSION
         "halted after 43 instructions at 0000:7C2F, AX=1234"
+)
+
+set(KASM_FAR_PAIR_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/far_jump_pair.bin")
+add_test(
+    NAME kasm.far_pair.image
+    COMMAND kasm
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/far_jump_pair.asm"
+        "${KASM_FAR_PAIR_IMAGE}"
+)
+set_tests_properties(kasm.far_pair.image PROPERTIES
+    FIXTURES_SETUP kasm_far_pair_image
+)
+add_test(
+    NAME kemu.far_pair.cli
+    COMMAND kemu "${KASM_FAR_PAIR_IMAGE}"
+)
+set_tests_properties(kemu.far_pair.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_far_pair_image
+    PASS_REGULAR_EXPRESSION
+        "halted after 2 instructions at 0700:0C06, AX=0000"
+)
+
+set(KASM_FAR_NORMALIZE_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/far_jump_normalize.bin")
+add_test(
+    NAME kasm.far_normalize.image
+    COMMAND kasm
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/far_jump_normalize.asm"
+        "${KASM_FAR_NORMALIZE_IMAGE}"
+)
+set_tests_properties(kasm.far_normalize.image PROPERTIES
+    FIXTURES_SETUP kasm_far_normalize_image
+)
+add_test(
+    NAME kemu.far_normalize.cli
+    COMMAND kemu "${KASM_FAR_NORMALIZE_IMAGE}"
+)
+set_tests_properties(kemu.far_normalize.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_far_normalize_image
+    PASS_REGULAR_EXPRESSION
+        "halted after 2 instructions at 0000:7C06, AX=0000"
+)
+
+set(KASM_FAR_TRUNCATED_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/far_jump_truncated.bin")
+add_test(
+    NAME kasm.far_truncated.image
+    COMMAND kasm
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/far_jump_truncated.asm"
+        "${KASM_FAR_TRUNCATED_IMAGE}"
+)
+set_tests_properties(kasm.far_truncated.image PROPERTIES
+    FIXTURES_SETUP kasm_far_truncated_image
+)
+add_test(
+    NAME kemu.far_truncated.cli
+    COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:kemu>"
+        "-DINPUT=${KASM_FAR_TRUNCATED_IMAGE}"
+        "-DEXPECTED=truncated far JMP instruction at 0000:7C00"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_failure.cmake"
+)
+set_tests_properties(kemu.far_truncated.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_far_truncated_image
+)
+
+set(KASM_FAR_OUTSIDE_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/far_jump_outside.bin")
+add_test(
+    NAME kasm.far_outside.image
+    COMMAND kasm
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/far_jump_outside.asm"
+        "${KASM_FAR_OUTSIDE_IMAGE}"
+)
+set_tests_properties(kasm.far_outside.image PROPERTIES
+    FIXTURES_SETUP kasm_far_outside_image
+)
+add_test(
+    NAME kemu.far_outside.cli
+    COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:kemu>"
+        "-DINPUT=${KASM_FAR_OUTSIDE_IMAGE}"
+        "-DEXPECTED=far JMP target outside loaded image at 0000:0000"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_failure.cmake"
+)
+set_tests_properties(kemu.far_outside.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_far_outside_image
 )
 
 add_test(
@@ -212,6 +307,13 @@ add_test(
     COMMAND kasm_bootsect_cli
         "${PROJECT_SOURCE_DIR}/examples/bootsect.asm"
         "${CMAKE_CURRENT_BINARY_DIR}/bootsect.bin"
+)
+
+add_test(
+    NAME kasm.startup.cli
+    COMMAND kasm_startup_cli
+        "${PROJECT_SOURCE_DIR}/examples/startup.asm"
+        "${CMAKE_CURRENT_BINARY_DIR}/startup.bin"
 )
 
 # Run the built executable with a source file from the repository. Using

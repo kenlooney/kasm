@@ -178,6 +178,14 @@ int emit_program(
         case ST_ORG:
             // ORG does not emit any bytes
             break;
+        // JMPFAR
+        case ST_JMPFAR:
+            if (!byte_push(bytes, 0xEAu) ||
+                !little_endian(bytes, (uint64_t)statement->far_offset, 2) ||
+                !little_endian(bytes, (uint64_t)statement->value, 2))
+                return 0;
+            break;
+
         // Data definition instructions (db, dw, dd)
         case ST_DB:
             if (!byte_push(bytes, (uint8_t)statement->value))
@@ -234,7 +242,7 @@ int emit_program(
                 return 0;
             }
             break;
-            
+
         case ST_MOV_SEGMENT:
         {
             uint8_t modrm;

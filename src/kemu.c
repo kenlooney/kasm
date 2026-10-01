@@ -395,6 +395,51 @@ static int emulate_instruction(Cpu16 *cpu)
         cpu->ip = (uint16_t)(cpu->ip + (int16_t)(int8_t)encoded_displacement);
         return 1;
     }
+    case 0xEA: /* JMP ptr16:16 */
+    {
+        uint8_t offset_low;
+        uint8_t offset_high;
+        uint8_t segment_low;
+        uint8_t segment_high;
+        uint16_t target_offset;
+        uint16_t target_segment;
+        uint32_t target_address;
+
+        if (!cpu16_fetch8(cpu, &offset_low) ||
+            !cpu16_fetch8(cpu, &offset_high) ||
+            !cpu16_fetch8(cpu, &segment_low) ||
+            !cpu16_fetch8(cpu, &segment_high))
+        {
+            fprintf(stderr,
+                    "truncated far JMP instruction at %04X:%04X\n",
+                    (unsigned int)cpu->cs,
+                    (unsigned int)instruction_ip);
+            return 0;
+        }
+
+        target_offset = (uint16_t)((uint16_t)offset_low |
+                                   ((uint16_t)offset_high << 8));
+        target_segment = (uint16_t)((uint16_t)segment_low |
+                                    ((uint16_t)segment_high << 8));
+
+        if (!cpu16_physical_address(
+                target_segment,
+                target_offset,
+                &target_address) ||
+            target_address < cpu->image_start ||
+            (size_t)(target_address - cpu->image_start) >= cpu->image_size)
+        {
+            fprintf(stderr,
+                    "far JMP target outside loaded image at %04X:%04X\n",
+                    (unsigned int)target_segment,
+                    (unsigned int)target_offset);
+            return 0;
+        }
+
+        cpu->ip = target_offset;
+        cpu->cs = target_segment;
+        return 1;
+    }
 
     default:
         fprintf(stderr,

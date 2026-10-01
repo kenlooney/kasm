@@ -1,4 +1,5 @@
 #include "kasm/kasm.h"
+#include "kasm/layout.h"
 #include "kasm/program.h"
 #include "kasm/target.h"
 
@@ -53,6 +54,21 @@ static int test_semantic_rejection(const char *text, const char *description)
     if (!parse_program(&parser, &program))
     {
         fprintf(stderr, "%s: parser rejected input before semantic validation\n",
+                description);
+        goto cleanup;
+    }
+
+    if (!evaluate_program(&parser, &program))
+    {
+        fprintf(stderr,
+                "%s: expression evaluation failed before semantic validation\n",
+                description);
+        goto cleanup;
+    }
+
+    if (!layout_program(&program, &target))
+    {
+        fprintf(stderr, "%s: layout failed before semantic validation\n",
                 description);
         goto cleanup;
     }
@@ -136,6 +152,26 @@ static int test_segment_mov_rejections(void)
     return failures != 0;
 }
 
+static int test_far_jump_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "jmpfar 0, missing;",
+        "far jump rejects an undefined label");
+    failures += test_semantic_rejection(
+        "jmpfar 65536, target; target:",
+        "far jump rejects a segment outside 16 bits");
+    failures += test_semantic_rejection(
+        "org 65535; jmpfar 0, target; target:",
+        "far jump rejects a destination outside 16 bits");
+    failures += test_parser_rejection(
+        "jmpfar 0 target;",
+        "far jump requires a comma before its target");
+
+    return failures != 0;
+}
+
 int main(void)
 {
     int failures = 0;
@@ -143,6 +179,7 @@ int main(void)
     failures += test_version();
     failures += test_encoded_register_rejections();
     failures += test_segment_mov_rejections();
+    failures += test_far_jump_rejections();
 
     return failures != 0;
 }
