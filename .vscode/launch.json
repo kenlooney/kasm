@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug KASM with active ASM file",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Debug/kasm.exe",
+            "args": [
+                "${file}",
+                "${workspaceFolder}/build/vscode-debug-output.bin"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "preLaunchTask": "Build KASM (Windows Debug)"
+        },
+        {
+            "name": "Debug KEMU with segment MOV image",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Debug/kemu.exe",
+            "args": [
+                "${workspaceFolder}/build/vscode-segment-mov.bin"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "preLaunchTask": "Assemble segment MOV debug image"
+        }
+    ]
+}

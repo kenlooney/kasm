@@ -41,6 +41,14 @@ target_link_libraries(kasm_inc_cli PRIVATE kasm::core)
 add_executable(kasm_encoded_register_cli encoded_register_cli.c)
 target_link_libraries(kasm_encoded_register_cli PRIVATE kasm::core)
 
+add_executable(kasm_confirm_reg_mov_cli confirm_reg_mov_cli.c)
+target_link_libraries(kasm_confirm_reg_mov_cli PRIVATE kasm::core)
+
+add_executable(kasm_segment_mov_cli segment_mov_cli.c)
+target_link_libraries(kasm_segment_mov_cli PRIVATE kasm::core)
+
+
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -55,6 +63,8 @@ if(MSVC)
     target_compile_options(kasm_bootsect_cli PRIVATE /W4)
     target_compile_options(kasm_inc_cli PRIVATE /W4)
     target_compile_options(kasm_encoded_register_cli PRIVATE /W4)
+    target_compile_options(kasm_segment_mov_cli PRIVATE /W4)
+    target_compile_options(kasm_confirm_reg_mov_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -82,6 +92,12 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_encoded_register_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_segment_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_confirm_reg_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_confirm_reg_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -96,7 +112,10 @@ else()
     target_compile_options(kasm_inc_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_encoded_register_cli PRIVATE
         -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_confirm_reg_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+
 
 add_test(
     NAME kasm.inc.cli
@@ -155,6 +174,16 @@ add_test(
 add_test(
     NAME kasm.expr.cli
     COMMAND kasm_expr_cli "${PROJECT_SOURCE_DIR}/examples/expr.asm"
+)
+
+add_test(
+    NAME kasm.confirm_reg_mov.cli
+    COMMAND kasm_confirm_reg_mov_cli "${PROJECT_SOURCE_DIR}/examples/confirm_reg_mov.asm"
+)
+
+add_test(
+    NAME kasm.segment_mov.cli
+    COMMAND kasm_segment_mov_cli "${PROJECT_SOURCE_DIR}/examples/segment_mov.asm"
 )
 
 add_test(

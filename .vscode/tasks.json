@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure KASM (Windows Debug)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "windows-debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build KASM (Windows Debug)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "windows-debug",
+                "--target",
+                "kasm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Configure KASM (Windows Debug)",
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build KASM and KEMU (Windows Debug)",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "--preset",
+                "windows-debug",
+                "--target",
+                "kasm",
+                "kemu"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Configure KASM (Windows Debug)",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Assemble segment MOV debug image",
+            "type": "process",
+            "command": "${workspaceFolder}/bin/Debug/kasm.exe",
+            "args": [
+                "${workspaceFolder}/examples/segment_mov.asm",
+                "${workspaceFolder}/build/vscode-segment-mov.bin"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "Build KASM and KEMU (Windows Debug)",
+            "problemMatcher": []
+        }
+    ]
+}

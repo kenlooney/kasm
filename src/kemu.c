@@ -261,6 +261,35 @@ static int emulate_instruction(Cpu16 *cpu)
         *reg = (uint16_t)((uint16_t)low | ((uint16_t)high << 8));
         return 1;
     }
+    if (opcode == 0x8Eu)
+    {
+        uint8_t modrm;
+        unsigned segment_code;
+        uint16_t *source_register;
+        uint16_t *destination_segment = NULL;
+
+        if (!cpu16_fetch8(cpu, &modrm))
+            return 0;
+
+        if ((modrm & 0xC0u) != 0xC0u)
+            return 0;
+
+        source_register = cpu16_reg16(cpu, modrm & 0x07u);
+        segment_code = (modrm >> 3) & 0x07u;
+
+        if (segment_code == 0u)
+            destination_segment = &cpu->es;
+        else if (segment_code == 2u)
+            destination_segment = &cpu->ss;
+        else if (segment_code == 3u)
+            destination_segment = &cpu->ds;
+
+        if (!source_register || !destination_segment)
+            return 0;
+
+        *destination_segment = *source_register;
+        return 1;
+    }
 
     switch (opcode)
     {

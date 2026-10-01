@@ -27,9 +27,9 @@ static int statement_size(
 
     switch (statement->kind) {
     case ST_LABEL:
+    case ST_ORG:
         *size = 0;
         return 1;
-
     case ST_CLI:
     case ST_STI:
     case ST_HLT:
@@ -51,28 +51,20 @@ static int statement_size(
     case ST_PUSH:
     case ST_POP:
     case ST_XCHG:
+    case ST_DB:
         *size = 1;
         return 1;    
     case ST_JMP8:
-        *size = 2;
-        return 1;
-
-    case ST_ORG:
-        *size = 0;
-        return 1;
-
-    case ST_DB:
-        *size = 1;
-        return 1;
-
     case ST_DW:
+    case ST_MOV_SEGMENT:
         *size = 2;
         return 1;
-
+    case ST_MOV:
+        *size = 3;
+        return 1;
     case ST_DD:
         *size = 4;
         return 1;
-
     case ST_PADTO:
         if (statement->value < 0)
             return 0;
@@ -84,10 +76,6 @@ static int statement_size(
             return 0;
 
         *size = (size_t)statement->value - statement->offset;
-        return 1;
-
-    case ST_MOV:
-        *size = 3;
         return 1;
 
     default:

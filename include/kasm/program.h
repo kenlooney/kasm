@@ -24,6 +24,7 @@
 
 typedef enum {
     ST_MOV,
+    ST_MOV_SEGMENT,
     ST_HLT,
     ST_CLI,
     ST_STI,
@@ -66,6 +67,16 @@ typedef enum {
     REG16_INVALID = 8
 } Register16;
 
+typedef enum {
+    SEG_ES = 0,
+    SEG_CS = 1,
+    SEG_SS = 2,
+    SEG_DS = 3,
+    SEG_FS = 4,
+    SEG_GS = 5,
+    SEG_INVALID = 6
+} SegmentRegister;
+
 typedef struct {
     StatementKind kind;
     Span span;
@@ -82,6 +93,7 @@ typedef struct {
 
     size_t offset;
     Register16 reg16;
+    SegmentRegister segment_register;
 } Statement;
 
 typedef struct {

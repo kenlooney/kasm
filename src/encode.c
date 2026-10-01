@@ -234,6 +234,28 @@ int emit_program(
                 return 0;
             }
             break;
+            
+        case ST_MOV_SEGMENT:
+        {
+            uint8_t modrm;
+
+            if (statement->segment_register != SEG_ES &&
+                statement->segment_register != SEG_SS &&
+                statement->segment_register != SEG_DS)
+                return 0;
+
+            if (statement->reg16 != REG16_AX)
+                return 0;
+
+            modrm = (uint8_t)(0xC0u |
+                              ((unsigned)statement->segment_register << 3) |
+                              (unsigned)statement->reg16);
+
+            if (!byte_push(bytes, 0x8Eu) ||
+                !byte_push(bytes, modrm))
+                return 0;
+            break;
+        }
 
         default:
             return 0;
