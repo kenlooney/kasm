@@ -20,13 +20,15 @@
 static int statement_size(
     const Statement *statement,
     const Target *target,
-    size_t *size
-) {
-    if (target->arch != ARCH_X86 || target->mode != MODE_16)
+    size_t *size)
+{
+    if (target->arch != ARCH_X86)
         return 0;
 
-    switch (statement->kind) {
+    switch (statement->kind)
+    {
     case ST_LABEL:
+    case ST_MODE:
     case ST_ORG:
         *size = 0;
         return 1;
@@ -53,21 +55,29 @@ static int statement_size(
     case ST_XCHG:
     case ST_DB:
         *size = 1;
-        return 1;    
+        return 1;
     case ST_JMP8:
     case ST_DW:
     case ST_MOV_SEGMENT:
         *size = 2;
         return 1;
     case ST_MOV:
-        *size = 3;
+        if (statement->mode == MODE_16)
+            *size = 3;
+        else if (statement->mode == MODE_32)
+            *size = 5;
+        else if (statement->mode == MODE_64)
+            *size = 10;
+        else
+            return 0;
         return 1;
+
     case ST_DD:
         *size = 4;
         return 1;
     case ST_JMPFAR:
         *size = 5;
-        return 1;   
+        return 1;
     case ST_PADTO:
         if (statement->value < 0)
             return 0;
@@ -93,7 +103,8 @@ int layout_program(Program *program, const Target *target)
 
     size_t offset = 0;
 
-    for (int i = 0; i < program->count; i++) {
+    for (int i = 0; i < program->count; i++)
+    {
         Statement *statement = &program->statements[i];
         size_t size;
 

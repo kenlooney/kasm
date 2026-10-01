@@ -63,6 +63,8 @@ static int statement(Parser *parser, Program *program)
     s.expression = -1;
     s.fill_expression = -1;
     s.far_offset = -1;
+    s.mode = parser->current_mode;
+    s.reg32 = REG32_INVALID;
 
     if (parser->lexer.token.kind == TK_COLON)
     {
@@ -145,6 +147,44 @@ static int statement(Parser *parser, Program *program)
             return 0;
         s.span.end = semicolon.span.end;
     }
+    // mode instruction
+    else if (token_is(source, name, "mode"))
+    {
+        Token mode_token = parser->lexer.token;
+        Token semicolon;
+        MachineMode selected_mode;
+
+        if (mode_token.kind != TK_NUMBER)
+        {
+            parser_error(parser, "expected 16, 32, or 64 after mode");
+            return 0;
+        }
+
+        if (mode_token.value == 16)
+            selected_mode = MODE_16;
+        else if (mode_token.value == 32)
+            selected_mode = MODE_32;
+        else if (mode_token.value == 64)
+            selected_mode = MODE_64;
+        else
+        {
+            parser_error(parser, "mode must be 16, 32, or 64");
+            return 0;
+        }
+
+        if (!take(parser, TK_NUMBER, "expected mode number"))
+            return 0;
+
+        semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+
+        s.kind = ST_MODE;
+        s.mode = selected_mode;
+        s.span.end = semicolon.span.end;
+        parser->current_mode = selected_mode;
+    }
+
     // db instruction
     else if (token_is(source, name, "db"))
     {
@@ -342,8 +382,12 @@ static int statement(Parser *parser, Program *program)
     return add_statement(parser, program, s);
 }
 
-int parse_program(Parser *parser, Program *program)
+int parse_program(Parser *parser, Program *program, const Target *target)
 {
+    if (!parser || !program || !target)
+        return 0;
+
+    parser->current_mode = target->mode;
     size_t brace_depth = 0;
     program->origin = 0;
     program->has_origin = 0;

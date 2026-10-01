@@ -51,7 +51,7 @@ static int test_semantic_rejection(const char *text, const char *description)
 
     parser_start(&parser, &source);
 
-    if (!parse_program(&parser, &program))
+    if (!parse_program(&parser, &program, &target))
     {
         fprintf(stderr, "%s: parser rejected input before semantic validation\n",
                 description);
@@ -90,6 +90,10 @@ cleanup:
 
 static int test_parser_rejection(const char *text, const char *description)
 {
+    const Target target = {
+        .arch = ARCH_X86,
+        .mode = MODE_16
+    };
     Source source = {
         .path = description,
         .text = text,
@@ -101,7 +105,7 @@ static int test_parser_rejection(const char *text, const char *description)
 
     parser_start(&parser, &source);
 
-    if (parse_program(&parser, &program))
+    if (parse_program(&parser, &program, &target))
     {
         fprintf(stderr, "%s: expected parser to reject input\n", description);
         goto cleanup;
@@ -172,6 +176,40 @@ static int test_far_jump_rejections(void)
     return failures != 0;
 }
 
+static int test_mode_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_parser_rejection(
+        "mode;",
+        "mode requires a mode number");
+    failures += test_parser_rejection(
+        "mode 24;",
+        "mode rejects an unsupported mode number");
+    failures += test_parser_rejection(
+        "mode 32",
+        "mode requires a semicolon");
+
+    return failures != 0;
+}
+
+static int test_mode_width_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "mode 16; mov eax, 1;",
+        "mode 16 rejects a 32-bit destination register");
+    failures += test_semantic_rejection(
+        "mode 32; mov ax, 1;",
+        "mode 32 rejects a 16-bit destination register");
+    failures += test_semantic_rejection(
+        "mode 64; mov rax, 1;",
+        "mode 64 rejects unimplemented 64-bit mov");
+
+    return failures != 0;
+}
+
 int main(void)
 {
     int failures = 0;
@@ -180,6 +218,8 @@ int main(void)
     failures += test_encoded_register_rejections();
     failures += test_segment_mov_rejections();
     failures += test_far_jump_rejections();
+    failures += test_mode_rejections();
+    failures += test_mode_width_rejections();
 
     return failures != 0;
 }

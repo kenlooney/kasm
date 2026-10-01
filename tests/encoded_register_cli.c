@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
     parser_start(&parser, &source);
 
-    if (!parse_program(&parser, &program) ||
+    if (!parse_program(&parser, &program, &target) ||
         !evaluate_program(&parser, &program) ||
         !layout_program(&program, &target) ||
         !check_program(&parser, &program, &target) ||

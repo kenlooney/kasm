@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
     parser_start(&parser, &source);
 
-    if (!parse_program(&parser, &program))
+    if (!parse_program(&parser, &program, &target))
         goto cleanup;
     if (!evaluate_program(&parser, &program))
         goto cleanup;

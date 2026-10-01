@@ -8,7 +8,7 @@ int emit_program(
     if (!program || !target || !bytes)
         return 0;
 
-    if (target->arch != ARCH_X86 || target->mode != MODE_16)
+    if (target->arch != ARCH_X86)
         return 0;
 
     for (int i = 0; i < program->count; i++)
@@ -162,7 +162,9 @@ int emit_program(
             break;
 
         case ST_LABEL:
-            // Labels do not emit any bytes
+        case ST_MODE:
+        case ST_ORG:
+            // Labels and assembler directives do not emit any bytes.
             break;
 
         // Jump instructions
@@ -174,10 +176,6 @@ int emit_program(
             }
             break;
 
-        // ORG
-        case ST_ORG:
-            // ORG does not emit any bytes
-            break;
         // JMPFAR
         case ST_JMPFAR:
             if (!byte_push(bytes, 0xEAu) ||
@@ -231,13 +229,23 @@ int emit_program(
             break;
 
         case ST_MOV:
-            if (statement->reg16 > REG16_DI)
-                return 0;
-
-            if (!byte_push(
-                    bytes,
-                    (uint8_t)(0xB8u + (unsigned)statement->reg16)) ||
-                !little_endian(bytes, (uint64_t)statement->value, 2))
+            if (statement->mode == MODE_16)
+            {
+                if (statement->reg16 > REG16_DI ||
+                    !byte_push(bytes,
+                               (uint8_t)(0xB8u + (unsigned)statement->reg16)) ||
+                    !little_endian(bytes, (uint64_t)statement->value, 2))
+                    return 0;
+            }
+            else if (statement->mode == MODE_32)
+            {
+                if (statement->reg32 > REG32_EDI ||
+                    !byte_push(bytes,
+                               (uint8_t)(0xB8u + (unsigned)statement->reg32)) ||
+                    !little_endian(bytes, (uint64_t)statement->value, 4))
+                    return 0;
+            }
+            else
             {
                 return 0;
             }

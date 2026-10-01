@@ -50,6 +50,9 @@ target_link_libraries(kasm_confirm_reg_mov_cli PRIVATE kasm::core)
 add_executable(kasm_segment_mov_cli segment_mov_cli.c)
 target_link_libraries(kasm_segment_mov_cli PRIVATE kasm::core)
 
+add_executable(kasm_mode_regions_cli mode_regions_cli.c)
+target_link_libraries(kasm_mode_regions_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -67,6 +70,7 @@ if(MSVC)
     target_compile_options(kasm_encoded_register_cli PRIVATE /W4)
     target_compile_options(kasm_segment_mov_cli PRIVATE /W4)
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE /W4)
+    target_compile_options(kasm_mode_regions_cli PRIVATE /W4)
 
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -100,6 +104,8 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_confirm_reg_mov_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_mode_regions_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -118,6 +124,7 @@ else()
         -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_segment_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_mode_regions_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -275,6 +282,12 @@ add_test(
 add_test(
     NAME kasm.segment_mov.cli
     COMMAND kasm_segment_mov_cli "${PROJECT_SOURCE_DIR}/examples/segment_mov.asm"
+)
+
+add_test(
+    NAME kasm.mode_regions.cli
+    COMMAND kasm_mode_regions_cli
+        "${PROJECT_SOURCE_DIR}/examples/mode_regions.asm"
 )
 
 add_test(
