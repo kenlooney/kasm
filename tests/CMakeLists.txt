@@ -423,6 +423,29 @@ set_tests_properties(kemu.jc_truncated.cli PROPERTIES
     FIXTURES_REQUIRED kasm_jc_truncated_image
 )
 
+set(KASM_INT_IMAGE "${CMAKE_CURRENT_BINARY_DIR}/int.bin")
+
+add_test(
+    NAME kasm.int.image
+    COMMAND kasm
+        "${PROJECT_SOURCE_DIR}/examples/int.asm"
+        "${KASM_INT_IMAGE}"
+)
+set_tests_properties(kasm.int.image PROPERTIES
+    FIXTURES_SETUP kasm_int_image
+)
+
+add_test(
+    NAME kemu.int.cli
+    COMMAND kemu "${KASM_INT_IMAGE}"
+)
+set_tests_properties(kemu.int.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_int_image
+    PASS_REGULAR_EXPRESSION
+        "Ahalted after 5 instructions at 0000:7C0A, AX=0E41"
+)
+
+
 
 
 

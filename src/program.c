@@ -366,6 +366,21 @@ static int statement(Parser *parser, Program *program)
 
         s.span.end = semicolon.span.end;
     }
+    else if (token_is(source, name, "int"))
+    {
+        Token semicolon;
+
+        s.kind = ST_INT;
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+
+        semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+
+        s.span.end = semicolon.span.end;
+    }
 
     // mov instruction
     else if (token_is(source, name, "mov"))

@@ -58,6 +58,7 @@ static int statement_size(
         *size = 1;
         return 1;
     case ST_JMP8:
+    case ST_INT:
     case ST_DW:
     case ST_JC:
     case ST_JNC:

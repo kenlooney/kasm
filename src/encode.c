@@ -168,7 +168,13 @@ int emit_program(
             // These statements do not emit any bytes.
             break;
 
-        // Jump instructions
+        case ST_INT:
+            if (!byte_push(bytes, 0xCDu) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
+            break;
+
+            // Jump instructions
         case ST_JMP8:
             if (!byte_push(bytes, 0xEB) ||
                 !byte_push(bytes, (uint8_t)statement->value))

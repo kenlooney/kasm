@@ -462,11 +462,23 @@ int check_program(Parser *parser, Program *program, const Target *target)
             s->kind != ST_DD &&
             s->kind != ST_PADTO &&
             s->kind != ST_MOV &&
-            s->kind != ST_MOV_SEGMENT)
+            s->kind != ST_MOV_SEGMENT &&
+            s->kind != ST_INT)
         {
             diagnostic(source, s->span,
                        "instruction is not implemented in this mode");
             return 0;
+        }
+
+        else if (s->kind == ST_INT)
+        {
+            if (s->value < 0 || s->value > UINT8_MAX)
+            {
+                diagnostic(source,
+                           parser->nodes[s->expression].span,
+                           "interrupt vector must be in range 0..255");
+                return 0;
+            }
         }
 
         if (s->kind == ST_MOV)

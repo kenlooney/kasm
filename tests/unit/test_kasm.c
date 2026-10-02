@@ -285,6 +285,24 @@ static int test_conditional_jump_semantic_rejections(void)
 
     return failures != 0;
 }
+static int test_int_parser_rejections(void)
+{
+    return test_parser_rejection(
+        "int;",
+        "int requires an interrupt vector");
+}
+static int test_int_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "int 0 - 1;",
+        "int rejects a negative vector");
+    failures += test_semantic_rejection(
+        "int 256;",
+        "int rejects a vector wider than one byte");
+    return failures != 0;
+}
 
 int main(void)
 {
@@ -301,6 +319,8 @@ int main(void)
     failures += test_symbol_expression_rejections();
     failures += test_conditional_jump_parser_rejections();
     failures += test_conditional_jump_semantic_rejections();
+    failures += test_int_parser_rejections();
+    failures += test_int_semantic_rejections();
 
     return failures != 0;
 }

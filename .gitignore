@@ -15,6 +15,7 @@ build/
 bin/
 install/
 *.bin
+*.img
 
 # Generated packages
 *.zip
