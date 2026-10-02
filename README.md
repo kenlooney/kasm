@@ -2,10 +2,12 @@
 
 [![CI](https://github.com/kenlooney/kasm/actions/workflows/ci.yml/badge.svg)](https://github.com/kenlooney/kasm/actions/workflows/ci.yml)
 
-Ken's Assembler Project is an x86 assembler written in C. KASM currently
-assembles a small 16-bit x86 language directly into flat binary files.
-The project also includes KEMU, an early 16-bit emulator that can load and
-execute the machine code produced by KASM.
+Ken's Assembler Project is an x86 assembler written in C. KASM emits raw,
+little-endian flat binaries. Its current end-to-end target is a 16-bit BIOS
+boot sector, with early source-level support for assembling selected 32-bit
+instructions for a future protected-mode transition. The project also
+includes KEMU, a deliberately partial 16-bit emulator for testing supported
+machine code.
 
 > **v0.24.0 establishes a complete real-mode startup environment.** KASM can
 > normalize `CS` with an immediate far jump, initialize `DS`, `ES`, `SS`, and
@@ -24,6 +26,12 @@ execute the machine code produced by KASM.
 > **v0.15.0 was KASM's first bootable release.** KASM can produce a complete
 > 512-byte legacy BIOS boot sector containing executable real-mode code,
 > padding, and the `55 AA` boot signature.
+
+The current `dev` branch builds on that real-mode foundation with source-level
+encoding-mode regions, label expressions, named `equ` constants, and
+carry-conditional short jumps. The project version in `CMakeLists.txt` is
+currently `0.28.0`; consult the release tags to see which development features
+have shipped in a stable release.
 
 ## Assemble and boot the example
 
@@ -83,8 +91,8 @@ KEMU currently provides:
 - image loading at physical address `0x7C00`;
 - an initial `CS:IP` of `0000:7C00`;
 - checked instruction fetching and a 1000-instruction execution limit;
-- emulation of encoded-register instructions, segment-register MOV, `jmp8`,
-  immediate far jumps, and the no-operand instruction set documented below;
+- emulation of the supported 16-bit instructions documented below, including
+  `jc`/`jb` and `jnc`/`jae` conditional branches;
 - a 16-bit downward-growing stack used by `push`, `pop`, `pushf`, `popf`, and
   `iret`;
 - modeled 16-bit FLAGS state, including carry, interrupt, direction, and
@@ -93,13 +101,18 @@ KEMU currently provides:
   and execution that exceeds the step limit.
 
 KEMU is not intended to replace QEMU or emulate an entire PC. It currently
-implements only the machine state and instructions needed to test KASM's first
-real-mode programs.
+implements only the machine state and instructions needed to test KASM's
+real-mode programs. It does not deliver software interrupts or emulate BIOS
+services; `iret` can only restore an interrupt frame that a program has
+already placed on the stack.
 
 ## Language support
 
-KASM currently targets 16-bit x86 real mode and writes raw, little-endian
-binary output. Source statements end with semicolons.
+KASM writes raw, little-endian x86 binary output. Source statements end with
+semicolons. The working boot path is 16-bit real mode. `mode` directives
+select assembler encoding rules for source regions; they do not switch the
+running processor into another mode. KEMU remains a 16-bit emulator, so it
+cannot execute the assembler's 32-bit output.
 
 ### Instructions
 
@@ -129,10 +142,16 @@ binary output. Source statements end with semicolons.
 | `cwd;` | `99` | Sign-extend `AX` into `DX:AX` |
 | `iret;` | `CF` | Restore `IP`, `CS`, and FLAGS from the stack |
 | `jmp8 label;` | `EB cb` | Explicit signed 8-bit relative jump |
+| `jc label;` or `jb label;` | `72 cb` | Jump when Carry Flag is set |
+| `jnc label;` or `jae label;` | `73 cb` | Jump when Carry Flag is clear |
 | `jmpfar segment, label;` | `EA ptr16:16` | Jump to an absolute 16-bit segment and offset |
 
-`jmp8` targets must be defined labels within the range `-128..127` bytes from
-the end of the jump instruction. A `jmpfar` segment and its origin-adjusted
+`jmp8`, `jc`/`jb`, and `jnc`/`jae` targets must be defined labels within the
+range `-128..127` bytes from the end of the jump instruction. `jb` and `jc`
+are two source spellings for the same condition and opcode; likewise, `jae`
+and `jnc` are aliases for the same condition and opcode. They are aliases,
+not four distinct instructions: `jb`/`jc` both encode as `72 cb`, while
+`jae`/`jnc` both encode as `73 cb`. A `jmpfar` segment and its origin-adjusted
 label offset must each fit in 16 bits.
 
 The supported 16-bit registers are `ax`, `cx`, `dx`, `bx`, `sp`, `bp`, `si`,
@@ -143,6 +162,27 @@ form requires `ax` as its first operand.
 The supported segment-register destinations are `es`, `ss`, and `ds`. This
 initial `8E` form accepts only `ax` as its source; `cs`, `fs`, `gs`, other
 general-purpose source registers, and memory operands are rejected.
+
+### Encoding-mode regions
+
+Use `mode` directives to tell KASM which encoding rules apply to following
+statements:
+
+```asm
+mode 16;
+mov ax, 0x1234;
+mode 32;
+mov eax, 0x12345678;
+mode 16;
+mov cx, 0x5678;
+```
+
+The directives emit no bytes. In MODE_16, `mov r16, imm16` uses `B8+rw iw`;
+in MODE_32, the currently implemented `mov r32, imm32` form uses `B8+rd id`.
+The current assembler does not yet support 64-bit instruction encodings, and
+KEMU does not execute MODE_32 code. A `mode 32;` directive is not a CPU mode
+transition; the code that changes processor mode is a separate part of the
+boot process.
 
 ### Labels
 
@@ -155,7 +195,19 @@ jmp8 hang;
 ```
 
 KASM records statement offsets during layout and resolves jump targets before
-encoding.
+encoding. Labels can also participate in expressions, for example
+`dw end - start;`, and can be assigned a reusable name with `equ`:
+
+```asm
+start:
+db 0;
+end:
+span equ end - start;
+dw span;
+```
+
+`equ` emits no bytes. EQU expressions can use literals, arithmetic, and
+labels, but cannot currently refer to another EQU constant.
 
 ### Data and layout directives
 
@@ -218,8 +270,8 @@ not yet supported.
 
 ### Arithmetic expressions
 
-Arithmetic expressions support integer literals, nested parentheses, and the
-following binary operators:
+Arithmetic expressions support integer literals, labels, nested parentheses,
+and the following binary operators:
 
 | Precedence | Operators | Associativity |
 | --- | --- | --- |
@@ -237,7 +289,7 @@ The current grammar is equivalent to:
 ```text
 expression = product (("+" | "-") product)*
 product    = primary (("*" | "/" | "%") primary)*
-primary    = integer | "(" expression ")"
+primary    = integer | identifier | "(" expression ")"
 ```
 
 Expression nodes are stored in a dynamically growing indexed arena and are
@@ -273,19 +325,22 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 
 ### Current limitations
 
-- Only the 16-bit x86 real-mode target is implemented.
+- Raw flat-binary output is the only output format. The complete boot path is
+  16-bit real mode; MODE_32 currently supports only `mov r32, imm32` encoding,
+  and there are no 64-bit instruction encodings yet.
 - General-purpose register operands are limited to the eight 16-bit registers;
-  segment-register MOV currently supports only `es`, `ss`, and `ds` from `ax`.
-- Control flow is currently limited to explicit `jmp8` and `jmpfar` forms.
+  the implemented 32-bit MOV-immediate form supports the eight 32-bit general-
+  purpose registers. Segment-register MOV supports only `es`, `ss`, and `ds`
+  from `ax`.
+- Control flow includes `jmp8`, `jmpfar`, `jc`/`jb`, and `jnc`/`jae`; other
+  conditional conditions and near calls/jumps are not implemented.
 - Data directives currently accept one expression each.
 - String literals, character literals, and unary expression operators are not
   implemented yet.
-- Output is a flat binary image; object files and executable formats are not
-  implemented yet.
-- KEMU currently uses the legacy BIOS boot address and implements only KASM's
-  initial instruction subset. `iret` can restore a prepared interrupt frame,
-  but interrupt delivery, devices, and general PC hardware are not emulated
-  yet.
+- KEMU executes only its supported 16-bit subset. `int imm8`, interrupt
+  delivery, BIOS services, devices, and general PC hardware are not emulated;
+  `iret` can restore a prepared interrupt frame.
+- Object files and executable formats are not implemented yet.
 
 ### Future output-format ladder
 
@@ -374,7 +429,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.24.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.28.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -388,14 +443,15 @@ The tag comes from the version declared in the top-level `CMakeLists.txt`, so
 increment that version before the next release. The workflow can also be run
 manually from GitHub Actions to publish the current commit on `main`.
 
-Package names use the format `kasm-v0.24.0-<platform>-<architecture>.zip`;
-branch names are never included.
+Package names use the format
+`kasm-v<version>-<platform>-<architecture>.zip`; branch names are never
+included.
 
 ### Development snapshots
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.24.0-dev.43.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.28.0-dev.43.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest 25 snapshots and deletes older
 snapshot releases and their tags. Stable releases are never included in this
@@ -406,20 +462,27 @@ To remove locally cached tags that have been deleted remotely:
 ```powershell
 git fetch origin --prune --prune-tags
 ```
-## ⭐ Project Status Rating
-This project status rating was produced by **Microsoft Copilot**.
+## Project Snapshot Ratings
 
-rating:
+These are subjective progress scores, not claims of full x86 compatibility or
+production readiness. Each new snapshot should be added to the table rather
+than replacing an earlier score. Use the same five areas, each worth two
+points, so changes are easier to compare:
 
-## 🔥 Early‑Stage Project Score: 9.1 / 10
-Why this score stands out:
+- Assembler pipeline and encoding coverage
+- Progress toward the BIOS-to-protected-mode OS goal
+- Emulator behavior and automated validation
+- Architecture and maintainability
+- Documentation, build, and release workflow
 
-- Architecture: Clean, correct, and thoughtfully designed
-- Assembler: Modern syntax, readable, and deterministic
-- Emulator: Real‑mode accurate, safe, and purpose‑built
-- Toolchain: Closed validation loop (rare for early projects)
-- Code Quality: Surprisingly high for a single‑developer system
-- Future Potential: Extremely strong
+| Snapshot | Score | Notes |
+| --- | ---: | --- |
+| 2026-10-02, `dev` at `3463748`, project version `0.28.0` | **8.7 / 10** | Strong staged assembler pipeline, real-mode boot path, and passing Windows test suite; BIOS interrupt delivery and the 32-bit/64-bit OS transitions remain future work. |
+| Earlier README rating, snapshot not recorded | 9.1 / 10 | Kept for history; it had no pinned revision or consistent rubric, so it is not directly comparable to the new baseline. |
+
+The 2026-10-02 entry is the first score using this rubric. The recorded code
+revision is `3463748`; the README rating update itself is a documentation-only
+change made afterward.
 
 ## License
 
