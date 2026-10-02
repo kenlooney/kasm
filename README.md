@@ -453,9 +453,13 @@ Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
 `v0.28.0-dev.43.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
-After publishing, automation retains the newest 25 snapshots and deletes older
-snapshot releases and their tags. Stable releases are never included in this
-cleanup.
+After publishing, automation retains the newest four snapshots and deletes
+older snapshot releases and their tags. The stable release workflow separately
+retains the newest three version-tagged releases and deletes older releases and
+their tags. Together, the workflows keep up to seven project-generated GitHub
+releases: three stable releases and four development snapshots. Manually
+created releases whose tags do not match the workflows' version-tag patterns
+are not included in this retention policy.
 
 To remove locally cached tags that have been deleted remotely:
 

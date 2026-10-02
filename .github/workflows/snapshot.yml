@@ -101,11 +101,11 @@ jobs:
           --prerelease
           --generate-notes
 
-      - name: Retain only the newest 25 snapshots
+      - name: Retain only the newest 4 snapshots
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SNAPSHOT_LIMIT: 25
+          SNAPSHOT_LIMIT: 4
         shell: bash
         run: |
           mapfile -t expired_tags < <(
