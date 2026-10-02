@@ -53,6 +53,16 @@ target_link_libraries(kasm_segment_mov_cli PRIVATE kasm::core)
 add_executable(kasm_mode_regions_cli mode_regions_cli.c)
 target_link_libraries(kasm_mode_regions_cli PRIVATE kasm::core)
 
+add_executable(kasm_symbol_expressions_cli symbol_expressions_cli.c)
+target_link_libraries(kasm_symbol_expressions_cli PRIVATE kasm::core)
+
+add_executable(kasm_equ_cli equ_cli.c)
+target_link_libraries(kasm_equ_cli PRIVATE kasm::core)
+
+add_executable(kasm_conditional_jump_cli conditional_jump_cli.c)
+target_link_libraries(kasm_conditional_jump_cli PRIVATE kasm::core)
+
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -71,7 +81,9 @@ if(MSVC)
     target_compile_options(kasm_segment_mov_cli PRIVATE /W4)
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE /W4)
     target_compile_options(kasm_mode_regions_cli PRIVATE /W4)
-
+    target_compile_options(kasm_symbol_expressions_cli PRIVATE /W4)
+    target_compile_options(kasm_equ_cli PRIVATE /W4)
+    target_compile_options(kasm_conditional_jump_cli PRIVATE /W4)
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_diagnostic_cli PROPERTY MSVC_RUNTIME_LIBRARY
@@ -106,6 +118,13 @@ if(MSVC)
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_mode_regions_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_conditional_jump_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_symbol_expressions_cli
+        PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_equ_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -125,6 +144,9 @@ else()
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_segment_mov_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_mode_regions_cli PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_symbol_expressions_cli PRIVATE
+        -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_equ_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -226,6 +248,8 @@ set_tests_properties(kemu.far_truncated.cli PROPERTIES
     FIXTURES_REQUIRED kasm_far_truncated_image
 )
 
+
+
 set(KASM_FAR_OUTSIDE_IMAGE
     "${CMAKE_CURRENT_BINARY_DIR}/far_jump_outside.bin")
 add_test(
@@ -291,6 +315,12 @@ add_test(
 )
 
 add_test(
+    NAME kasm.symbol_expressions.cli
+    COMMAND kasm_symbol_expressions_cli
+        "${PROJECT_SOURCE_DIR}/examples/symbol_expressions.asm"
+)
+
+add_test(
     NAME kasm.instructions.cli
     COMMAND kasm_instructions_cli "${PROJECT_SOURCE_DIR}/examples/instructions.asm"
 )
@@ -340,3 +370,82 @@ add_test(
 set_tests_properties(kasm.diagnostic.cli PROPERTIES
     WILL_FAIL TRUE
 )
+
+add_test(
+    NAME kasm.equ.cli
+    COMMAND kasm_equ_cli "${PROJECT_SOURCE_DIR}/examples/equ.asm"
+)
+
+set(KASM_CONDITIONAL_JUMP_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/conditional_jump.bin")
+
+add_test(
+    NAME kasm.conditional_jump.cli
+    COMMAND kasm_conditional_jump_cli
+        "${PROJECT_SOURCE_DIR}/examples/conditional_jump.asm"
+        "${KASM_CONDITIONAL_JUMP_IMAGE}"
+)
+set_tests_properties(kasm.conditional_jump.cli PROPERTIES
+    FIXTURES_SETUP kasm_conditional_jump_image
+)
+add_test(
+    NAME kemu.conditional_jump.cli
+    COMMAND kemu "${KASM_CONDITIONAL_JUMP_IMAGE}"
+)
+set_tests_properties(kemu.conditional_jump.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_conditional_jump_image
+    PASS_REGULAR_EXPRESSION
+        "halted after 8 instructions at 0000:7C14, AX=1111"
+)
+
+set(KASM_JC_TRUNCATED_IMAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/jc_truncated.bin")
+
+add_test(
+    NAME kasm.jc_truncated.image
+    COMMAND kasm
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/jc_truncated.asm"
+        "${KASM_JC_TRUNCATED_IMAGE}"
+)
+set_tests_properties(kasm.jc_truncated.image PROPERTIES
+    FIXTURES_SETUP kasm_jc_truncated_image
+)
+
+add_test(
+    NAME kemu.jc_truncated.cli
+    COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:kemu>"
+        "-DINPUT=${KASM_JC_TRUNCATED_IMAGE}"
+        "-DEXPECTED=truncated conditional jump instruction at 0000:7C00"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_failure.cmake"
+)
+set_tests_properties(kemu.jc_truncated.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_jc_truncated_image
+)
+
+set(KASM_INT_IMAGE "${CMAKE_CURRENT_BINARY_DIR}/int.bin")
+
+add_test(
+    NAME kasm.int.image
+    COMMAND kasm
+        "${PROJECT_SOURCE_DIR}/examples/int.asm"
+        "${KASM_INT_IMAGE}"
+)
+set_tests_properties(kasm.int.image PROPERTIES
+    FIXTURES_SETUP kasm_int_image
+)
+
+add_test(
+    NAME kemu.int.cli
+    COMMAND kemu "${KASM_INT_IMAGE}"
+)
+set_tests_properties(kemu.int.cli PROPERTIES
+    FIXTURES_REQUIRED kasm_int_image
+    PASS_REGULAR_EXPRESSION
+        "Ahalted after 5 instructions at 0000:7C0A, AX=0E41"
+)
+
+
+
+
+

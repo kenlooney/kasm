@@ -29,6 +29,7 @@ static int statement_size(
     {
     case ST_LABEL:
     case ST_MODE:
+    case ST_EQU:
     case ST_ORG:
         *size = 0;
         return 1;
@@ -57,7 +58,10 @@ static int statement_size(
         *size = 1;
         return 1;
     case ST_JMP8:
+    case ST_INT:
     case ST_DW:
+    case ST_JC:
+    case ST_JNC:
     case ST_MOV_SEGMENT:
         *size = 2;
         return 1;

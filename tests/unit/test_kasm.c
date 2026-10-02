@@ -209,6 +209,100 @@ static int test_mode_width_rejections(void)
 
     return failures != 0;
 }
+static int test_symbol_expression_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "dw missing;",
+        "data rejects an undefined symbol");
+    failures += test_semantic_rejection(
+        "org 0x7C00; db later; later: db 0;",
+        "resolved data still has to fit its width");
+
+    return failures != 0;
+}
+
+static int test_equ_parser_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_parser_rejection(
+        "answer equ;",
+        "equ requires an expression");
+    failures += test_parser_rejection(
+        "answer equ 42",
+        "equ requires a semicolon");
+
+    return failures != 0;
+}
+static int test_equ_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "name: name equ 1;",
+        "a label and equ cannot share a name");
+    failures += test_semantic_rejection(
+        "value equ missing; dw value;",
+        "equ rejects an undefined label");
+    failures += test_semantic_rejection(
+        "first equ 1; second equ first + 1; dw second;",
+        "the first equ implementation rejects equ chains");
+
+    return failures != 0;
+}
+static int test_conditional_jump_parser_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_parser_rejection(
+        "jc;",
+        "jc requires a target label");
+    failures += test_parser_rejection(
+        "jnc 12;",
+        "jnc requires a label rather than a number");
+    failures += test_parser_rejection(
+        "jc target target:",
+        "jc requires a semicolon after its target");
+
+    return failures != 0;
+}
+
+static int test_conditional_jump_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "jc missing;",
+        "jc rejects an undefined label");
+    failures += test_semantic_rejection(
+        "jc target; padto 130, 0; target: hlt;",
+        "jc rejects a target beyond signed rel8 range");
+    failures += test_semantic_rejection(
+        "mode 32; jnc target; target: hlt;",
+        "conditional rel8 is not enabled in mode 32 yet");
+
+    return failures != 0;
+}
+static int test_int_parser_rejections(void)
+{
+    return test_parser_rejection(
+        "int;",
+        "int requires an interrupt vector");
+}
+static int test_int_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "int 0 - 1;",
+        "int rejects a negative vector");
+    failures += test_semantic_rejection(
+        "int 256;",
+        "int rejects a vector wider than one byte");
+    return failures != 0;
+}
 
 int main(void)
 {
@@ -220,6 +314,13 @@ int main(void)
     failures += test_far_jump_rejections();
     failures += test_mode_rejections();
     failures += test_mode_width_rejections();
+    failures += test_equ_parser_rejections();
+    failures += test_equ_semantic_rejections();
+    failures += test_symbol_expression_rejections();
+    failures += test_conditional_jump_parser_rejections();
+    failures += test_conditional_jump_semantic_rejections();
+    failures += test_int_parser_rejections();
+    failures += test_int_semantic_rejections();
 
     return failures != 0;
 }

@@ -1,0 +1,10 @@
+org 0x7C00;
+
+mov ax, 0x0E41;
+mov bx, 0x0007;
+int 0x10;
+cli;
+hlt;
+
+padto 510, 0;
+dw 0xAA55;

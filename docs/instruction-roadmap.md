@@ -108,8 +108,8 @@ though string instructions that consume `DF` are not implemented yet.
 
 - [ ] `JO` — `70 cb`
 - [ ] `JNO` — `71 cb`
-- [ ] `JB`/`JC` — `72 cb`
-- [ ] `JAE`/`JNC` — `73 cb`
+- [x] `JB`/`JC` — `72 cb`
+- [x] `JAE`/`JNC` — `73 cb`
 - [ ] `JE`/`JZ` — `74 cb`
 - [ ] `JNE`/`JNZ` — `75 cb`
 - [ ] `JBE` — `76 cb`

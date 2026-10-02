@@ -379,6 +379,69 @@ static int emulate_instruction(Cpu16 *cpu)
             cpu->flags = (uint16_t)(flags | CPU16_FLAG_FIXED);
             return 1;
         }
+
+    case 0xCD: /* INT imm8: the KEMU BIOS shim below is intentionally small. */
+    {
+        uint8_t vector;
+
+        if (!cpu16_fetch8(cpu, &vector))
+        {
+            fprintf(stderr,
+                    "truncated INT instruction at %04X:%04X\n",
+                    (unsigned int)cpu->cs,
+                    (unsigned int)instruction_ip);
+            return 0;
+        }
+
+        if (vector != 0x10u)
+        {
+            fprintf(stderr,
+                    "unsupported BIOS interrupt %02Xh\n",
+                    (unsigned int)vector);
+            return 0;
+        }
+
+        if ((cpu->ax >> 8) != 0x0Eu)
+        {
+            fprintf(stderr,
+                    "unsupported BIOS int 10h function AH=%02X\n",
+                    (unsigned int)(cpu->ax >> 8));
+            return 0;
+        }
+
+        if (putchar((unsigned char)(cpu->ax & 0x00FFu)) == EOF)
+            return 0;
+
+        return 1;
+    }
+
+    case 0x72: /* JC/JB rel8 */
+    case 0x73: /* JNC/JAE rel8 */
+    {
+        uint8_t encoded_displacement;
+        int carry_set;
+        int take_branch;
+
+        if (!cpu16_fetch8(cpu, &encoded_displacement))
+        {
+            fprintf(stderr,
+                    "truncated conditional jump instruction at %04X:%04X\n",
+                    (unsigned int)cpu->cs,
+                    (unsigned int)instruction_ip);
+            return 0;
+        }
+
+        carry_set = (cpu->flags & CPU16_FLAG_CF) != 0;
+        take_branch = opcode == 0x72 ? carry_set : !carry_set;
+
+        if (take_branch)
+        {
+            cpu->ip = (uint16_t)(cpu->ip + (int16_t)(int8_t)encoded_displacement);
+        }
+
+        return 1;
+    }
+
     case 0xEB: /* JMP rel8 */
     {
         uint8_t encoded_displacement;

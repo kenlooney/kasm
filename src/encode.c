@@ -163,17 +163,35 @@ int emit_program(
 
         case ST_LABEL:
         case ST_MODE:
+        case ST_EQU:
         case ST_ORG:
-            // Labels and assembler directives do not emit any bytes.
+            // These statements do not emit any bytes.
             break;
 
-        // Jump instructions
+        case ST_INT:
+            if (!byte_push(bytes, 0xCDu) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
+            break;
+
+            // Jump instructions
         case ST_JMP8:
             if (!byte_push(bytes, 0xEB) ||
                 !byte_push(bytes, (uint8_t)statement->value))
             {
                 return 0;
             }
+            break;
+        case ST_JC:
+            if (!byte_push(bytes, 0x72) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
+            break;
+
+        case ST_JNC:
+            if (!byte_push(bytes, 0x73) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
             break;
 
         // JMPFAR
