@@ -351,8 +351,8 @@ static int statement_defines_symbol(const Statement *statement)
 static Token statement_symbol(const Statement *statement)
 {
     return statement->kind == ST_LABEL
-        ? statement->label
-        : statement->symbol;
+               ? statement->label
+               : statement->symbol;
 }
 
 static int check_duplicate_symbols(
@@ -577,7 +577,10 @@ int check_program(Parser *parser, Program *program, const Target *target)
             }
         }
 
-        else if (s->kind == ST_JMP8)
+        else if (s->kind == ST_JMP8 ||
+                 s->kind == ST_JC ||
+                 s->kind == ST_JNC)
+
         {
             const Statement *destination = NULL;
 

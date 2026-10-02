@@ -379,6 +379,33 @@ static int emulate_instruction(Cpu16 *cpu)
             cpu->flags = (uint16_t)(flags | CPU16_FLAG_FIXED);
             return 1;
         }
+    case 0x72: /* JC/JB rel8 */
+    case 0x73: /* JNC/JAE rel8 */
+    {
+        uint8_t encoded_displacement;
+        int carry_set;
+        int take_branch;
+
+        if (!cpu16_fetch8(cpu, &encoded_displacement))
+        {
+            fprintf(stderr,
+                    "truncated conditional jump instruction at %04X:%04X\n",
+                    (unsigned int)cpu->cs,
+                    (unsigned int)instruction_ip);
+            return 0;
+        }
+
+        carry_set = (cpu->flags & CPU16_FLAG_CF) != 0;
+        take_branch = opcode == 0x72 ? carry_set : !carry_set;
+
+        if (take_branch)
+        {
+            cpu->ip = (uint16_t)(cpu->ip + (int16_t)(int8_t)encoded_displacement);
+        }
+
+        return 1;
+    }
+
     case 0xEB: /* JMP rel8 */
     {
         uint8_t encoded_displacement;

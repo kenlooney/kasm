@@ -75,10 +75,9 @@ static int statement(Parser *parser, Program *program)
         s.kind = ST_LABEL;
         s.label = name;
     }
-    //TODO: Add parser rejection tests when back from Doctor!
+    // TODO: Add parser rejection tests when back from Doctor!
     else if (parser->lexer.token.kind == TK_IDENT &&
-             token_is(source, parser->lexer.token, "equ")
-            )
+             token_is(source, parser->lexer.token, "equ"))
     {
         Token semicolon;
 
@@ -341,21 +340,27 @@ static int statement(Parser *parser, Program *program)
         s.span.end = semicolon.span.end;
     }
 
-    else if (token_is(source, name, "jmp8"))
+    else if (token_is(source, name, "jmp8") ||
+             token_is(source, name, "jc") ||
+             token_is(source, name, "jb") ||
+             token_is(source, name, "jnc") ||
+             token_is(source, name, "jae"))
     {
-        s.kind = ST_JMP8;
+        Token semicolon;
 
-        /*
-         * After the instruction name was consumed, the current token
-         * should be the destination label.
-         */
+        if (token_is(source, name, "jmp8"))
+            s.kind = ST_JMP8;
+        else if (token_is(source, name, "jc") ||
+                 token_is(source, name, "jb"))
+            s.kind = ST_JC;
+        else
+            s.kind = ST_JNC;
+
         s.target = parser->lexer.token;
-
         if (!take(parser, TK_IDENT, "expected jump target"))
             return 0;
 
-        Token semicolon = parser->lexer.token;
-
+        semicolon = parser->lexer.token;
         if (!take(parser, TK_SEMI, "expected semicolon"))
             return 0;
 

@@ -252,6 +252,39 @@ static int test_equ_semantic_rejections(void)
 
     return failures != 0;
 }
+static int test_conditional_jump_parser_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_parser_rejection(
+        "jc;",
+        "jc requires a target label");
+    failures += test_parser_rejection(
+        "jnc 12;",
+        "jnc requires a label rather than a number");
+    failures += test_parser_rejection(
+        "jc target target:",
+        "jc requires a semicolon after its target");
+
+    return failures != 0;
+}
+
+static int test_conditional_jump_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "jc missing;",
+        "jc rejects an undefined label");
+    failures += test_semantic_rejection(
+        "jc target; padto 130, 0; target: hlt;",
+        "jc rejects a target beyond signed rel8 range");
+    failures += test_semantic_rejection(
+        "mode 32; jnc target; target: hlt;",
+        "conditional rel8 is not enabled in mode 32 yet");
+
+    return failures != 0;
+}
 
 int main(void)
 {
@@ -266,7 +299,8 @@ int main(void)
     failures += test_equ_parser_rejections();
     failures += test_equ_semantic_rejections();
     failures += test_symbol_expression_rejections();
-    
+    failures += test_conditional_jump_parser_rejections();
+    failures += test_conditional_jump_semantic_rejections();
 
     return failures != 0;
 }

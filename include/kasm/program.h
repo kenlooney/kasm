@@ -29,6 +29,8 @@ typedef enum {
     ST_CLI,
     ST_STI,
     ST_LABEL,
+    ST_JC,
+    ST_JNC,
     ST_JMP8,
     ST_ORG,
     ST_DB,
@@ -56,6 +58,7 @@ typedef enum {
     ST_JMPFAR,
     ST_MODE,
     ST_EQU,
+    ST_INT,
 } StatementKind;
 
 typedef enum {

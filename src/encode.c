@@ -176,6 +176,17 @@ int emit_program(
                 return 0;
             }
             break;
+        case ST_JC:
+            if (!byte_push(bytes, 0x72) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
+            break;
+
+        case ST_JNC:
+            if (!byte_push(bytes, 0x73) ||
+                !byte_push(bytes, (uint8_t)statement->value))
+                return 0;
+            break;
 
         // JMPFAR
         case ST_JMPFAR:
