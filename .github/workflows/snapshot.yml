@@ -108,21 +108,24 @@ jobs:
           SNAPSHOT_LIMIT: 4
         shell: bash
         run: |
-          mapfile -t expired_tags < <(
-            gh api --paginate --slurp \
+          expired_tags="$(
+            gh api --paginate \
               "repos/{owner}/{repo}/releases?per_page=100" \
-              --jq 'add
-                | map(select(
-                    .prerelease == true
-                    and (.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-dev\\."))
-                  ))
-                | sort_by(.created_at)
-                | reverse
-                | .[($ENV.SNAPSHOT_LIMIT | tonumber):]
-                | .[].tag_name'
-          )
+              | jq -r -s --argjson limit "$SNAPSHOT_LIMIT" '
+                  add
+                  | map(select(
+                      .prerelease == true
+                      and (.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-dev\\."))
+                    ))
+                  | sort_by(.created_at)
+                  | reverse
+                  | .[$limit:]
+                  | .[].tag_name'
+          )"
 
-          for tag in "${expired_tags[@]}"; do
-            echo "Deleting expired snapshot $tag"
-            gh release delete "$tag" --cleanup-tag --yes
-          done
+          if [[ -n "$expired_tags" ]]; then
+            while IFS= read -r tag; do
+              echo "Deleting expired snapshot $tag"
+              gh release delete "$tag" --cleanup-tag --yes
+            done <<< "$expired_tags"
+          fi
