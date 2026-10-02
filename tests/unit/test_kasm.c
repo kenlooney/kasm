@@ -223,6 +223,35 @@ static int test_symbol_expression_rejections(void)
     return failures != 0;
 }
 
+static int test_equ_parser_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_parser_rejection(
+        "answer equ;",
+        "equ requires an expression");
+    failures += test_parser_rejection(
+        "answer equ 42",
+        "equ requires a semicolon");
+
+    return failures != 0;
+}
+static int test_equ_semantic_rejections(void)
+{
+    int failures = 0;
+
+    failures += test_semantic_rejection(
+        "name: name equ 1;",
+        "a label and equ cannot share a name");
+    failures += test_semantic_rejection(
+        "value equ missing; dw value;",
+        "equ rejects an undefined label");
+    failures += test_semantic_rejection(
+        "first equ 1; second equ first + 1; dw second;",
+        "the first equ implementation rejects equ chains");
+
+    return failures != 0;
+}
 
 int main(void)
 {
@@ -234,6 +263,10 @@ int main(void)
     failures += test_far_jump_rejections();
     failures += test_mode_rejections();
     failures += test_mode_width_rejections();
+    failures += test_equ_parser_rejections();
+    failures += test_equ_semantic_rejections();
+    failures += test_symbol_expression_rejections();
+    
 
     return failures != 0;
 }

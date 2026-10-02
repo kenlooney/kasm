@@ -56,7 +56,9 @@ target_link_libraries(kasm_mode_regions_cli PRIVATE kasm::core)
 add_executable(kasm_symbol_expressions_cli symbol_expressions_cli.c)
 target_link_libraries(kasm_symbol_expressions_cli PRIVATE kasm::core)
 
- 
+add_executable(kasm_equ_cli equ_cli.c)
+target_link_libraries(kasm_equ_cli PRIVATE kasm::core)
+
 if(MSVC)
     target_compile_options(kasm_cursor_cli PRIVATE /W4)
     target_compile_options(kasm_diagnostic_cli PRIVATE /W4)
@@ -76,7 +78,7 @@ if(MSVC)
     target_compile_options(kasm_confirm_reg_mov_cli PRIVATE /W4)
     target_compile_options(kasm_mode_regions_cli PRIVATE /W4)
     target_compile_options(kasm_symbol_expressions_cli PRIVATE /W4)
-
+    target_compile_options(kasm_equ_cli PRIVATE /W4)
     set_property(TARGET kasm_cursor_cli PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_property(TARGET kasm_diagnostic_cli PROPERTY MSVC_RUNTIME_LIBRARY
@@ -114,6 +116,8 @@ if(MSVC)
     set_property(TARGET kasm_symbol_expressions_cli
         PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_property(TARGET kasm_equ_cli PROPERTY MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(kasm_cursor_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_diagnostic_cli PRIVATE -Wall -Wextra -Wpedantic)
@@ -135,6 +139,7 @@ else()
     target_compile_options(kasm_mode_regions_cli PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(kasm_symbol_expressions_cli PRIVATE
         -Wall -Wextra -Wpedantic)
+    target_compile_options(kasm_equ_cli PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 add_test(
@@ -356,3 +361,9 @@ add_test(
 set_tests_properties(kasm.diagnostic.cli PROPERTIES
     WILL_FAIL TRUE
 )
+
+add_test(
+    NAME kasm.equ.cli
+    COMMAND kasm_equ_cli "${PROJECT_SOURCE_DIR}/examples/equ.asm"
+)
+

@@ -163,8 +163,9 @@ int emit_program(
 
         case ST_LABEL:
         case ST_MODE:
+        case ST_EQU:
         case ST_ORG:
-            // Labels and assembler directives do not emit any bytes.
+            // These statements do not emit any bytes.
             break;
 
         // Jump instructions

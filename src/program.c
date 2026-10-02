@@ -75,6 +75,29 @@ static int statement(Parser *parser, Program *program)
         s.kind = ST_LABEL;
         s.label = name;
     }
+    //TODO: Add parser rejection tests when back from Doctor!
+    else if (parser->lexer.token.kind == TK_IDENT &&
+             token_is(source, parser->lexer.token, "equ")
+            )
+    {
+        Token semicolon;
+
+        s.kind = ST_EQU;
+        s.symbol = name;
+
+        if (!take(parser, TK_IDENT, "expected equ"))
+            return 0;
+
+        s.expression = parse_expression(parser);
+        if (s.expression < 0)
+            return 0;
+
+        semicolon = parser->lexer.token;
+        if (!take(parser, TK_SEMI, "expected semicolon"))
+            return 0;
+
+        s.span.end = semicolon.span.end;
+    }
 
     // no-operand instructions
     else if (

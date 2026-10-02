@@ -238,11 +238,12 @@ static int establish_origin(const Source *source, Program *program)
     return 1;
 }
 
-static int resolve_label_expression(
+static int resolve_symbol_expression(
     const Source *source,
     const Parser *parser,
     const Program *program,
     int root,
+    int allow_equ,
     long long *result)
 {
     const Expr *expression = &parser->nodes[root];
@@ -283,15 +284,29 @@ static int resolve_label_expression(
             *result = (long long)address;
             return 1;
         }
+        if (allow_equ)
+        {
+            for (int i = 0; i < program->count; i++)
+            {
+                const Statement *candidate = &program->statements[i];
+
+                if (candidate->kind == ST_EQU &&
+                    tokens_equal(source, name, candidate->symbol))
+                {
+                    *result = candidate->value;
+                    return 1;
+                }
+            }
+        }
 
         diagnostic(source, expression->span, "undefined symbol");
         return 0;
     }
 
-    if (!resolve_label_expression(
-            source, parser, program, expression->left, &left) ||
-        !resolve_label_expression(
-            source, parser, program, expression->right, &right))
+    if (!resolve_symbol_expression(
+            source, parser, program, expression->left, allow_equ, &left) ||
+        !resolve_symbol_expression(
+            source, parser, program, expression->right, allow_equ, &right))
         return 0;
 
     if (expression->kind == EX_ADD)
@@ -328,6 +343,50 @@ static int resolve_label_expression(
     return 1;
 }
 
+static int statement_defines_symbol(const Statement *statement)
+{
+    return statement->kind == ST_LABEL || statement->kind == ST_EQU;
+}
+
+static Token statement_symbol(const Statement *statement)
+{
+    return statement->kind == ST_LABEL
+        ? statement->label
+        : statement->symbol;
+}
+
+static int check_duplicate_symbols(
+    const Source *source,
+    const Program *program)
+{
+    for (int i = 0; i < program->count; i++)
+    {
+        const Statement *current = &program->statements[i];
+
+        if (!statement_defines_symbol(current))
+            continue;
+
+        for (int j = 0; j < i; j++)
+        {
+            const Statement *previous = &program->statements[j];
+
+            if (statement_defines_symbol(previous) &&
+                tokens_equal(
+                    source,
+                    statement_symbol(current),
+                    statement_symbol(previous)))
+            {
+                diagnostic(source,
+                           statement_symbol(current).span,
+                           "duplicate symbol");
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 int check_program(Parser *parser, Program *program, const Target *target)
 {
     if (!parser || !program || !target || target->arch != ARCH_X86)
@@ -336,20 +395,55 @@ int check_program(Parser *parser, Program *program, const Target *target)
     const Source *source = parser->lexer.cursor.source;
     if (!establish_origin(source, program))
         return 0;
+    if (!check_duplicate_symbols(source, program))
+        return 0;
 
+    /*
+     * First resolve EQU definitions from literals and labels. EQU-to-EQU
+     * dependencies are deliberately not enabled by this first implementation.
+     */
     for (int i = 0; i < program->count; i++)
     {
         Statement *statement = &program->statements[i];
 
-        if (statement->expression < 0 ||
-            !expression_uses_symbol(parser, statement->expression))
+        if (statement->kind != ST_EQU)
             continue;
 
-        if (!resolve_label_expression(
+        if (!resolve_symbol_expression(
                 source,
                 parser,
                 program,
                 statement->expression,
+                0,
+                &statement->value))
+        {
+            diagnostic(
+                source,
+                statement->symbol.span,
+                "equ expression must use literals and labels");
+            return 0;
+        }
+    }
+
+    /*
+     * Then resolve uses in ordinary statements. At this point every EQU
+     * statement already has its final value, so those names are visible.
+     */
+    for (int i = 0; i < program->count; i++)
+    {
+        Statement *statement = &program->statements[i];
+
+        if (statement->kind == ST_EQU ||
+            statement->expression < 0 ||
+            !expression_uses_symbol(parser, statement->expression))
+            continue;
+
+        if (!resolve_symbol_expression(
+                source,
+                parser,
+                program,
+                statement->expression,
+                1,
                 &statement->value))
             return 0;
     }
@@ -360,6 +454,7 @@ int check_program(Parser *parser, Program *program, const Target *target)
 
         if (s->mode != MODE_16 &&
             s->kind != ST_MODE &&
+            s->kind != ST_EQU &&
             s->kind != ST_LABEL &&
             s->kind != ST_ORG &&
             s->kind != ST_DB &&

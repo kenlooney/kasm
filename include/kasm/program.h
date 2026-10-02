@@ -55,6 +55,7 @@ typedef enum {
     ST_XCHG,
     ST_JMPFAR,
     ST_MODE,
+    ST_EQU,
 } StatementKind;
 
 typedef enum {
@@ -99,6 +100,7 @@ typedef struct {
     Token second_operand;
     Token label;
     Token target;
+    Token symbol;
 
     int expression;
     int fill_expression;
