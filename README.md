@@ -9,6 +9,13 @@ instructions for a future protected-mode transition. The project also
 includes KEMU, a deliberately partial 16-bit emulator for testing supported
 machine code.
 
+> **v0.29.0 adds software-interrupt encoding and a BIOS disk-loading
+> milestone.** KASM emits `INT imm8` (`CD ib`), and KEMU provides a limited
+> `INT 10h/AH=0Eh` teletype shim. The Windows debug suite passes all 38 tests.
+> In a manual QEMU/SeaBIOS check, the two-sector disk example read its second
+> sector with `INT 13h`, continued past `JC`, and printed `B` from the loaded
+> second stage. This is still real-mode code, not a protected-mode OS yet.
+
 > **v0.24.0 establishes a complete real-mode startup environment.** KASM can
 > normalize `CS` with an immediate far jump, initialize `DS`, `ES`, `SS`, and
 > `SP`, and emit a complete 512-byte startup image. KEMU checks far-jump
@@ -29,8 +36,8 @@ machine code.
 
 The current `dev` branch builds on that real-mode foundation with source-level
 encoding-mode regions, label expressions, named `equ` constants, and
-carry-conditional short jumps. The project version in `CMakeLists.txt` is
-currently `0.28.0`; consult the release tags to see which development features
+carry-conditional short jumps, plus `int` encoding. The project version in
+`CMakeLists.txt` is currently `0.29.0`; consult the release tags to see which development features
 have shipped in a stable release.
 
 ## Assemble and boot the example
@@ -102,9 +109,47 @@ KEMU currently provides:
 
 KEMU is not intended to replace QEMU or emulate an entire PC. It currently
 implements only the machine state and instructions needed to test KASM's
-real-mode programs. It does not deliver software interrupts or emulate BIOS
-services; `iret` can only restore an interrupt frame that a program has
-already placed on the stack.
+real-mode programs. Its `INT 10h/AH=0Eh` shim writes `AL` to standard output;
+it does not model an interrupt-vector-table lookup, interrupt stack frame, or
+BIOS ROM. Other vectors and video functions fail explicitly. `iret` can only
+restore an interrupt frame that a program has already placed on the stack.
+
+### BIOS teletype and second-stage loading
+
+Assemble and execute the teletype example:
+
+```powershell
+.\bin\Debug\kasm.exe .\examples\int.asm .\int.bin
+.\bin\Debug\kemu.exe .\int.bin
+```
+
+Expected output:
+
+```text
+Ahalted after 5 instructions at 0000:7C0A, AX=0E41
+```
+
+`AX=0E41h` selects BIOS teletype function `AH=0Eh` and character `AL=41h`
+(`A`). The 512-byte image begins with `B8 41 0E BB 07 00 CD 10 FA F4` and
+ends with the BIOS signature `55 AA`.
+
+The [disk-loading example](examples/int_disk.asm) goes further: it creates a
+1024-byte image, reads CHS sector two from drive `80h` into `0000:7E00`,
+checks Carry Flag with `jc disk_error;`, and jumps to the loaded second stage:
+
+```powershell
+.\bin\Debug\kasm.exe .\examples\int_disk.asm .\int_disk.img
+qemu-system-x86_64.exe `
+  -drive format=raw,file=.\int_disk.img,index=0,media=disk `
+  -boot order=c -no-reboot -no-shutdown
+```
+
+The successful manual SeaBIOS check displayed `B`. The error path prints `E`;
+that path has not yet been manually confirmed in this milestone. This small
+fixture assumes boot drive `80h`; it is not a general-purpose disk loader.
+KEMU does not implement `INT 13h`, so run this disk example under QEMU rather
+than KEMU. The next OS milestone is the GDT and actual protected-mode
+transition, followed later by a 64-bit long-mode path.
 
 ## Language support
 
@@ -141,6 +186,7 @@ cannot execute the assembler's 32-bit output.
 | `cbw;` | `98` | Sign-extend `AL` into `AX` |
 | `cwd;` | `99` | Sign-extend `AX` into `DX:AX` |
 | `iret;` | `CF` | Restore `IP`, `CS`, and FLAGS from the stack |
+| `int expression;` | `CD ib` | Invoke the interrupt vector numbered `0..255` |
 | `jmp8 label;` | `EB cb` | Explicit signed 8-bit relative jump |
 | `jc label;` or `jb label;` | `72 cb` | Jump when Carry Flag is set |
 | `jnc label;` or `jae label;` | `73 cb` | Jump when Carry Flag is clear |
@@ -153,6 +199,12 @@ and `jnc` are aliases for the same condition and opcode. They are aliases,
 not four distinct instructions: `jb`/`jc` both encode as `72 cb`, while
 `jae`/`jnc` both encode as `73 cb`. A `jmpfar` segment and its origin-adjusted
 label offset must each fit in 16 bits.
+
+`int` accepts a vector expression that resolves to `0..255`; `ib` is its
+one-byte immediate. KASM permits this encoding in all three source encoding
+modes, but that does not make legacy BIOS services available outside real
+mode. KEMU supports only the teletype shim described above, not general
+interrupt delivery or BIOS disk services.
 
 The supported 16-bit registers are `ax`, `cx`, `dx`, `bx`, `sp`, `bp`, `si`,
 and `di`. In the encoding table, `rw` selects one of these registers and `iw`
@@ -179,7 +231,9 @@ mov cx, 0x5678;
 
 The directives emit no bytes. In MODE_16, `mov r16, imm16` uses `B8+rw iw`;
 in MODE_32, the currently implemented `mov r32, imm32` form uses `B8+rd id`.
-The current assembler does not yet support 64-bit instruction encodings, and
+The current assembler does not yet support 64-bit MOV encodings; `INT imm8`
+uses the same two-byte encoding in all three source modes. Most other
+instructions remain MODE_16-only, and
 KEMU does not execute MODE_32 code. A `mode 32;` directive is not a CPU mode
 transition; the code that changes processor mode is a separate part of the
 boot process.
@@ -326,8 +380,8 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 ### Current limitations
 
 - Raw flat-binary output is the only output format. The complete boot path is
-  16-bit real mode; MODE_32 currently supports only `mov r32, imm32` encoding,
-  and there are no 64-bit instruction encodings yet.
+  16-bit real mode; MODE_32 supports `mov r32, imm32` and `int imm8` encoding.
+  MODE_64 supports `int imm8`, but not 64-bit MOV or a long-mode boot path.
 - General-purpose register operands are limited to the eight 16-bit registers;
   the implemented 32-bit MOV-immediate form supports the eight 32-bit general-
   purpose registers. Segment-register MOV supports only `es`, `ss`, and `ds`
@@ -337,9 +391,10 @@ ignored. Tokens and diagnostics use zero-based, half-open byte spans written as
 - Data directives currently accept one expression each.
 - String literals, character literals, and unary expression operators are not
   implemented yet.
-- KEMU executes only its supported 16-bit subset. `int imm8`, interrupt
-  delivery, BIOS services, devices, and general PC hardware are not emulated;
-  `iret` can restore a prepared interrupt frame.
+- KEMU executes only its supported 16-bit subset, with a host shim for
+  `INT 10h/AH=0Eh`. General interrupt delivery, `INT 13h` disk services,
+  devices, and general PC hardware are not emulated; `iret` can restore a
+  prepared interrupt frame.
 - Object files and executable formats are not implemented yet.
 
 ### Future output-format ladder
@@ -388,6 +443,17 @@ ctest --preset GCC-debug
 
 The matching optimized presets are `windows-release` and `GCC-release`.
 
+At the `0.29.0` development milestone, all 38 Windows debug tests pass,
+including INT image assembly and KEMU teletype execution. Run that focused
+pair with:
+
+```powershell
+ctest --preset windows-debug -R "kasm\.int|kemu\.int" -V
+```
+
+The QEMU/SeaBIOS disk-read result is a separate manual integration check,
+not part of that automated suite.
+
 ### VS Code debugging
 
 The included VS Code launch configuration can build and debug KASM using the
@@ -429,7 +495,7 @@ CMake generates `kasm/version.h` from the version in the top-level
 KASM_VERSION_MAJOR   /* numeric major version */
 KASM_VERSION_MINOR   /* numeric minor version */
 KASM_VERSION_PATCH   /* numeric patch version */
-KASM_VERSION_STRING  /* complete string, such as "0.28.0" */
+KASM_VERSION_STRING  /* complete string, such as "0.29.0" */
 ```
 
 The `kasm_version()` function returns the same complete version string at
@@ -451,7 +517,7 @@ included.
 
 Every push to `dev` is built and tested on Linux, macOS, and Windows. Successful
 builds are published as GitHub prereleases uniquely identified by tags such as
-`v0.28.0-dev.43.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
+`v0.29.0-dev.53.a1b2c3d`. Snapshot ZIPs contain the same identifier, allowing a
 contributor to download a binary or check out the exact source revision later.
 After publishing, automation retains the newest four snapshots and deletes
 older snapshot releases and their tags. The stable release workflow separately
@@ -481,12 +547,14 @@ points, so changes are easier to compare:
 
 | Snapshot | Score | Notes |
 | --- | ---: | --- |
+| 2026-10-02, `dev` at `93c51d7`, project version `0.29.0` | **8.9 / 10** | INT encoding, a scoped KEMU teletype shim, 38 passing Windows tests, and a manual SeaBIOS second-stage disk-load success; general interrupt delivery and protected-/long-mode transitions remain future work. |
 | 2026-10-02, `dev` at `3463748`, project version `0.28.0` | **8.7 / 10** | Strong staged assembler pipeline, real-mode boot path, and passing Windows test suite; BIOS interrupt delivery and the 32-bit/64-bit OS transitions remain future work. |
 | Earlier README rating, snapshot not recorded | 9.1 / 10 | Kept for history; it had no pinned revision or consistent rubric, so it is not directly comparable to the new baseline. |
 
-The 2026-10-02 entry is the first score using this rubric. The recorded code
-revision is `3463748`; the README rating update itself is a documentation-only
-change made afterward.
+The `0.28.0` entry is the first score using this rubric. Each entry identifies
+the code revision assessed; the associated README update is a subsequent
+documentation-only change. The `0.29.0` increase reflects the newly tested
+instruction and real BIOS disk-loading progress, not full BIOS emulation.
 
 ## License
 
