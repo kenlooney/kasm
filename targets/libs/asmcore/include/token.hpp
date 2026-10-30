@@ -4,6 +4,6 @@
 
 struct Token {
     std::string kind;
-    Span span;
     std::string text;
+    Span span;
 };

@@ -22,3 +22,13 @@ add_test(NAME span_test COMMAND span_test ${CMAKE_SOURCE_DIR}/examples/source.as
 add_executable(lexer_test lexer_test.cpp)
 target_link_libraries(lexer_test PRIVATE asmcore)
 add_test(NAME lexer_test COMMAND lexer_test ${CMAKE_SOURCE_DIR}/examples/source.asm)
+
+# Integer Test
+add_executable(integer_test integer_test.cpp)
+target_link_libraries(integer_test PRIVATE asmcore)
+add_test(NAME integer_test COMMAND integer_test)
+
+# Expression Test
+add_executable(expression_test expression_test.cpp)
+target_link_libraries(expression_test PRIVATE asmcore)
+add_test(NAME expression_test COMMAND expression_test ${CMAKE_SOURCE_DIR}/examples/expression.asm)
