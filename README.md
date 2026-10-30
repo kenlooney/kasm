@@ -1,4 +1,4 @@
-# kenx
+# kasm
 A x86 assembler I am writing from scratch
 ## What is next?
 I am planning on writing an graphical emulator for it using SDL3.
