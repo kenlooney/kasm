@@ -24,6 +24,45 @@ std::vector<Token> KasmLexer::tokenize(const std::string& text) {
                 tokens.push_back({"identifier", {begin, cursor}, text.substr(begin, cursor - begin)});
                 continue;
             }
+            // Handle numbers
+
+            // Handle binary numbers
+            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] == 'b' || text[cursor + 1] == 'B')) {
+                cursor += 2;
+                while (cursor < text.size() && (text[cursor] == '0' || text[cursor] == '1')) {
+                    ++cursor;
+                }
+                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
+                continue;
+            }
+            // Handle hexadecimal numbers
+            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] == 'x' || text[cursor + 1] == 'X')) {
+                cursor += 2;
+                while (cursor < text.size() && ((text[cursor] >= '0' && text[cursor] <= '9') || (text[cursor] >= 'a' && text[cursor] <= 'f') || (text[cursor] >= 'A' && text[cursor] <= 'F'))) {
+                    ++cursor;
+                }
+                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
+                continue;
+            }
+            // Handle octal numbers
+            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] >= '0' && text[cursor + 1] <= '7')) {
+                cursor += 1;
+                while (cursor < text.size() && (text[cursor] >= '0' && text[cursor] <= '7')) {
+                    ++cursor;
+                }
+                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
+                continue;
+            }
+            // Handle decimal numbers
+            if (digit(ch)) {
+                ++cursor;
+                while (cursor < text.size() && digit(text[cursor])) {
+                    ++cursor;
+                }
+                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
+                continue;
+            }
+
 
             ++cursor;
             tokens.push_back({"character", {begin, cursor}, text.substr(begin, 1)});
