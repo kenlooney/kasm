@@ -12,3 +12,8 @@ add_test(NAME position_test COMMAND position_test ${CMAKE_SOURCE_DIR}/examples/s
 add_executable(diagnostic_test diagnostic_test.cpp)
 target_link_libraries(diagnostic_test PRIVATE asmcore)
 add_test(NAME diagnostic_test COMMAND diagnostic_test ${CMAKE_SOURCE_DIR}/examples/source.asm)
+
+# Span Test
+add_executable(span_test span_test.cpp)
+target_link_libraries(span_test PRIVATE asmcore)
+add_test(NAME span_test COMMAND span_test ${CMAKE_SOURCE_DIR}/examples/source.asm)
