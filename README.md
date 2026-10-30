@@ -1,5 +1,10 @@
 # kasm
 A x86 assembler I am writing from scratch
+
+The project separates the reusable assembler framework in `asmcore` from the
+Kasm-specific lexer and parser in `kasmcore`. Programs implementing another
+assembly language can link to `asmcore`; Kasm consumers link to `kasmcore`,
+which also supplies its `asmcore` dependency.
 ## What is next?
 I am planning on writing an graphical emulator for it using SDL3.
 

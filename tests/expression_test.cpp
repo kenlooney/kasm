@@ -1,3 +1,4 @@
+
 #include "source.hpp"
 #include "diagnostic.hpp"
 #include "kasmlexer.hpp"
@@ -36,5 +37,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     std::cout << value << "\n";
+
+    
     return 0;
 }
