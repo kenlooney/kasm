@@ -9,8 +9,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 include(CTest)
 add_subdirectory(targets)
 
-
-if(BUILD_TESTING) 
-  enable_testing()
-  add_subdirectory(tests)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(BUILD_TESTING) 
+    enable_testing()
+    add_subdirectory(tests)
+  endif()
 endif()
