@@ -14,6 +14,17 @@ std::vector<Token> KasmLexer::tokenize(const std::string& text) {
                 continue;
             }
             std::size_t begin = cursor;
+
+            // Handle identifiers
+            if (letter(ch)) {
+                ++cursor;
+                while (cursor < text.size() && (letter(text[cursor]) || digit(text[cursor]))) {
+                    ++cursor;
+                }
+                tokens.push_back({"identifier", {begin, cursor}, text.substr(begin, cursor - begin)});
+                continue;
+            }
+
             ++cursor;
             tokens.push_back({"character", {begin, cursor}, text.substr(begin, 1)});
         }
