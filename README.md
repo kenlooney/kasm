@@ -1,5 +1,7 @@
 # kenx
-A x86 assembler and disassembler
+A x86 assembler I am writing from scratch
+## What is next?
+I am planning on writing an graphical emulator for it using SDL3.
 
 ## Building on Windows
 
