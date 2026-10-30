@@ -54,6 +54,25 @@
                 "CMAKE_C_COMPILER": "gcc",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
+        },
+        {
+            "name": "GCC-release",
+            "displayName": "GCC - Linux / WSL2 - Release",
+            "description": "Build with GCC and Unix Makefiles on Linux or WSL2",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}",
+                "VCPKG_TARGET_TRIPLET": "x64-linux",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ],
     "buildPresets": [
@@ -73,6 +92,11 @@
             "name": "GCC-debug",
             "displayName": "GCC - Linux / WSL2 - Debug",
             "configurePreset": "GCC-debug"
+        },
+        {
+            "name": "GCC-release",
+            "displayName": "GCC - Linux / WSL2 - Release",
+            "configurePreset": "GCC-release"
         }
     ],
     "testPresets": [
