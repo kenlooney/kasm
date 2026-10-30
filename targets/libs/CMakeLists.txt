@@ -1,2 +1,3 @@
 # CMakeLists for library targets
-add_subdirectory(asmcore)
+add_subdirectory(asmfw)
+add_subdirectory(kasmcore)
