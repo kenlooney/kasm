@@ -13,6 +13,27 @@ std::vector<Token> KasmLexer::tokenize(const std::string& text) {
                 ++cursor;
                 continue;
             }
+            // Single-line modern comments
+            if (ch == '/' && cursor + 1 < text.size() && text[cursor + 1] == '/') {
+                cursor += 2;
+                while (cursor < text.size() && text[cursor] != '\n') {
+                    ++cursor;
+                }
+                continue;
+            }
+            // Handle multi-line comments
+            if (ch == '/' && cursor + 1 < text.size() && text[cursor + 1] == '*') {
+                cursor += 2;
+                while (cursor + 1 < text.size() && !(text[cursor] == '*' && text[cursor + 1] == '/')) {
+                    ++cursor;
+                }
+                if (cursor + 1 < text.size()) {
+                    cursor += 2;
+                }
+                continue;
+            }
+
+            // Record the beginning of the current token
             std::size_t begin = cursor;
 
             // Handle identifiers
@@ -21,51 +42,22 @@ std::vector<Token> KasmLexer::tokenize(const std::string& text) {
                 while (cursor < text.size() && (letter(text[cursor]) || digit(text[cursor]))) {
                     ++cursor;
                 }
-                tokens.push_back({"identifier", {begin, cursor}, text.substr(begin, cursor - begin)});
+                tokens.push_back({"identifier", text.substr(begin, cursor - begin), {begin, cursor}});
                 continue;
             }
             // Handle numbers
-
-            // Handle binary numbers
-            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] == 'b' || text[cursor + 1] == 'B')) {
-                cursor += 2;
-                while (cursor < text.size() && (text[cursor] == '0' || text[cursor] == '1')) {
-                    ++cursor;
-                }
-                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
-                continue;
-            }
-            // Handle hexadecimal numbers
-            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] == 'x' || text[cursor + 1] == 'X')) {
-                cursor += 2;
-                while (cursor < text.size() && ((text[cursor] >= '0' && text[cursor] <= '9') || (text[cursor] >= 'a' && text[cursor] <= 'f') || (text[cursor] >= 'A' && text[cursor] <= 'F'))) {
-                    ++cursor;
-                }
-                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
-                continue;
-            }
-            // Handle octal numbers
-            if (ch == '0' && cursor + 1 < text.size() && (text[cursor + 1] >= '0' && text[cursor + 1] <= '7')) {
-                cursor += 1;
-                while (cursor < text.size() && (text[cursor] >= '0' && text[cursor] <= '7')) {
-                    ++cursor;
-                }
-                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
-                continue;
-            }
-            // Handle decimal numbers
-            if (digit(ch)) {
-                ++cursor;
-                while (cursor < text.size() && digit(text[cursor])) {
-                    ++cursor;
-                }
-                tokens.push_back({"integer", {begin, cursor}, text.substr(begin, cursor - begin)});
-                continue;
-            }
-
+             if (digit(ch)) {
+            ++cursor;
+            while (cursor < text.size() &&
+                   (letter(text[cursor]) || digit(text[cursor]))) ++cursor;
+            tokens.push_back({"integer", text.substr(begin, cursor - begin),
+                              {begin, cursor}});
+            continue;
+        }
+         
 
             ++cursor;
-            tokens.push_back({"character", {begin, cursor}, text.substr(begin, 1)});
+            tokens.push_back({"punctuation", text.substr(begin, 1), {begin, cursor}});
         }
         return tokens;
 }
