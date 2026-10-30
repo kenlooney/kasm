@@ -17,3 +17,8 @@ add_test(NAME diagnostic_test COMMAND diagnostic_test ${CMAKE_SOURCE_DIR}/exampl
 add_executable(span_test span_test.cpp)
 target_link_libraries(span_test PRIVATE asmcore)
 add_test(NAME span_test COMMAND span_test ${CMAKE_SOURCE_DIR}/examples/source.asm)
+
+# Lexer Test
+add_executable(lexer_test lexer_test.cpp)
+target_link_libraries(lexer_test PRIVATE asmcore)
+add_test(NAME lexer_test COMMAND lexer_test ${CMAKE_SOURCE_DIR}/examples/source.asm)
