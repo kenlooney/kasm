@@ -6,4 +6,6 @@ class Lexer {
 public:
     virtual ~Lexer() = default;
     virtual std::vector<Token> tokenize(const std::string& text) = 0;
+    bool letter(char ch);
+    bool digit(char ch);
 };
