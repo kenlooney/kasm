@@ -7,10 +7,10 @@ Parser::Parser(const Lexer &lexer) :
 {
 
 }
-bool Parser::run(std::uint64_t &value, std::string &error)
+bool Parser::run(std::string &error)
 {
-    if (!sum(value, error))
-        return false;
+    tree_.nodes.clear();
+    if(!sum(tree_.root, error)) return false;
     if (position_ != tokens_.size())
     {
         error = "Unexpected token:" + tokens_[position_].text;
@@ -18,7 +18,7 @@ bool Parser::run(std::uint64_t &value, std::string &error)
     }
     return true;
 }
-bool Parser::sum(std::uint64_t &value, std::string &error)
+bool Parser::sum(std::size_t& node, std::string &error)
 {
     if(!has_operator_aliases("+"))
     {
@@ -29,70 +29,49 @@ bool Parser::sum(std::uint64_t &value, std::string &error)
         add_operator_alias({"-", {"-"}});
     }
 
-    if (!product(value, error))
+    if (!product(node, error))
         return false;
     while (position_ < tokens_.size() && (
     valid_operator("+") ||
     valid_operator("-")
 ))
     {
-        const bool addition = valid_operator("+");
+        const std::string op = valid_operator("+") ? "+" : "-";
         ++position_;
-        std::uint64_t right = 0;
+        std::size_t right = 0;
         if (!product(right, error))
             return false;
-
-        if(addition)
-        {
-            if (value > std::numeric_limits<std::uint64_t>::max() - right)
-            {
-                error = "Addition overflow";
-                return false;
-            }
-            value += right;
-        }
-        else
-        {
-            if (value < right)
-            {
-                error = "Subtraction underflow";
-                return false;
-            }
-            value -= right;
-        }
+        tree_.nodes.push_back({op, 0, node, right});
+        node = tree_.nodes.size() - 1;
     }
     return true;
 }
-bool Parser::product(std::uint64_t &value, std::string &error)
+bool Parser::product(std::size_t &node, std::string &error)
 {
     if(!has_operator_aliases("*"))
     {
         add_operator_alias({"*", {"*"}});
     }
 
-    if (!primary(value, error))
+    if (!primary(node, error))
         return false;
     while (position_ < tokens_.size() && valid_operator("*"))
     {
         ++position_;
-        std::uint64_t right = 0;
+        std::size_t right = 0;
         if (!primary(right, error))
             return false;
-        if (right != 0 && value > std::numeric_limits<std::uint64_t>::max() / right)
-        {
-            error = "Multiplication overflow";
-            return false;
-        }
-        value *= right;
+        tree_.nodes.push_back({"*", 0, node, right});
+        node = tree_.nodes.size() - 1;
     }
     return true;
 }
-bool Parser::primary(std::uint64_t &value, std::string &error)
+bool Parser::primary(std::size_t &node, std::string &error)
 {
     if (position_ < tokens_.size() && tokens_[position_].text == "(")
     {
         ++position_;
-        if (!sum(value, error))
+        if (!sum(node, error))
             return false;
         if (position_ >= tokens_.size() || tokens_[position_].text != ")")
         {
@@ -102,13 +81,64 @@ bool Parser::primary(std::uint64_t &value, std::string &error)
         ++position_;
         return true;
     }
-    return number(value, error);
+    std::uint64_t value = 0;
+    if (!number(value, error))
+        return false;
+    tree_.nodes.push_back({"number", value, 0, 0});
+    node = tree_.nodes.size() - 1;
+    return true;
 }
 bool Parser::parse_expression(const std::vector<Token>& tokens, std::uint64_t& value, std::string& error)
 {
+    Expression expression;
+    if (!parse_expression(tokens, expression, error))
+        return false;
+    return evaluate(expression.root, value, error);
+}
+
+bool Parser::parse_expression(const std::vector<Token>& tokens, Expression& expression, std::string& error)
+{
     position_ = 0;
     tokens_ = tokens;
-    return run(value, error);
+    if (!run(error))
+        return false;
+    expression = tree_;
+    return true;
+}
+
+bool Parser::evaluate(std::size_t index, std::uint64_t& value, std::string& error) const
+{
+    const Node& node = tree_.nodes[index];
+    if (node.kind == "number") {
+        value = node.value;
+        return true;
+    }
+    std::uint64_t left = 0, right = 0;
+    if (!evaluate(node.left, left, error) || !evaluate(node.right, right, error))
+        return false;
+    if (node.kind == "+") {
+        if (left > std::numeric_limits<std::uint64_t>::max() - right) {
+            error = "Addition overflow";
+            return false;
+        }
+        value = left + right;
+    } else if (node.kind == "-") {
+        if (left < right) {
+            error = "Subtraction underflow";
+            return false;
+        }
+        value = left - right;
+    } else if (node.kind == "*") {
+        if (right != 0 && left > std::numeric_limits<std::uint64_t>::max() / right) {
+            error = "Multiplication overflow";
+            return false;
+        }
+        value = left * right;
+    } else {
+        error = "Unknown expression node: " + node.kind;
+        return false;
+    }
+    return true;
 }
 
 bool Parser::load_operator_aliases(const std::string& filename)
