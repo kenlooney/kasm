@@ -9,6 +9,7 @@ public:
     using Parser::save_operator_aliases;
     bool save_operator_aliases() const;
     bool operator_aliases_loaded() const;
+    bool parse_statements(const std::string& source, std::vector<Expression>& statements, std::string& error);
     bool number(std::uint64_t& value, std::string& error) override;
 private:
     std::string ops_filename;
