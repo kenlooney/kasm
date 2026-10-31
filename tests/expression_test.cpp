@@ -4,6 +4,7 @@
 #include "kasmlexer.hpp"
 #include "kasmparser.hpp"
 #include <iostream>
+#include <utility>
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -23,7 +24,17 @@ int main(int argc, char* argv[]) {
         std::cerr << "Expected 2 + 3 + 0b100 to evaluate to 9\n";
         return 1;
     }
-    for (const char* text : {"2 +", "2 3", "18446744073709551615 + 1"}) {
+    for (const auto& example : {std::pair<const char*, std::uint64_t>{"2 + 3 * 4", 14},
+                                {"2 * 3 + 4 * 5", 26},
+                                {"2 * 3 * 4", 24},
+                                {"18446744073709551615 * 0", 0}}) {
+        if (!parser.parse_expression(lexer.tokenize(example.first), value, error) || value != example.second) {
+            std::cerr << "Unexpected result for expression: " << example.first << "\n";
+            return 1;
+        }
+    }
+    for (const char* text : {"2 +", "2 *", "2 3", "18446744073709551615 + 1",
+                             "18446744073709551615 * 2"}) {
         error.clear();
         if (parser.parse_expression(lexer.tokenize(text), value, error) || error.empty()) {
             std::cerr << "Expected an error for expression: " << text << "\n";
