@@ -1,10 +1,10 @@
 ﻿# Ken's Assembler Framework
 
-An extensible assembler framework for building assemblers for different CPUs and languages. Kasm is its first assembler, an x86 assembler in development. The current implementation provides expression parsing and statement splitting; instruction assembly and machine-code output are still to come.
+An extensible assembler framework for building assemblers for different CPUs and languages. Kasm is its first assembler, an x86 assembler in development. It currently parses expressions, move statements, and byte declarations into a representation for later processing. Semantic checking and machine-code generation are still in development.
 
 ## Kasm statements and comments
 
-Kasm currently requires **one expression statement per physical line**. Newlines separate statements, and blank lines and comment-only lines are ignored. An expression cannot yet continue onto another line, including inside parentheses.
+Kasm currently requires **one statement per physical line**. Newlines separate statements, and blank lines and comment-only lines are ignored. An expression cannot yet continue onto another line, including inside parentheses.
 
 ```asm
 // One expression per line
@@ -15,7 +15,30 @@ Kasm currently requires **one expression statement per physical line**. Newlines
 10 minus 3
 ```
 
-Kasm supports `//` line comments and `/* ... */` block comments. A newline inside a block comment still separates statements. Currently, statements consist of expressions; instructions and labels are not yet handled by the statement parser.
+Kasm supports `//` line comments and `/* ... */` block comments. A newline inside a block comment still separates statements. Labels are not yet supported by the statement parser.
+
+### Move statements
+
+Kasm can parse a source expression followed by a register name or a bracketed memory-address expression:
+
+```asm
+put 0b1010 into ax
+move (2 plus 3) to [16 + 4]
+mov 10 into bx
+```
+
+`mov`, `move`, and `put` are aliases, as are `into` and `to`. The parser stores the source and destination in a `KasmStatement`. Register names are not yet validated against a register file, and register sources and symbolic addresses are not yet supported. Parsing a move does not generate an instruction.
+
+### Byte declarations
+
+Kasm can parse a byte declaration whose value is an expression:
+
+```asm
+declare 10 as byte
+set (2 plus 3) being byte
+```
+
+`declare` and `set` are aliases, as are `as` and `being`. `byte` is the only supported declaration type so far; `word` is not yet supported. The parser builds an expression tree for the value, but semantic analysis does not yet check whether it fits in a byte, and no byte is emitted yet.
 
 ## Kasm expressions
 
@@ -29,34 +52,26 @@ Kasm supports addition, subtraction, multiplication, and parentheses in expressi
 
 For example, `2 plus 3 times 4` evaluates to `14`, while `(2 plus 3) times 4` evaluates to `20`. Expressions are parsed into abstract syntax trees (ASTs). The single-expression API can also evaluate a tree using unsigned 64-bit integers, reporting arithmetic overflow or subtraction underflow as errors. Building an AST alone does not evaluate it.
 
-Kasm looks for an `ops.txt` file in the current working directory when a parser is created. Each line contains an operator followed by its aliases, separated by spaces. For example:
-
-```text
-+ add plus
-- sub minus
-* mul times
-```
-
-The table above shows the defaults used when an operator has no entry in the file. An entry in `ops.txt` supplies that operator's aliases; the operator symbol itself remains valid. The parser can also save its alias table explicitly.
+These aliases are defined in the `KasmParser` constructor and compiled into `kasmcore`. Other assemblers can define their own aliases in code using the framework's `AliasTable`.
 
 ## Using the framework
 
 The project separates the reusable framework in `asmfw` from Kasm's lexer and parser in `kasmcore`. Link to `asmfw` to build another assembler, or link to `kasmcore` to use Kasm's components. `kasmcore` also links to `asmfw`.
 
-`KasmParser::parse_statements()` accepts a source string and returns one `Expression` AST per statement. It reports the line number on a parse error. For example:
+`KasmParser::parse_statements()` accepts a source string and returns `KasmStatement` objects. Expressions within those statements are represented as ASTs, and parse errors include a line number. For example:
 
 ```cpp
 KasmLexer lexer;
 KasmParser parser(lexer);
-std::vector<Expression> statements;
+std::vector<KasmStatement> statements;
 std::string error;
 
-if (!parser.parse_statements("2 + 3 * 4\n(2 + 3) * 4\n", statements, error)) {
+if (!parser.parse_statements("put 10 into ax\ndeclare 5 as byte\n", statements, error)) {
     // Handle the error.
 }
 ```
 
-The current `kasm` executable displays its operator aliases; it does not yet read and assemble a source file from the command line.
+An expression-only overload also returns `std::vector<Expression>` and rejects move or declaration statements. The current `kasm` executable displays its operator and keyword aliases; it does not yet read and assemble a source file from the command line.
 
 To build another assembler, implement a lexer and parser using the framework's base classes, then provide them to an `Assembler`. For example, Kasm's components can be connected like this:
 

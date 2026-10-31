@@ -41,11 +41,6 @@ add_executable(operator_alias_test operator_alias_test.cpp)
 target_link_libraries(operator_alias_test PRIVATE kasmcore)
 add_test(NAME operator_alias_test COMMAND operator_alias_test)
 
-add_executable(kasm_alias_file_test kasm_alias_file_test.cpp)
-target_compile_features(kasm_alias_file_test PRIVATE cxx_std_17)
-target_link_libraries(kasm_alias_file_test PRIVATE kasmcore)
-add_test(NAME kasm_alias_file_test COMMAND kasm_alias_file_test)
-
 add_executable(subtraction_test subtraction_test.cpp)
 target_link_libraries(subtraction_test PRIVATE kasmcore)
 add_test(NAME subtraction_test COMMAND subtraction_test)
@@ -61,3 +56,15 @@ add_test(NAME expression_comments_test COMMAND expression_comments_test)
 add_executable(statement_test statement_test.cpp)
 target_link_libraries(statement_test PRIVATE kasmcore)
 add_test(NAME statement_test COMMAND statement_test)
+
+add_executable(move_alias_test move_alias_test.cpp)
+target_link_libraries(move_alias_test PRIVATE kasmcore)
+add_test(NAME move_alias_test COMMAND move_alias_test)
+
+add_executable(move_statement_test move_statement_test.cpp)
+target_link_libraries(move_statement_test PRIVATE kasmcore)
+add_test(NAME move_statement_test COMMAND move_statement_test)
+
+add_executable(declaration_test declaration_test.cpp)
+target_link_libraries(declaration_test PRIVATE kasmcore)
+add_test(NAME declaration_test COMMAND declaration_test)

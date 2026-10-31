@@ -4,7 +4,7 @@
 
 int main() {
     KasmLexer lexer;
-    KasmParser parser(lexer, "");
+    KasmParser parser(lexer);
     Expression tree;
     std::string error;
     if (!parser.parse_expression(lexer.tokenize("2 plus 3 times 4"), tree, error)) {

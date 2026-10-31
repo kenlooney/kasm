@@ -8,13 +8,15 @@
 int main() {
     KasmLexer lexer;
     KasmParser parser(lexer);
-    parser.add_operator_alias({"+", {"add"}});
-    parser.add_operator_alias({"*", {"mul", "times"}});
 
     std::uint64_t value = 0;
     std::string error;
     for (const auto& example : {std::pair<const char*, std::uint64_t>{"2 + 3", 5},
                                 {"2 add 3", 5},
+                                {"2 plus 3", 5},
+                                {"8 - 3", 5},
+                                {"8 sub 3", 5},
+                                {"8 minus 3", 5},
                                 {"2 * 3", 6},
                                 {"2 mul 3", 6},
                                 {"2 add 3 mul 4", 14},

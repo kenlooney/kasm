@@ -7,7 +7,7 @@
 
 int main() {
     KasmLexer lexer;
-    KasmParser parser(lexer, "");
+    KasmParser parser(lexer);
     std::uint64_t value = 0;
     std::string error;
 
