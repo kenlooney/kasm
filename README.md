@@ -38,7 +38,9 @@ declare 10 as byte
 set (2 plus 3) being byte
 ```
 
-`declare` and `set` are aliases, as are `as` and `being`. `byte` is the only supported declaration type so far; `word` is not yet supported. The parser builds an expression tree for the value, but semantic analysis does not yet check whether it fits in a byte, and no byte is emitted yet.
+`declare` and `set` are aliases, as are `as` and `being`. `byte` is the only supported declaration type so far; `word` is not yet supported. The parser builds an expression tree for the value. `KasmSemanticAnalyzer::analyze()` evaluates byte declarations and accepts values from `0` through `255`, reporting an error for larger values or invalid arithmetic. Byte emission is not implemented yet.
+
+Semantic checking currently handles byte declarations only. It reports an unimplemented-check error for move and standalone expression statements; parsing those statements remains supported.
 
 ## Kasm expressions
 

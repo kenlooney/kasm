@@ -68,3 +68,7 @@ add_test(NAME move_statement_test COMMAND move_statement_test)
 add_executable(declaration_test declaration_test.cpp)
 target_link_libraries(declaration_test PRIVATE kasmcore)
 add_test(NAME declaration_test COMMAND declaration_test)
+
+add_executable(semantic_declaration_test semantic_declaration_test.cpp)
+target_link_libraries(semantic_declaration_test PRIVATE kasmcore)
+add_test(NAME semantic_declaration_test COMMAND semantic_declaration_test)
