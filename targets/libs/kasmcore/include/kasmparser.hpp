@@ -1,8 +1,17 @@
 #include "parser.hpp"
 #include "lexer.hpp"
+#include <string>
+
 class KasmParser : public Parser {
 public:
-    explicit KasmParser(const Lexer& lexer);
-    bool parse_expression(const std::vector<Token>& tokens, std::uint64_t& value, std::string& error) override;
+    explicit KasmParser(const Lexer& lexer, const std::string& ops_filename = "ops.txt");
+    bool reload_operator_aliases();
+    using Parser::save_operator_aliases;
+    bool save_operator_aliases() const;
+    bool operator_aliases_loaded() const;
     bool number(std::uint64_t& value, std::string& error) override;
+private:
+    std::string ops_filename;
+    bool aliases_loaded_;
+
 };
