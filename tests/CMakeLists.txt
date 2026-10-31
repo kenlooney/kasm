@@ -56,3 +56,15 @@ add_test(NAME expression_comments_test COMMAND expression_comments_test)
 add_executable(statement_test statement_test.cpp)
 target_link_libraries(statement_test PRIVATE kasmcore)
 add_test(NAME statement_test COMMAND statement_test)
+
+add_executable(move_alias_test move_alias_test.cpp)
+target_link_libraries(move_alias_test PRIVATE kasmcore)
+add_test(NAME move_alias_test COMMAND move_alias_test)
+
+add_executable(move_statement_test move_statement_test.cpp)
+target_link_libraries(move_statement_test PRIVATE kasmcore)
+add_test(NAME move_statement_test COMMAND move_statement_test)
+
+add_executable(declaration_test declaration_test.cpp)
+target_link_libraries(declaration_test PRIVATE kasmcore)
+add_test(NAME declaration_test COMMAND declaration_test)

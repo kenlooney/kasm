@@ -28,6 +28,7 @@ class Parser {
     bool parse_expression(const std::vector<Token>& tokens, std::uint64_t& value, std::string& error);
     bool parse_expression(const std::vector<Token>& tokens, Expression& expression, std::string& error);
     virtual bool number(std::uint64_t& value, std::string& error) = 0;
+   
     bool primary(std::size_t& node, std::string& error);
     bool product(std::size_t& node, std::string& error);
     bool run(std::string& error);
