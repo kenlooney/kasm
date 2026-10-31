@@ -41,11 +41,6 @@ add_executable(operator_alias_test operator_alias_test.cpp)
 target_link_libraries(operator_alias_test PRIVATE kasmcore)
 add_test(NAME operator_alias_test COMMAND operator_alias_test)
 
-add_executable(kasm_alias_file_test kasm_alias_file_test.cpp)
-target_compile_features(kasm_alias_file_test PRIVATE cxx_std_17)
-target_link_libraries(kasm_alias_file_test PRIVATE kasmcore)
-add_test(NAME kasm_alias_file_test COMMAND kasm_alias_file_test)
-
 add_executable(subtraction_test subtraction_test.cpp)
 target_link_libraries(subtraction_test PRIVATE kasmcore)
 add_test(NAME subtraction_test COMMAND subtraction_test)

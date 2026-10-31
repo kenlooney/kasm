@@ -6,7 +6,7 @@
 #include "integer.hpp"
 #include <limits>
 #include "lexer.hpp"
-#include "operatoralias.hpp"
+#include "aliastable.hpp"
 #include <string>
 
 struct Node {
@@ -32,17 +32,21 @@ class Parser {
     bool product(std::size_t& node, std::string& error);
     bool run(std::string& error);
     bool sum(std::size_t& node, std::string& error);
-    bool load_operator_aliases(const std::string& filename);
-    bool save_operator_aliases(const std::string& filename) const;
     bool has_operator_aliases(const std::string& operator_symbol) const;
-    const std::vector<OperatorAlias>& operator_aliases() const { return operator_alias_table_.aliases(); }
-    bool add_operator_alias(const OperatorAlias& alias);
+    bool has_keyword_aliases(const std::string& keyword_symbol) const;
+    const std::vector<Alias>& operator_aliases() const { return operator_alias_table_.aliases(); }
+    const std::vector<Alias>& keyword_aliases() const { return keyword_alias_table_.aliases(); }
+    bool add_operator_alias(const Alias& alias);
+    bool add_keyword_alias(const Alias& alias);
     bool valid_operator(const std::string& op) const;
+    bool valid_keyword(const std::string& keyword) const;
     bool add_alias_to_operator(const std::string& operator_symbol, const std::string& alias);
+    bool add_alias_to_keyword(const std::string& keyword_symbol, const std::string& alias);
     protected:
     std::size_t position_ = 0;
     std::vector<Token> tokens_;
     Expression tree_;
-    OperatorAliasTable operator_alias_table_;
+    AliasTable operator_alias_table_;
+    AliasTable keyword_alias_table_;
     bool evaluate(std::size_t node, std::uint64_t& value, std::string& error) const;
 };

@@ -6,7 +6,7 @@
 
 int main() {
     KasmLexer lexer;
-    KasmParser parser(lexer, "");
+    KasmParser parser(lexer);
     std::vector<Expression> statements;
     std::string error;
     const std::string source = "// One expression per line\r\n2 + 3 * 4 // first\r\n"

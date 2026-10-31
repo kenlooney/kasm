@@ -20,15 +20,6 @@ bool Parser::run(std::string &error)
 }
 bool Parser::sum(std::size_t& node, std::string &error)
 {
-    if(!has_operator_aliases("+"))
-    {
-        add_operator_alias({"+", {"+"}});
-    }
-    if(!has_operator_aliases("-"))
-    {
-        add_operator_alias({"-", {"-"}});
-    }
-
     if (!product(node, error))
         return false;
     while (position_ < tokens_.size() && (
@@ -48,11 +39,6 @@ bool Parser::sum(std::size_t& node, std::string &error)
 }
 bool Parser::product(std::size_t &node, std::string &error)
 {
-    if(!has_operator_aliases("*"))
-    {
-        add_operator_alias({"*", {"*"}});
-    }
-
     if (!primary(node, error))
         return false;
     while (position_ < tokens_.size() && valid_operator("*"))
@@ -141,28 +127,34 @@ bool Parser::evaluate(std::size_t index, std::uint64_t& value, std::string& erro
     return true;
 }
 
-bool Parser::load_operator_aliases(const std::string& filename)
-{
-    return operator_alias_table_.load_from_file(filename);
-}
-
-bool Parser::save_operator_aliases(const std::string& filename) const
-{
-    return operator_alias_table_.save_to_file(filename);
-}
 bool Parser::has_operator_aliases(const std::string& operator_symbol) const
 {
     const auto& aliases = operator_alias_table_.aliases();
     for (const auto& alias : aliases) {
-        if (alias.operator_symbol == operator_symbol) {
+        if (alias.symbol == operator_symbol) {
             return true;
         }
     }
     return false;
 }
-bool Parser::add_operator_alias(const OperatorAlias& alias)
+bool Parser::has_keyword_aliases(const std::string& keyword_symbol) const
+{
+    const auto& aliases = keyword_alias_table_.aliases();
+    for (const auto& alias : aliases) {
+        if (alias.symbol == keyword_symbol) {
+            return true;
+        }
+    }
+    return false;
+}
+bool Parser::add_operator_alias(const Alias& alias)
 {
     operator_alias_table_.add_alias(alias);
+    return true;
+}
+bool Parser::add_keyword_alias(const Alias& alias)
+{
+    keyword_alias_table_.add_alias(alias);
     return true;
 }
 bool Parser::valid_operator(const std::string& op) const
@@ -174,7 +166,23 @@ bool Parser::valid_operator(const std::string& op) const
         return true;
     const auto& aliases = operator_alias_table_.aliases();
     for (const auto& alias : aliases) {
-        if (alias.operator_symbol == op) {
+        if (alias.symbol == op) {
+            if (std::find(alias.values.begin(), alias.values.end(), token_text) != alias.values.end())
+                return true;
+        }
+    }
+    return false;
+}
+bool Parser::valid_keyword(const std::string& keyword) const
+{
+    if (position_ >= tokens_.size())
+        return false;
+    const auto& token_text = tokens_[position_].text;
+    if (token_text == keyword)
+        return true;
+    const auto& aliases = keyword_alias_table_.aliases();
+    for (const auto& alias : aliases) {
+        if (alias.symbol == keyword) {
             if (std::find(alias.values.begin(), alias.values.end(), token_text) != alias.values.end())
                 return true;
         }
@@ -185,8 +193,19 @@ bool Parser::add_alias_to_operator(const std::string& operator_symbol, const std
 {
     const auto& aliases = operator_alias_table_.aliases();
     for (const auto& op_alias : aliases) {
-        if (op_alias.operator_symbol == operator_symbol) {
+        if (op_alias.symbol == operator_symbol) {
             operator_alias_table_.add_alias({operator_symbol, {alias}});
+            return true;
+        }
+    }
+    return false;
+}
+bool Parser::add_alias_to_keyword(const std::string& keyword_symbol, const std::string& alias)
+{
+    const auto& aliases = keyword_alias_table_.aliases();
+    for (const auto& kw_alias : aliases) {
+        if (kw_alias.symbol == keyword_symbol) {
+            keyword_alias_table_.add_alias({keyword_symbol, {alias}});
             return true;
         }
     }

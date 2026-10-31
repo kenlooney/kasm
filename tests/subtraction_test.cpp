@@ -7,7 +7,7 @@
 
 int main() {
     KasmLexer lexer;
-    KasmParser parser(lexer, "");
+    KasmParser parser(lexer);
     parser.add_operator_alias({"+", {"add"}});
     parser.add_operator_alias({"-", {"take", "minus"}});
     std::uint64_t value = 0;

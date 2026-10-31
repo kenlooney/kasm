@@ -29,15 +29,7 @@ Kasm supports addition, subtraction, multiplication, and parentheses in expressi
 
 For example, `2 plus 3 times 4` evaluates to `14`, while `(2 plus 3) times 4` evaluates to `20`. Expressions are parsed into abstract syntax trees (ASTs). The single-expression API can also evaluate a tree using unsigned 64-bit integers, reporting arithmetic overflow or subtraction underflow as errors. Building an AST alone does not evaluate it.
 
-Kasm looks for an `ops.txt` file in the current working directory when a parser is created. Each line contains an operator followed by its aliases, separated by spaces. For example:
-
-```text
-+ add plus
-- sub minus
-* mul times
-```
-
-The table above shows the defaults used when an operator has no entry in the file. An entry in `ops.txt` supplies that operator's aliases; the operator symbol itself remains valid. The parser can also save its alias table explicitly.
+These aliases are defined in the `KasmParser` constructor and compiled into `kasmcore`. Other assemblers can define their own aliases in code using the framework's `AliasTable`.
 
 ## Using the framework
 

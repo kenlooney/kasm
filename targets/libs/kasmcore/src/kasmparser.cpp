@@ -39,28 +39,19 @@ bool KasmParser::parse_statements(const std::string& source, std::vector<Express
     return true;
 }
 
-KasmParser::KasmParser(const Lexer& lexer, const std::string& filename)
-    : Parser(lexer), ops_filename(filename), aliases_loaded_(false) {
-    reload_operator_aliases();
-}
+KasmParser::KasmParser(const Lexer& lexer) : Parser(lexer) {
+    // Add operator aliases
+    add_operator_alias({"+", {"+", "add", "plus"}});
+    add_operator_alias({"-", {"-", "sub", "minus"}});
+    add_operator_alias({"*", {"*", "mul", "times"}});
 
-bool KasmParser::reload_operator_aliases() {
-    aliases_loaded_ = load_operator_aliases(ops_filename);
-    if(!has_operator_aliases("+"))
-        add_operator_alias({"+", {"+","add","plus"}});
-    if(!has_operator_aliases("-"))
-        add_operator_alias({"-", {"-","sub","minus"}});
-    if(!has_operator_aliases("*"))
-        add_operator_alias({"*", {"*","mul","times"}});
-    return aliases_loaded_;
-}
-
-bool KasmParser::save_operator_aliases() const {
-    return Parser::save_operator_aliases(ops_filename);
-}
-
-bool KasmParser::operator_aliases_loaded() const {
-    return aliases_loaded_;
+    // Add keyword aliases
+    add_keyword_alias({"mov", {"mov","move", "put"}});
+    add_keyword_alias({"into", {"into", "to"}});
+    // Examples:
+    // mov 0b1010 into ax
+    // move 0b1010 to ax
+    // put 0b1010 into ax
 }
 
 bool KasmParser::number(std::uint64_t& value, std::string& error) {
