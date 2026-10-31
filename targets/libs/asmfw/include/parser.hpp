@@ -9,16 +9,29 @@
 #include "operatoralias.hpp"
 #include <string>
 
+struct Node {
+    std::string kind;
+    std::uint64_t value;
+    std::size_t left;
+    std::size_t right;
+};
+
+struct Expression {
+    std::vector<Node> nodes;
+    std::size_t root = 0;
+};
+
 class Parser {
     public:
     explicit Parser(const Lexer& lexer);
     virtual ~Parser() = default;
     bool parse_expression(const std::vector<Token>& tokens, std::uint64_t& value, std::string& error);
+    bool parse_expression(const std::vector<Token>& tokens, Expression& expression, std::string& error);
     virtual bool number(std::uint64_t& value, std::string& error) = 0;
-    bool primary(std::uint64_t& value, std::string& error);
-    bool product(std::uint64_t& value, std::string& error);
-    bool run(std::uint64_t& value, std::string& error);
-    bool sum(std::uint64_t& value, std::string& error);
+    bool primary(std::size_t& node, std::string& error);
+    bool product(std::size_t& node, std::string& error);
+    bool run(std::string& error);
+    bool sum(std::size_t& node, std::string& error);
     bool load_operator_aliases(const std::string& filename);
     bool save_operator_aliases(const std::string& filename) const;
     bool has_operator_aliases(const std::string& operator_symbol) const;
@@ -29,5 +42,7 @@ class Parser {
     protected:
     std::size_t position_ = 0;
     std::vector<Token> tokens_;
+    Expression tree_;
     OperatorAliasTable operator_alias_table_;
+    bool evaluate(std::size_t node, std::uint64_t& value, std::string& error) const;
 };

@@ -49,3 +49,7 @@ add_test(NAME kasm_alias_file_test COMMAND kasm_alias_file_test)
 add_executable(subtraction_test subtraction_test.cpp)
 target_link_libraries(subtraction_test PRIVATE kasmcore)
 add_test(NAME subtraction_test COMMAND subtraction_test)
+
+add_executable(expression_ast_test expression_ast_test.cpp)
+target_link_libraries(expression_ast_test PRIVATE kasmcore)
+add_test(NAME expression_ast_test COMMAND expression_ast_test)
