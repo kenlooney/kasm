@@ -1,5 +1,43 @@
 #include "kasmparser.hpp"
 #include "integer.hpp"
+#include "kasmlexer.hpp"
+
+bool KasmParser::parse_statements(const std::string& source, std::vector<Expression>& statements, std::string& error) {
+    KasmLexer lexer;
+    const auto tokens = lexer.tokenize(source);
+    std::vector<Expression> parsed;
+    std::vector<Token> line_tokens;
+    std::size_t line = 1, statement_line = 1, scanned = 0;
+
+    auto finish_line = [&]() {
+        if (line_tokens.empty()) return true;
+        Expression expression;
+        if (!parse_expression(line_tokens, expression, error)) {
+            error = "Line " + std::to_string(statement_line) + ": " + error;
+            return false;
+        }
+        parsed.push_back(std::move(expression));
+        line_tokens.clear();
+        return true;
+    };
+
+    for (const auto& token : tokens) {
+        while (scanned < token.span.begin) {
+            if (source[scanned] == '\r' || source[scanned] == '\n') {
+                if (!finish_line()) return false;
+                if (source[scanned] == '\r' && scanned + 1 < token.span.begin && source[scanned + 1] == '\n') ++scanned;
+                ++line;
+            }
+            ++scanned;
+        }
+        if (line_tokens.empty()) statement_line = line;
+        line_tokens.push_back(token);
+        scanned = token.span.end;
+    }
+    if (!finish_line()) return false;
+    statements = std::move(parsed);
+    return true;
+}
 
 KasmParser::KasmParser(const Lexer& lexer, const std::string& filename)
     : Parser(lexer), ops_filename(filename), aliases_loaded_(false) {
