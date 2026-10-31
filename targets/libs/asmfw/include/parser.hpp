@@ -28,7 +28,7 @@ class Parser {
     bool parse_expression(const std::vector<Token>& tokens, std::uint64_t& value, std::string& error);
     bool parse_expression(const std::vector<Token>& tokens, Expression& expression, std::string& error);
     virtual bool number(std::uint64_t& value, std::string& error) = 0;
-   
+
     bool primary(std::size_t& node, std::string& error);
     bool product(std::size_t& node, std::string& error);
     bool run(std::string& error);
@@ -43,11 +43,12 @@ class Parser {
     bool valid_keyword(const std::string& keyword) const;
     bool add_alias_to_operator(const std::string& operator_symbol, const std::string& alias);
     bool add_alias_to_keyword(const std::string& keyword_symbol, const std::string& alias);
+    bool evaluate(const Expression& tree, std::size_t node, std::uint64_t& value, std::string& error) const;
     protected:
     std::size_t position_ = 0;
     std::vector<Token> tokens_;
     Expression tree_;
     AliasTable operator_alias_table_;
     AliasTable keyword_alias_table_;
-    bool evaluate(std::size_t node, std::uint64_t& value, std::string& error) const;
+
 };

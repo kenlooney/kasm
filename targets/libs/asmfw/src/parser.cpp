@@ -79,7 +79,7 @@ bool Parser::parse_expression(const std::vector<Token>& tokens, std::uint64_t& v
     Expression expression;
     if (!parse_expression(tokens, expression, error))
         return false;
-    return evaluate(expression.root, value, error);
+    return evaluate(expression, expression.root, value, error);
 }
 
 bool Parser::parse_expression(const std::vector<Token>& tokens, Expression& expression, std::string& error)
@@ -92,16 +92,23 @@ bool Parser::parse_expression(const std::vector<Token>& tokens, Expression& expr
     return true;
 }
 
-bool Parser::evaluate(std::size_t index, std::uint64_t& value, std::string& error) const
+bool Parser::evaluate(const Expression& tree, std::size_t index, std::uint64_t& value, std::string& error) const
 {
-    const Node& node = tree_.nodes[index];
+    if(index >= tree.nodes.size()) {
+        error = "Invalid expression node";
+        return false;
+    }
+    const Node& node = tree.nodes[index];
+
     if (node.kind == "number") {
         value = node.value;
         return true;
     }
     std::uint64_t left = 0, right = 0;
-    if (!evaluate(node.left, left, error) || !evaluate(node.right, right, error))
+    if (!evaluate(tree, node.left, left, error) ||
+    !evaluate(tree, node.right, right, error))
         return false;
+
     if (node.kind == "+") {
         if (left > std::numeric_limits<std::uint64_t>::max() - right) {
             error = "Addition overflow";
