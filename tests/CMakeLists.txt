@@ -80,3 +80,12 @@ add_test(NAME declaration_source_test COMMAND declaration_source_test ${CMAKE_SO
 add_executable(bin_to_file_test bin_to_file_test.cpp)
 target_link_libraries(bin_to_file_test PRIVATE kasmcore)
 add_test(NAME bin_to_file_test COMMAND bin_to_file_test ${CMAKE_SOURCE_DIR}/examples/declare.asm ${CMAKE_SOURCE_DIR}/bin/output.bin)
+
+add_executable(x86_encode_one_test x86_encode_one_test.cpp)
+target_link_libraries(x86_encode_one_test PRIVATE kasmcore x86)
+add_test(NAME x86_encode_one_test COMMAND x86_encode_one_test)
+
+add_executable(plugin_load_x86_test plugin_load_x86_test.cpp)
+target_link_libraries(plugin_load_x86_test PRIVATE asmfw)
+add_dependencies(plugin_load_x86_test x86)
+add_test(NAME plugin_load_x86_test COMMAND plugin_load_x86_test $<TARGET_FILE:x86>)

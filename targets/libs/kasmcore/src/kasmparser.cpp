@@ -76,6 +76,22 @@ bool KasmParser::is_into_alias(const std::string &mnemonic)
     return false;
 }
 
+bool KasmParser::is_nop(const std::string &mnemonic)
+{
+    for (const auto &keywords : keyword_aliases())
+    {
+        if (keywords.symbol != "nop")
+            continue;
+        if (mnemonic == keywords.symbol)
+            return true;
+        for (const auto &value : keywords.values)
+        {
+            if (value == mnemonic)
+                return true;
+        }
+    }
+    return false;
+}
 bool KasmParser::parse_statements(const std::string &source, std::vector<Expression> &statements, std::string &error)
 {
     std::vector<KasmStatement> parsed;
@@ -86,6 +102,7 @@ bool KasmParser::parse_statements(const std::string &source, std::vector<Express
             error = "Non-expression statements require KasmStatement output";
             return false;
         }
+      
         expressions.push_back(statement.source());
     }
     statements = std::move(expressions);
@@ -114,6 +131,17 @@ bool KasmParser::parse_statements(const std::string &source, std::vector<KasmSta
         {
             error = "Line " + std::to_string(statement_line) + ": Missing mnemonic";
             return false;
+        }
+        if (is_nop(mnemonic))
+        {
+            if (line_tokens.size() != 1) {
+                error = "Line " + std::to_string(statement_line) + ": Unexpected tokens after 'nop'";
+                return false;
+            }
+            KasmStatement statement("nop", STATEMENT_TYPE_NOP);
+            parsed.push_back(std::move(statement));
+            line_tokens.clear();
+            return true;
         }
         if (is_declare_alias(mnemonic))
         {
@@ -237,7 +265,7 @@ KasmParser::KasmParser(const Lexer &lexer) : Parser(lexer)
 {
     // Add operator aliases
     add_operator_alias({"+", {"+", "add", "plus"}});
-    add_operator_alias({"-", {"-", "sub", "minus"}});
+    add_operator_alias({"-", {"-", "sub", "minus","take"}});
     add_operator_alias({"*", {"*", "mul", "times"}});
 
     // Add keyword aliases
@@ -245,10 +273,8 @@ KasmParser::KasmParser(const Lexer &lexer) : Parser(lexer)
     add_keyword_alias({"into", {"into", "to"}});
     add_keyword_alias({"declare", {"declare", "set"}});
     add_keyword_alias({"as", {"as","being"}});
-    // Examples:
-    // mov 0b1010 into ax
-    // move 0b1010 to ax
-    // put 0b1010 into ax
+    add_keyword_alias({"nop", {"nop"}});
+ 
 }
 
 bool KasmParser::number(std::uint64_t &value, std::string &error)

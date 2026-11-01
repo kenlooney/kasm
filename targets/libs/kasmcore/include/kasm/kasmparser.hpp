@@ -15,5 +15,6 @@ public:
     bool is_declare_alias(const std::string &mnemonic);
     bool is_into_alias(const std::string &mnemonic);
     bool is_as_alias(const std::string &mnemonic);
+    bool is_nop(const std::string &mnemonic);
     
 };

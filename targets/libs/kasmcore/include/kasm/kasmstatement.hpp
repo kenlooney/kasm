@@ -10,6 +10,7 @@ typedef enum {
     STATEMENT_TYPE_MOVE_REG = 4,
     STATEMENT_TYPE_EXPRESSION = 5,
     STATEMENT_TYPE_MOVE = 6,
+    STATEMENT_TYPE_NOP = 7, // "nop"
 } StatementType;
 
 enum class DestinationKind { None, Register, Memory };
