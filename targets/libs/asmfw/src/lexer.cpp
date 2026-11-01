@@ -1,4 +1,4 @@
-#include "lexer.hpp"
+#include "framework/lexer.hpp"
 
 bool Lexer::letter(char ch) {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');

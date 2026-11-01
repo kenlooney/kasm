@@ -1,5 +1,5 @@
-#include "source.hpp"
-#include "diagnostic.hpp"
+#include "framework/source.hpp"
+#include "framework/diagnostic.hpp"
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {

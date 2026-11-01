@@ -1,6 +1,6 @@
-#include "source.hpp"
-#include "diagnostic.hpp"
-#include "span.hpp"
+#include "framework/source.hpp"
+#include "framework/diagnostic.hpp"
+#include "framework/span.hpp"
 #include <iostream>
 
 int main(int argc, char* argv[]) {

@@ -1,5 +1,5 @@
-#include "kasmlexer.hpp"
-#include "kasmparser.hpp"
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
 #include <iostream>
 #include <string>
 #include <vector>

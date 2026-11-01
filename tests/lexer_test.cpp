@@ -1,6 +1,6 @@
-#include "source.hpp"
-#include "diagnostic.hpp"
-#include "kasmlexer.hpp"
+#include "framework/source.hpp"
+#include "framework/diagnostic.hpp"
+#include "kasm/kasmlexer.hpp"
 
 #include <iostream>
 

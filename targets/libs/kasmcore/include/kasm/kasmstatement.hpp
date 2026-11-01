@@ -1,7 +1,7 @@
 #pragma once
 
-#include "statement.hpp"
-#include "parser.hpp"
+#include "framework/statement.hpp"
+#include "framework/parser.hpp"
 
 typedef enum {
     STATEMENT_TYPE_UNKNOWN = 0,
