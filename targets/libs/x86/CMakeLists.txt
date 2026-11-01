@@ -1,0 +1,5 @@
+file(GLOB_RECURSE X86_SOURCES CONFIGURE_DEPENDS "src/*.cpp" "include/*.hpp")
+add_library(x86 SHARED ${X86_SOURCES})
+set_target_properties(x86 PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+target_include_directories(x86 PUBLIC "include")
+target_link_libraries(x86 PUBLIC asmfw)
