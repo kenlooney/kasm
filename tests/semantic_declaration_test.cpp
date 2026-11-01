@@ -1,6 +1,6 @@
-#include "kasmlexer.hpp"
-#include "kasmparser.hpp"
-#include "kasmsemantic.hpp"
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
+#include "kasm/kasmsemantic.hpp"
 #include <iostream>
 
 int main() {

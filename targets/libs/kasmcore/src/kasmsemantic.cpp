@@ -1,4 +1,4 @@
-#include "kasmsemantic.hpp"
+#include "kasm/kasmsemantic.hpp"
 
 bool KasmSemanticAnalyzer::validate_statement(const KasmStatement &statement, std::string &error)
 {

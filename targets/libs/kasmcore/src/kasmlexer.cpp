@@ -1,4 +1,4 @@
-#include "kasmlexer.hpp"
+#include "kasm/kasmlexer.hpp"
 
 
 std::vector<Token> KasmLexer::tokenize(const std::string& text) {

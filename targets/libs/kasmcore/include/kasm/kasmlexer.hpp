@@ -1,5 +1,5 @@
 #pragma once
-#include "lexer.hpp"
+#include "framework/lexer.hpp"
 
 class KasmLexer : public Lexer {
 public:

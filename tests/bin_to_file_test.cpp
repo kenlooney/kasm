@@ -1,8 +1,8 @@
-#include "source.hpp"
-#include "kasmlexer.hpp"
-#include "kasmparser.hpp"
-#include "kasmsemantic.hpp"
-#include "kasmwriter.hpp"
+#include "framework/source.hpp"
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
+#include "kasm/kasmsemantic.hpp"
+#include "kasm/kasmwriter.hpp"
 #include <iostream>
 
 

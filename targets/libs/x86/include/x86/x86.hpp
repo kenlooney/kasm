@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "cpu.hpp"
+#include "framework/cpu.hpp"
 
 class X86 : public Cpu {
 public:

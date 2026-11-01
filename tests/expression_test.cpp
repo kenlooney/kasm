@@ -1,8 +1,8 @@
 
-#include "source.hpp"
-#include "diagnostic.hpp"
-#include "kasmlexer.hpp"
-#include "kasmparser.hpp"
+#include "framework/source.hpp"
+#include "framework/diagnostic.hpp"
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
 #include <iostream>
 #include <utility>
 

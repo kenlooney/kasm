@@ -1,6 +1,6 @@
-#include "kasmparser.hpp"
-#include "integer.hpp"
-#include "kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
+#include "framework/integer.hpp"
+#include "kasm/kasmlexer.hpp"
 #include <algorithm>
 
 static std::string parse_mnemonic(const std::vector<Token> &line_tokens)

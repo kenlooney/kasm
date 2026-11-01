@@ -1,7 +1,7 @@
 #pragma once
-#include "semantic.hpp"
-#include "kasmparser.hpp"
-#include "kasmstatement.hpp"
+#include "framework/semantic.hpp"
+#include "kasm/kasmparser.hpp"
+#include "kasm/kasmstatement.hpp"
 class KasmSemanticAnalyzer : public SemanticAnalyzer {
 public:
     explicit KasmSemanticAnalyzer(KasmParser& parser) : SemanticAnalyzer(parser), kasm_parser_(parser) {}

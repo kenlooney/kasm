@@ -1,4 +1,4 @@
-#include "diagnostic.hpp"
+#include "framework/diagnostic.hpp"
 #include <iostream>
 
 void report(const std::string& file, int line, int column,

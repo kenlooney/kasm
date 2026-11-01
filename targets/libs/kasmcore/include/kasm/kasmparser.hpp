@@ -1,6 +1,6 @@
 #pragma once
-#include "parser.hpp"
-#include "lexer.hpp"
+#include "framework/parser.hpp"
+#include "framework/lexer.hpp"
 #include "kasmstatement.hpp"
 #include <string>
 

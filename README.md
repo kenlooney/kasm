@@ -1,6 +1,18 @@
 ﻿# Ken's Assembler Framework
 
-An extensible assembler framework for building assemblers for different CPUs and languages. Kasm is its first assembler, an x86 assembler in development. It currently parses expressions, move statements, and byte declarations into a representation for later processing. Semantic checking and machine-code generation are still in development.
+An extensible assembler framework for building assemblers for different CPUs and languages. Kasm is its first assembler, an x86 assembler in development. It can parse expressions and move statements, and its CLI can validate byte declarations and write their values to a binary file. x86 instruction encoding is still in development.
+
+## Using the Kasm CLI
+
+After building, pass a source file and an output filename to `kasm`. For example, from the repository root on Windows:
+
+```powershell
+.\bin\Debug\kasm.exe .\examples\declare.asm output.bin
+```
+
+The example contains `declare 2 + 3 as byte` and `declare 0x20 as byte`, so the output file contains the bytes `05 20` in hexadecimal. The CLI overwrites an existing output file; use a different path from the source file.
+
+The CLI currently accepts byte declaration statements only. Move statements and standalone expressions can be parsed, but their semantic checking and output are not yet implemented.
 
 ## Kasm statements and comments
 
@@ -38,7 +50,7 @@ declare 10 as byte
 set (2 plus 3) being byte
 ```
 
-`declare` and `set` are aliases, as are `as` and `being`. `byte` is the only supported declaration type so far; `word` is not yet supported. The parser builds an expression tree for the value. `KasmSemanticAnalyzer::analyze()` evaluates byte declarations and accepts values from `0` through `255`, reporting an error for larger values or invalid arithmetic. Byte emission is not implemented yet.
+`declare` and `set` are aliases, as are `as` and `being`. `byte` is the only supported declaration type so far; `word` is not yet supported. The parser builds an expression tree for the value. `KasmSemanticAnalyzer::analyze()` evaluates byte declarations and accepts values from `0` through `255`, reporting an error for larger values or invalid arithmetic. The CLI writes each accepted declaration as one byte in the output file.
 
 Semantic checking currently handles byte declarations only. It reports an unimplemented-check error for move and standalone expression statements; parsing those statements remains supported.
 
@@ -58,11 +70,16 @@ These aliases are defined in the `KasmParser` constructor and compiled into `kas
 
 ## Using the framework
 
-The project separates the reusable framework in `asmfw` from Kasm's lexer and parser in `kasmcore`. Link to `asmfw` to build another assembler, or link to `kasmcore` to use Kasm's components. `kasmcore` also links to `asmfw`.
+The project separates the reusable framework in `asmfw`, Kasm's language components in `kasmcore`, and the x86 CPU library in `x86`. Link to `asmfw` to build another assembler, or link to `kasmcore` to use Kasm's components. Both `kasmcore` and `x86` link to `asmfw`. The framework's `Cpu` and x86 implementation are starting points for CPU-specific instruction encoding.
 
 `KasmParser::parse_statements()` accepts a source string and returns `KasmStatement` objects. Expressions within those statements are represented as ASTs, and parse errors include a line number. For example:
 
 ```cpp
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
+#include <string>
+#include <vector>
+
 KasmLexer lexer;
 KasmParser parser(lexer);
 std::vector<KasmStatement> statements;
@@ -73,14 +90,14 @@ if (!parser.parse_statements("put 10 into ax\ndeclare 5 as byte\n", statements, 
 }
 ```
 
-An expression-only overload also returns `std::vector<Expression>` and rejects move or declaration statements. The current `kasm` executable displays its operator and keyword aliases; it does not yet read and assemble a source file from the command line.
+An expression-only overload also returns `std::vector<Expression>` and rejects move or declaration statements. The framework's `ByteWriter` interface supports file and stream output; `KasmWriter` implements it for Kasm.
 
 To build another assembler, implement a lexer and parser using the framework's base classes, then provide them to an `Assembler`. For example, Kasm's components can be connected like this:
 
 ```cpp
-#include "kasmlexer.hpp"
-#include "kasmparser.hpp"
-#include "assembler.hpp"
+#include "kasm/kasmlexer.hpp"
+#include "kasm/kasmparser.hpp"
+#include "framework/assembler.hpp"
 #include <memory>
 #include <utility>
 

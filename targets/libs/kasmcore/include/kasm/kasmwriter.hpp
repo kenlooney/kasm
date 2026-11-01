@@ -1,4 +1,4 @@
-#include "bytewriter.hpp"
+#include "framework/bytewriter.hpp"
 
 enum class KasmEndianness {
     Little,
