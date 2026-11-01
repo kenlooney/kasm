@@ -72,3 +72,7 @@ add_test(NAME declaration_test COMMAND declaration_test)
 add_executable(semantic_declaration_test semantic_declaration_test.cpp)
 target_link_libraries(semantic_declaration_test PRIVATE kasmcore)
 add_test(NAME semantic_declaration_test COMMAND semantic_declaration_test)
+
+add_executable(declaration_source_test declaration_source_test.cpp)
+target_link_libraries(declaration_source_test PRIVATE kasmcore)
+add_test(NAME declaration_source_test COMMAND declaration_source_test ${CMAKE_SOURCE_DIR}/examples/declare.asm)
