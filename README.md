@@ -64,7 +64,9 @@ Kasm supports addition, subtraction, multiplication, and parentheses in expressi
 | `-` | `sub`, `minus` |
 | `*` | `mul`, `times` |
 
-For example, `2 plus 3 times 4` evaluates to `14`, while `(2 plus 3) times 4` evaluates to `20`. Expressions are parsed into abstract syntax trees (ASTs). The single-expression API can also evaluate a tree using unsigned 64-bit integers, reporting arithmetic overflow or subtraction underflow as errors. Building an AST alone does not evaluate it.
+For example, `2 plus 3 times 4` evaluates to `14`, while `(2 plus 3) times 4` evaluates to `20`. Subtraction follows the same precedence as addition, so `10 minus 3 plus 2` is evaluated from left to right and produces `9`. Multiplication comes first: `10 minus 2 times 3` produces `4`, while `(10 minus 2) times 3` produces `24`.
+
+Expressions are parsed into abstract syntax trees (ASTs). The single-expression API can also evaluate a tree using unsigned 64-bit integers, reporting arithmetic overflow or subtraction underflow as errors. For example, `3 minus 5` reports an underflow rather than producing a negative number. Building an AST alone does not evaluate it.
 
 These aliases are defined in the `KasmParser` constructor and compiled into `kasmcore`. Other assemblers can define their own aliases in code using the framework's `AliasTable`.
 
